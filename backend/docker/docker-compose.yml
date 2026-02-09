@@ -1,0 +1,30 @@
+name: on-race
+
+services:
+  local-mysql:
+    image: mysql:8.0
+    container_name: on-race-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 1234
+      MYSQL_DATABASE: on-race
+    ports:
+      - "3306:3306"
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+
+  local-redis:
+    image: redis:7-alpine
+    container_name: on-race-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    #command: ["redis-server", "--ignore-warnings", "ARM64-COW-BUG"] -> mac 1,2,3 주석해제
+
+volumes:
+  redis-data:
+
+#platform: linux/arm64/v8   # Apple Silicon (M1/M2/M3)
+#platform: linux/amd64      # Intel/AMD 64bit
+#platform: linux/arm/v7     # ARM 32bit (라즈베리파이 등)

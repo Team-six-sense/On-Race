@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: on-race
+  profiles:
+    active: local
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        jdbc:
+          time_zone: Asia/Seoul
