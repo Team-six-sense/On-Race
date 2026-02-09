@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.kt.onrace.common.logging.annotation.ApiLog;
 import com.kt.onrace.common.response.ApiResponse;
 import com.kt.onrace.common.swagger.SwaggerAssistance;
-import com.kt.onrace.domain.main.domain.Main;
+import com.kt.onrace.domain.main.entity.Main;
 import com.kt.onrace.domain.main.dto.TestRequest;
 import com.kt.onrace.domain.main.service.MainService;
 

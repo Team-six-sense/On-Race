@@ -1,4 +1,4 @@
-package com.kt.onrace.domain.main.domain;
+package com.kt.onrace.domain.main.entity;
 
 import com.kt.onrace.common.entity.BaseEntity;
 

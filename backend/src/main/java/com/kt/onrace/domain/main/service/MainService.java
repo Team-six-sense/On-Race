@@ -5,7 +5,7 @@ import java.util.List;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import com.kt.onrace.common.logging.annotation.ServiceLog;
-import com.kt.onrace.domain.main.domain.Main;
+import com.kt.onrace.domain.main.entity.Main;
 import com.kt.onrace.domain.main.dto.TestRequest;
 import com.kt.onrace.domain.main.repository.MainRepository;
 
