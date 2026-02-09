@@ -1,0 +1,28 @@
+# 서버 포트
+server:
+  port: 8080
+
+spring:
+  # MYSQL
+  datasource:
+    url: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_SCHEMA}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  # Redis
+  data:
+    redis:
+      password: #${REDIS_PASSWORD}
+      sentinel:
+        master: ${REDIS_MASTER_NAME} # 추후 인프라팀에 물어보기
+        nodes:
+          #- 엘라스틱캐시주소 또는 EC2 인스턴스 내부 IP로 작성하면될듯:26379
+          #- 엘라스틱캐시주소 또는 EC2 인스턴스 내부 IP로 작성하면될듯:26379
+          #- 엘라스틱캐시주소 또는 EC2 인스턴스 내부 IP로 작성하면될듯:26379
+
+# jwt 설정
+jwt:
+  secret: ${jwt.secret}
+  access-token-expiration: ${jwt.access-token-expiration:300000}
+  refresh-token-expiration: ${jwt.refresh-token-expiration:43200000}
