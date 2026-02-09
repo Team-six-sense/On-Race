@@ -1,0 +1,91 @@
+HELP.md
+.gradle
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+### STS (Spring Tool Suite) ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+### Logs ###
+*.log
+logs/
+spring.log
+
+### Application Properties (민감 정보) ###
+application-prod.yml
+
+### API Keys & Secrets ###
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+jwt-secret.txt
+api-keys.txt
+
+### Upload Files (개발 중 테스트 파일) ###
+uploads/
+files/
+temp/
+static/uploads/
+
+### ELK Stack Logs (ShoppingFourU) ###
+elasticsearch/
+logstash/
+filebeat/
+
+### Build Output ###
+/build/
+/out/
+/target/
