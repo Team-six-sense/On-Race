@@ -7,8 +7,8 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import com.kt.onrace.domain.auth.domain.Role;
-import com.kt.onrace.domain.auth.domain.User;
+import com.kt.onrace.domain.auth.entity.Role;
+import com.kt.onrace.domain.auth.entity.User;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

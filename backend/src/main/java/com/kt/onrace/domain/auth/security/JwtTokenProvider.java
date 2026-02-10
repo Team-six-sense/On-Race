@@ -13,7 +13,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
-import com.kt.onrace.domain.auth.domain.User;
+import com.kt.onrace.domain.auth.entity.User;
 import com.kt.onrace.common.exception.BusinessException;
 import com.kt.onrace.common.exception.ErrorCode;
 

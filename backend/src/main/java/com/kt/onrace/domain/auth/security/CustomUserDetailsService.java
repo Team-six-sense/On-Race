@@ -5,7 +5,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import com.kt.onrace.domain.auth.domain.User;
+import com.kt.onrace.domain.auth.entity.User;
 import com.kt.onrace.domain.auth.repository.UserRepository;
 import com.kt.onrace.common.exception.BusinessException;
 import com.kt.onrace.common.exception.ErrorCode;
