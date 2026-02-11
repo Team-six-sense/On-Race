@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 
 import com.kt.onrace.domain.auth.entity.User;
 import com.kt.onrace.common.exception.BusinessException;
-import com.kt.onrace.common.exception.ErrorCode;
+import com.kt.onrace.common.exception.BusinessErrorCode;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -100,11 +100,11 @@ public class JwtTokenProvider {
 			try {
 					parseClaims(token);
 			} catch (ExpiredJwtException e) {
-					throw new BusinessException(ErrorCode.AUTH_EXPIRED_JWT_TOKEN);
+					throw new BusinessException(BusinessErrorCode.AUTH_EXPIRED_JWT_TOKEN);
 			} catch (MalformedJwtException e) {
-					throw new BusinessException(ErrorCode.AUTH_MALFORMED_JWT_TOKEN);
+					throw new BusinessException(BusinessErrorCode.AUTH_MALFORMED_JWT_TOKEN);
 			} catch (JwtException | IllegalArgumentException e) {
-					throw new BusinessException(ErrorCode.AUTH_INVALID_JWT_TOKEN);
+					throw new BusinessException(BusinessErrorCode.AUTH_INVALID_JWT_TOKEN);
 			}
 	}
 
@@ -125,7 +125,7 @@ public class JwtTokenProvider {
 			} catch (ExpiredJwtException e) {
 					return e.getClaims().getId();
 			} catch (JwtException | IllegalArgumentException e) {
-					throw new BusinessException(ErrorCode.AUTH_INVALID_JWT_TOKEN);
+					throw new BusinessException(BusinessErrorCode.AUTH_INVALID_JWT_TOKEN);
 			}
 	}
 
@@ -135,7 +135,7 @@ public class JwtTokenProvider {
 			} catch (ExpiredJwtException e) {
 					return e.getClaims().getExpiration();
 			}catch (JwtException | IllegalArgumentException e) {
-					throw new BusinessException(ErrorCode.AUTH_INVALID_JWT_TOKEN);
+					throw new BusinessException(BusinessErrorCode.AUTH_INVALID_JWT_TOKEN);
 			}
 	}
 }

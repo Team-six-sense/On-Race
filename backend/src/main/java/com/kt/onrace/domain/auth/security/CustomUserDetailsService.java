@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 import com.kt.onrace.domain.auth.entity.User;
 import com.kt.onrace.domain.auth.repository.UserRepository;
 import com.kt.onrace.common.exception.BusinessException;
-import com.kt.onrace.common.exception.ErrorCode;
+import com.kt.onrace.common.exception.BusinessErrorCode;
 
 import lombok.RequiredArgsConstructor;
 
@@ -22,7 +22,7 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String loginId) throws UsernameNotFoundException {
         User user = userRepository.findByLoginIdAndIsDeletedFalse(loginId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.AUTH_NOT_FOUND_USER));
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.AUTH_NOT_FOUND_USER));
 
         return CustomUserDetails.from(user);
     }

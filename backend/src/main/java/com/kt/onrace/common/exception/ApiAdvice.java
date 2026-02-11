@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import com.kt.onrace.common.response.ApiResponse;
 
 import io.swagger.v3.oas.annotations.Hidden;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -22,39 +23,43 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class ApiAdvice {
 
-	/**
-	 * 내부 서버 오류 처리
-	 * @param e
-	 * @return 에러 코드 및 메세지
-	 */
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ApiResponse<Void>> internalServerError(Exception e) {
 		log.error("Internal Server Error ", e);
 
 		return ResponseEntity
 			.status(HttpStatus.INTERNAL_SERVER_ERROR)
-			.body(ApiResponse.error(ErrorCode.COMMON_SYSTEM_ERROR));
+			.body(ApiResponse.error(BusinessErrorCode.COMMON_SYSTEM_ERROR));
 	}
 
-	/**
-	 * 커스텀 예외 처리
-	 * @param e
-	 * @return 에러 코드 및 메세지
-	 */
 	@ExceptionHandler(BusinessException.class)
-	public ResponseEntity<ApiResponse<Void>> customException(BusinessException e) {
-		log.warn("Custom Exception: {}", e.getErrorCode(), e);
+	public ResponseEntity<ApiResponse<Void>> customBusinessException(BusinessException e,
+		HttpServletRequest request) {
+		log.warn("[BusinessException] status={}, code={}, message={}, path={}",
+			e.getErrorCode().getStatus(),
+			e.getErrorCode().getCode(),
+			e.getErrorCode().getMessage(),
+			request.getRequestURI());
 
 		return ResponseEntity
 			.status(e.getErrorCode().getStatus())
 			.body(ApiResponse.error(e.getErrorCode()));
 	}
 
-	/**
-	 * 유효성 검사 예외 처리
-	 * @param e
-	 * @return 에러 코드 및 메세지
-	 */
+	@ExceptionHandler(InfraException.class)
+	public ResponseEntity<ApiResponse<Void>> customInfraException(InfraException e, HttpServletRequest request) {
+		log.warn("[InfraException] status={}, code={}, message={}, path={}",
+			e.getErrorCode().getStatus(),
+			e.getErrorCode().getCode(),
+			e.getErrorCode().getMessage(),
+			request.getRequestURI(),
+			e);
+
+		return ResponseEntity
+			.status(e.getErrorCode().getStatus())
+			.body(ApiResponse.error(e.getErrorCode()));
+	}
+
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ResponseEntity<ApiResponse<Void>> methodArgumentNotValidException(MethodArgumentNotValidException e) {
 		log.warn("Validation Exception ", e);
@@ -68,35 +73,25 @@ public class ApiAdvice {
 
 		return ResponseEntity
 			.status(HttpStatus.BAD_REQUEST)
-			.body(ApiResponse.error(ErrorCode.COMMON_INVALID_PARAMETER, message));
+			.body(ApiResponse.error(BusinessErrorCode.COMMON_INVALID_PARAMETER, message));
 	}
 
-	/**
-	 * IllegalArgumentException 에러
-	 * @param e
-	 * @return 에러 코드 및 메세지
-	 */
 	@ExceptionHandler(IllegalArgumentException.class)
 	public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(IllegalArgumentException e) {
 		log.warn("IllegalArgumentException: {}", e.getMessage());
 
 		return ResponseEntity
 			.status(HttpStatus.BAD_REQUEST)
-			.body(ApiResponse.error(ErrorCode.COMMON_INVALID_PARAMETER, e.getMessage()));
+			.body(ApiResponse.error(BusinessErrorCode.COMMON_INVALID_PARAMETER, e.getMessage()));
 	}
 
-	/**
-	 * DB 에러
-	 * @param e
-	 * @return 에러 코드 및 메세지
-	 */
 	@ExceptionHandler(DataAccessException.class)
 	public ResponseEntity<ApiResponse<Void>> handleDataAccess(DataAccessException e) {
 		log.error("DataAccessException: {}", e.getMessage(), e);
 
 		return ResponseEntity
 			.status(HttpStatus.INTERNAL_SERVER_ERROR)
-			.body(ApiResponse.error(ErrorCode.DB_ACCESS_ERROR));
+			.body(ApiResponse.error(InfraErrorCode.DB_ERROR_ACCESS));
 	}
 
 	@ExceptionHandler(HttpRequestMethodNotSupportedException.class)
@@ -105,7 +100,7 @@ public class ApiAdvice {
 
 		return ResponseEntity
 			.status(HttpStatus.METHOD_NOT_ALLOWED)
-			.body(ApiResponse.error(ErrorCode.COMMON_HTTP_METHOD_NOT_SUPPORTED));
+			.body(ApiResponse.error(BusinessErrorCode.COMMON_HTTP_METHOD_NOT_SUPPORTED));
 	}
 
 	@ExceptionHandler(HttpMessageNotReadableException.class)
@@ -115,7 +110,7 @@ public class ApiAdvice {
 		return ResponseEntity
 			.status(HttpStatus.BAD_REQUEST)
 			.body(ApiResponse.error(
-				ErrorCode.COMMON_INVALID_REQUEST,  // 또는 적절한 ErrorCode
+				BusinessErrorCode.COMMON_INVALID_REQUEST,  // 또는 적절한 ErrorCode
 				"유효하지 않은 BODY입니다"
 			));
 	}
