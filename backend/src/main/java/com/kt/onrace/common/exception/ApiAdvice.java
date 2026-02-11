@@ -25,43 +25,47 @@ public class ApiAdvice {
 
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ApiResponse<Void>> internalServerError(Exception e) {
+		ErrorCode errorCode = BusinessErrorCode.COMMON_SYSTEM_ERROR;
+
 		log.error("Internal Server Error ", e);
 
-		return ResponseEntity
-			.status(HttpStatus.INTERNAL_SERVER_ERROR)
-			.body(ApiResponse.error(BusinessErrorCode.COMMON_SYSTEM_ERROR));
+		return result(errorCode);
 	}
 
 	@ExceptionHandler(BusinessException.class)
-	public ResponseEntity<ApiResponse<Void>> customBusinessException(BusinessException e,
-		HttpServletRequest request) {
-		log.warn("[BusinessException] status={}, code={}, message={}, path={}",
-			e.getErrorCode().getStatus(),
-			e.getErrorCode().getCode(),
-			e.getErrorCode().getMessage(),
-			request.getRequestURI());
+	public ResponseEntity<ApiResponse<Void>> customBusinessException(BusinessException e, HttpServletRequest request) {
+		ErrorCode errorCode = e.getErrorCode();
 
-		return ResponseEntity
-			.status(e.getErrorCode().getStatus())
-			.body(ApiResponse.error(e.getErrorCode()));
+		log.warn("[BusinessException] status={}, code={}, message={}, path={}",
+			errorCode.getStatus(),
+			errorCode.getCode(),
+			errorCode.getMessage(),
+			request.getRequestURI(),
+			e
+		);
+
+		return result(e.getErrorCode());
 	}
 
 	@ExceptionHandler(InfraException.class)
 	public ResponseEntity<ApiResponse<Void>> customInfraException(InfraException e, HttpServletRequest request) {
-		log.warn("[InfraException] status={}, code={}, message={}, path={}",
-			e.getErrorCode().getStatus(),
-			e.getErrorCode().getCode(),
-			e.getErrorCode().getMessage(),
-			request.getRequestURI(),
-			e);
+		ErrorCode errorCode = BusinessErrorCode.COMMON_SYSTEM_ERROR; // 내부 인프라 예외는 클라이언트에 일반 시스템 오류로 응답
 
-		return ResponseEntity
-			.status(e.getErrorCode().getStatus())
-			.body(ApiResponse.error(e.getErrorCode()));
+		log.error("[InfraException] status={}, code={}, message={}, path={}",
+			errorCode.getStatus(),
+			errorCode.getCode(),
+			errorCode.getMessage(),
+			request.getRequestURI(),
+			e
+		);
+
+		return result(errorCode);
 	}
 
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ResponseEntity<ApiResponse<Void>> methodArgumentNotValidException(MethodArgumentNotValidException e) {
+		ErrorCode errorCode = BusinessErrorCode.COMMON_INVALID_PARAMETER;
+
 		log.warn("Validation Exception ", e);
 
 		String message = e.getBindingResult()
@@ -72,46 +76,49 @@ public class ApiAdvice {
 			.orElse("유효하지 않은 요청입니다");
 
 		return ResponseEntity
-			.status(HttpStatus.BAD_REQUEST)
-			.body(ApiResponse.error(BusinessErrorCode.COMMON_INVALID_PARAMETER, message));
+			.status(errorCode.getStatus())
+			.body(ApiResponse.error(errorCode, message));
 	}
 
 	@ExceptionHandler(IllegalArgumentException.class)
 	public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(IllegalArgumentException e) {
+		ErrorCode errorCode = BusinessErrorCode.COMMON_INVALID_PARAMETER;
+
 		log.warn("IllegalArgumentException: {}", e.getMessage());
 
-		return ResponseEntity
-			.status(HttpStatus.BAD_REQUEST)
-			.body(ApiResponse.error(BusinessErrorCode.COMMON_INVALID_PARAMETER, e.getMessage()));
+		return result(errorCode);
 	}
 
 	@ExceptionHandler(DataAccessException.class)
 	public ResponseEntity<ApiResponse<Void>> handleDataAccess(DataAccessException e) {
+		ErrorCode errorCode = BusinessErrorCode.COMMON_SYSTEM_ERROR;
+
 		log.error("DataAccessException: {}", e.getMessage(), e);
 
-		return ResponseEntity
-			.status(HttpStatus.INTERNAL_SERVER_ERROR)
-			.body(ApiResponse.error(InfraErrorCode.DB_ERROR_ACCESS));
+		return result(errorCode);
 	}
 
 	@ExceptionHandler(HttpRequestMethodNotSupportedException.class)
 	public ResponseEntity<ApiResponse<Void>> handleMethodNotSupported(HttpRequestMethodNotSupportedException e) {
+		ErrorCode errorCode = BusinessErrorCode.COMMON_HTTP_METHOD_NOT_SUPPORTED;
+
 		log.warn("HttpRequestMethodNotSupportedException: {}", e.getMessage());
 
-		return ResponseEntity
-			.status(HttpStatus.METHOD_NOT_ALLOWED)
-			.body(ApiResponse.error(BusinessErrorCode.COMMON_HTTP_METHOD_NOT_SUPPORTED));
+		return result(errorCode);
 	}
 
 	@ExceptionHandler(HttpMessageNotReadableException.class)
 	public ResponseEntity<ApiResponse<Void>> handleHttpMessageNotReadable(HttpMessageNotReadableException e) {
+		ErrorCode errorCode = BusinessErrorCode.COMMON_INVALID_REQUEST;
+
 		log.warn("HttpMessageNotReadableException: {}", e.getMessage());
 
+		return result(errorCode);
+	}
+
+	private ResponseEntity<ApiResponse<Void>> result(ErrorCode errorCode) {
 		return ResponseEntity
-			.status(HttpStatus.BAD_REQUEST)
-			.body(ApiResponse.error(
-				BusinessErrorCode.COMMON_INVALID_REQUEST,  // 또는 적절한 ErrorCode
-				"유효하지 않은 BODY입니다"
-			));
+			.status(errorCode.getStatus())
+			.body(ApiResponse.error(errorCode));
 	}
 }

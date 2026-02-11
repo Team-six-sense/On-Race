@@ -5,7 +5,6 @@ import org.springframework.http.HttpStatus;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
-@Getter
 @RequiredArgsConstructor
 public enum BusinessErrorCode implements ErrorCode {
 	// [도메인]_[상태]_[대상]
@@ -33,5 +32,20 @@ public enum BusinessErrorCode implements ErrorCode {
 	private final HttpStatus status;
 	private final String code;
 	private final String message;
+
+	@Override
+	public HttpStatus getStatus() {
+		return status;
+	}
+
+	@Override
+	public String getCode() {
+		return code;
+	}
+
+	@Override
+	public String getMessage() {
+		return message;
+	}
 }
 
