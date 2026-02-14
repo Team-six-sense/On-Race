@@ -2,6 +2,8 @@ server:
   port: ${GATEWAY_SERVER_PORT}
 
 spring:
+  application:
+    name: gateway
   cloud:
     gateway:
       server:

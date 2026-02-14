@@ -1,6 +1,6 @@
 spring:
   application:
-    name: on-race
+    name: main
 
   profiles:
     active: ${MAIN_PROFILES_ACTIVE:local}
