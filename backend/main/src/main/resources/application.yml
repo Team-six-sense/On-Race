@@ -1,13 +1,47 @@
 spring:
   application:
     name: on-race
+
   profiles:
-    active: local
+    active: ${MAIN_PROFILES_ACTIVE:local}
+
+  datasource:
+    url: jdbc:mysql://${MAIN_DB_HOST}:${MAIN_DB_PORT}/${MAIN_DB_NAME}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: ${MAIN_DB_USERNAME}
+    password: ${MAIN_DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: ${MAIN_JPA_DDL_AUTO:update}
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
         jdbc:
           time_zone: Asia/Seoul
+        format_sql: ${MAIN_HIBERNATE_FORMAT_SQL:true}
+        use_sql_comments: ${MAIN_HIBERNATE_USE_SQL_COMMENTS:true}
+
+  data:
+    redis:
+      host: ${MAIN_REDIS_HOST:localhost}
+      port: ${MAIN_REDIS_PORT:6379}
+      ssl:
+        enabled: ${MAIN_REDIS_SSL_ENABLED:false}
+
+server:
+  port: ${MAIN_SERVER_PORT:8081}
+
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:300000}
+  refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:43200000}
+
+management:
+  tracing:
+    enabled: ${MAIN_TRACING_ENABLED:true}
+    baggage:
+      enabled: true
+      remote-fields: traceId
+      correlation:
+        fields: traceId

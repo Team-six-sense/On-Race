@@ -89,3 +89,5 @@ filebeat/
 /build/
 /out/
 /target/
+
+.env
