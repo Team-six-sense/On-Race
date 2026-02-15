@@ -40,8 +40,8 @@ public class MediaService {
 	private final S3Presigner s3Presigner;
 	private final S3Client s3Client;
 
-	private MediaObjectMapper mediaObjectMapper;
-	private MediaObjectRepository mediaObjectRepository;
+	private final MediaObjectMapper mediaObjectMapper;
+	private final MediaObjectRepository mediaObjectRepository;
 
 	@Value("${aws.s3.bucket}")
 	private String bucket;
@@ -79,6 +79,7 @@ public class MediaService {
 		PresignedPutObjectRequest presigned = s3Presigner.presignPutObject(presignRequest);
 
 		return PresignUploadResponseDto.builder()
+			.mediaObjectId(mediaObject.getId())
 			.objectKey(objectKey)
 			.uploadUrl(presigned.url().toString())
 			.expiresIn(ttl.getSeconds())
@@ -121,7 +122,6 @@ public class MediaService {
 
 		} catch (Exception e) {
 
-			mediaObject.markDeleted();
 			throw new BusinessException(BusinessErrorCode.MEDIA_CONFIRM_FAILED);
 
 		}
@@ -146,6 +146,16 @@ public class MediaService {
 	}
 
 	private String extractExtension(String filename) {
+		if (filename == null || filename.contains("/") || filename.contains("\\")) {
+			throw new BusinessException(BusinessErrorCode.COMMON_INVALID_FORMAT);
+		}
+
+		int lastDot = filename.lastIndexOf('.');
+
+		if (lastDot == -1 || lastDot == 0) {
+			return "";
+		}
+
 		return filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
 	}
 
