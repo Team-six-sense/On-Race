@@ -45,3 +45,9 @@ management:
       remote-fields: traceId
       correlation:
         fields: traceId
+
+aws:
+  region: ${AWS_REGION:ap-northeast-2}
+  s3:
+    bucket: ${AWS_S3_BUCKET}
+    presign-expire-seconds: ${AWS_S3_PRESIGN_EXPIRE_SECONDS}

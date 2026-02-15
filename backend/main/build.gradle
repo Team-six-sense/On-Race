@@ -27,6 +27,10 @@ dependencies {
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.13.0'
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.13.0'
 
+    // S3
+    implementation platform("software.amazon.awssdk:bom:2.31.66")
+    implementation "software.amazon.awssdk:s3"
+
     // OBSERVABILITY (Micrometer + Context Propagation)
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'io.micrometer:context-propagation:1.1.2'
