@@ -28,7 +28,12 @@ public enum BusinessErrorCode implements ErrorCode {
 	MEDIA_UNSUPPORTED_CONTENT_TYPE(HttpStatus.BAD_REQUEST, "MDA_001", "허용되지 않은 Content_type 입니다."),
 	MEDIA_NOT_FOUND(HttpStatus.NOT_FOUND, "MDA_002", "미디어 정보를 찾을 수 없습니다."),
 	MEDIA_OBJECT_NOT_FOUND(HttpStatus.NOT_FOUND, "MDA_003", "S3에서 업로드된 파일을 찾을 수 없습니다."),
-	MEDIA_CONFIRM_FAILED(HttpStatus.BAD_REQUEST, "MDA_004", "업로드 확정에 실패했습니다.");
+	MEDIA_CONFIRM_FAILED(HttpStatus.BAD_REQUEST, "MDA_004", "업로드 확정에 실패했습니다."),
+
+	//EVENT
+	EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "EVT_001", "이벤트를 찾을 수 없습니다.")
+
+	;
 
 	private final HttpStatus status;
 	private final String code;
