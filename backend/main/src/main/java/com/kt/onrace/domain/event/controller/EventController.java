@@ -20,7 +20,7 @@ import lombok.RequiredArgsConstructor;
 @ApiLog
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/events")
+@RequestMapping("/events")
 public class EventController {
 
 	private final EventService eventService;

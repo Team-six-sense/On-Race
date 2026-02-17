@@ -33,7 +33,7 @@ public class EventPace extends BaseEntity {
 	private int minutes = 0;
 
 	@Builder
-	public EventPace(EventCourse eventCourse, String name, Byte hour, Byte minutes) {
+	public EventPace(EventCourse eventCourse, String name, Integer hour, Integer minutes) {
 		this.eventCourse = eventCourse;
 		this.name = name;
 		this.hour = hour != null ? hour : 0;
