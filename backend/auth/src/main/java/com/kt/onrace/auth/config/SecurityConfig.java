@@ -1,4 +1,4 @@
-package com.kt.onrace.domain.auth.config;
+package com.kt.onrace.auth.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

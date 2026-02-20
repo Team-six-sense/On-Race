@@ -1,4 +1,4 @@
-package com.kt.onrace.domain.auth.security;
+package com.kt.onrace.auth.security;
 
 import java.util.Collection;
 import java.util.List;
@@ -7,8 +7,8 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import com.kt.onrace.domain.auth.entity.Role;
-import com.kt.onrace.domain.auth.entity.User;
+import com.kt.onrace.auth.entity.Role;
+import com.kt.onrace.auth.entity.User;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
