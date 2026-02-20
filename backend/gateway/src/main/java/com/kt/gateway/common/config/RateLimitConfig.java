@@ -20,9 +20,15 @@ public class RateLimitConfig {
 				return Mono.just("user:" + userId);
 			}
 
-			String ip = Objects.requireNonNull(
-				exchange.getRequest().getRemoteAddress()
-			).getAddress().getHostAddress();
+			String ip = exchange.getRequest().getHeaders().getFirst("X-Forwarded-For");
+
+			if (ip == null || ip.isBlank()) {
+				ip = Objects.requireNonNull(
+					exchange.getRequest().getRemoteAddress()
+				).getAddress().getHostAddress();
+			} else {
+				ip = ip.split(",")[0].trim();
+			}
 
 			return Mono.just("ip:" + ip);
 		};
