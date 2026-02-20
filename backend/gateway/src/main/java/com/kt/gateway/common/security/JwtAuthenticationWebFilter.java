@@ -1,5 +1,7 @@
 package com.kt.gateway.common.security;
 
+import java.util.List;
+
 import org.springframework.http.HttpHeaders;
 import org.springframework.lang.NonNull;
 import org.springframework.security.core.Authentication;
@@ -35,7 +37,20 @@ public class JwtAuthenticationWebFilter implements WebFilter {
 		Claims claims = jwtTokenProvider.getClaims(token);
 		Authentication authentication = claimsAuthenticationConverter.convert(claims, token);
 
-		return chain.filter(exchange)
+		String userId = claims.getSubject();
+
+		@SuppressWarnings("unchecked")
+		List<String> roles = claims.get("roles", List.class);
+		
+		String rolesHeader = roles == null ? "" : String.join(",", roles);
+
+		ServerWebExchange mutatedExchange = exchange.mutate()
+			.request(request -> request
+				.header("X-User-Id", userId)
+				.header("X-User-Role", rolesHeader)
+			).build();
+
+		return chain.filter(mutatedExchange)
 			.contextWrite(ReactiveSecurityContextHolder.withAuthentication(authentication));
 	}
 
