@@ -23,9 +23,9 @@ public class RateLimitConfig {
 			String ip = exchange.getRequest().getHeaders().getFirst("X-Forwarded-For");
 
 			if (ip == null || ip.isBlank()) {
-				ip = Objects.requireNonNull(
-					exchange.getRequest().getRemoteAddress()
-				).getAddress().getHostAddress();
+				ip = java.util.Optional.ofNullable(exchange.getRequest().getRemoteAddress())
+					.map(addr -> addr.getAddress().getHostAddress())
+					.orElse("unknown");
 			} else {
 				ip = ip.split(",")[0].trim();
 			}
