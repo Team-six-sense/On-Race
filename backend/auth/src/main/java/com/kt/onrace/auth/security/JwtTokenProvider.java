@@ -38,27 +38,28 @@ public class JwtTokenProvider {
 		return Keys.hmacShaKeyFor(jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8));
 	}
 
-	public String generateAccessToken(String loginId, String role) {
+	public String generateAccessToken(Long userId, String loginId, String role) {
 		Date now = new Date();
 		Date expiry = new Date(now.getTime() + jwtProperties.getAccessTokenExpiration());
 		String jti = UUID.randomUUID().toString();
 
 		return Jwts.builder()
-				.subject(loginId)
+				.subject(String.valueOf(userId))
 				.id(jti)
-				.claim("role", role)
+				.claim("loginId", loginId)
+				.claim("roles", List.of(role))
 				.issuedAt(now)
 				.expiration(expiry)
 				.signWith(getSigningKey())
 				.compact();
 	}
 
-	public String generateRefreshToken(String loginId) {
+	public String generateRefreshToken(Long userId) {
 		Date now = new Date();
 		Date expiry = new Date(now.getTime() + jwtProperties.getRefreshTokenExpiration());
 
 		return Jwts.builder()
-				.subject(loginId)
+				.subject(String.valueOf(userId))
 				.issuedAt(now)
 				.expiration(expiry)
 				.signWith(getSigningKey())
@@ -77,18 +78,40 @@ public class JwtTokenProvider {
 				.parseSignedClaims(token);
 	}
 
+	public Long getUserId(String token) {
+		try {
+			return Long.valueOf(parseClaims(token).getPayload().getSubject());
+		} catch (ExpiredJwtException e) {
+			return Long.valueOf(e.getClaims().getSubject());
+		} catch (NumberFormatException e) {
+			return null;
+		}
+	}
+
 	public String getLoginId(String token) {
 		try {
-			return parseClaims(token).getPayload().getSubject();
+			Claims claims = parseClaims(token).getPayload();
+			String loginId = claims.get("loginId", String.class);
+			return loginId != null ? loginId : claims.getSubject();
 		} catch (ExpiredJwtException e) {
-			return e.getClaims().getSubject();
+			Claims claims = e.getClaims();
+			String loginId = claims.get("loginId", String.class);
+			return loginId != null ? loginId : claims.getSubject();
 		}
 	}
 
 	public String getRole(String token) {
 		try {
+			List<String> roles = parseClaims(token).getPayload().get("roles", List.class);
+			if (roles != null && !roles.isEmpty()) {
+				return roles.get(0);
+			}
 			return parseClaims(token).getPayload().get("role", String.class);
 		} catch (ExpiredJwtException e) {
+			List<String> roles = e.getClaims().get("roles", List.class);
+			if (roles != null && !roles.isEmpty()) {
+				return roles.get(0);
+			}
 			return e.getClaims().get("role", String.class);
 		}
 	}
