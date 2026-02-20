@@ -23,15 +23,19 @@ public class JwtAuthenticationWebFilter implements WebFilter {
 	private final JwtTokenProvider jwtTokenProvider;
 	private final ClaimsAuthenticationConverter claimsAuthenticationConverter;
 
+	private static final String HEADER_USER_ID = "X-User-Id";
+	private static final String HEADER_USER_ROLE = "X-User-Role";
+
 	@Override
 	public @NonNull Mono<Void> filter(
 		@NonNull ServerWebExchange exchange,
 		@NonNull WebFilterChain chain) {
 
-		String token = resolveBearerToken(exchange);
+		ServerWebExchange sanitized = stripInternalHeaders(exchange);
+		String token = resolveBearerToken(sanitized);
 
 		if (token == null || !jwtTokenProvider.validateToken(token)) {
-			return chain.filter(exchange);
+			return chain.filter(sanitized);
 		}
 
 		Claims claims = jwtTokenProvider.getClaims(token);
@@ -41,17 +45,27 @@ public class JwtAuthenticationWebFilter implements WebFilter {
 
 		@SuppressWarnings("unchecked")
 		List<String> roles = claims.get("roles", List.class);
-		
+
 		String rolesHeader = roles == null ? "" : String.join(",", roles);
 
-		ServerWebExchange mutatedExchange = exchange.mutate()
+		ServerWebExchange mutatedExchange = sanitized.mutate()
 			.request(request -> request
-				.header("X-User-Id", userId)
-				.header("X-User-Role", rolesHeader)
+				.header(HEADER_USER_ID, userId)
+				.header(HEADER_USER_ROLE, rolesHeader)
 			).build();
 
 		return chain.filter(mutatedExchange)
 			.contextWrite(ReactiveSecurityContextHolder.withAuthentication(authentication));
+	}
+
+	private ServerWebExchange stripInternalHeaders(ServerWebExchange exchange) {
+		return exchange.mutate()
+			.request(request -> request
+				.headers(header -> {
+					header.remove(HEADER_USER_ID);
+					header.remove(HEADER_USER_ROLE);
+				})
+			).build();
 	}
 
 	private String resolveBearerToken(ServerWebExchange exchange) {
