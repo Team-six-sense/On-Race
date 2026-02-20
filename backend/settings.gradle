@@ -1,3 +1,3 @@
 rootProject.name = 'backend'
 
-include 'main', 'gateway'
+include 'common', 'gateway', 'auth', 'main'
