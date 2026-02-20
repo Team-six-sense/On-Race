@@ -49,7 +49,6 @@ public class BotDetectionFilter extends AbstractGatewayFilterFactory<BotDetectio
 
 	@Data
 	public static class Config {
-		private boolean challengeMode = false;
 		private String challengeUri;
 	}
 }
