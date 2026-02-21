@@ -22,8 +22,8 @@ public class RateLimitConfig {
 
 			if (ip == null || ip.isBlank()) {
 				ip = java.util.Optional.ofNullable(exchange.getRequest().getRemoteAddress())
-					.map(addr -> addr.getAddress().getHostAddress())
-					.orElse("unknown");
+						.map(addr -> addr.getAddress().getHostAddress())
+						.orElse("unknown");
 			} else {
 				ip = ip.split(",")[0].trim();
 			}
