@@ -10,7 +10,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
 
-import com.kt.gateway.common.security.JwtTokenProvider;
+import com.kt.onrace.common.security.JwtTokenProvider;
 
 import lombok.Data;
 import reactor.core.publisher.Mono;
@@ -36,7 +36,7 @@ public class BotDetectionFilter extends AbstractGatewayFilterFactory<BotDetectio
 				response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
 				String jsonBody = String.format("{\"error\":\"CHALLENGE_REQUIRED\", \"challengeUrl\":\"%s\"}",
-					config.getChallengeUri());
+						config.getChallengeUri());
 				byte[] bytes = jsonBody.getBytes(StandardCharsets.UTF_8);
 				DataBuffer buffer = response.bufferFactory().wrap(bytes);
 
