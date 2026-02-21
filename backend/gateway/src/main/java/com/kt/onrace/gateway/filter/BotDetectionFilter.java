@@ -1,4 +1,4 @@
-package com.kt.gateway.common.filter;
+package com.kt.onrace.gateway.filter;
 
 import java.nio.charset.StandardCharsets;
 
@@ -36,7 +36,7 @@ public class BotDetectionFilter extends AbstractGatewayFilterFactory<BotDetectio
 				response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
 				String jsonBody = String.format("{\"error\":\"CHALLENGE_REQUIRED\", \"challengeUrl\":\"%s\"}",
-						config.getChallengeUri());
+					config.getChallengeUri());
 				byte[] bytes = jsonBody.getBytes(StandardCharsets.UTF_8);
 				DataBuffer buffer = response.bufferFactory().wrap(bytes);
 

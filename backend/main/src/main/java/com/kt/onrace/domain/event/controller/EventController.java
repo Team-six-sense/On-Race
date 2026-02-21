@@ -9,11 +9,10 @@ import com.kt.onrace.common.logging.annotation.ApiLog;
 import com.kt.onrace.common.response.ApiResponse;
 import com.kt.onrace.common.response.CursorResponse;
 import com.kt.onrace.domain.event.dto.EventDetailResponse;
-import com.kt.onrace.domain.event.dto.EventSearchRequest;
 import com.kt.onrace.domain.event.dto.EventListResponse;
+import com.kt.onrace.domain.event.dto.EventSearchRequest;
 import com.kt.onrace.domain.event.service.EventService;
 
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @ApiLog

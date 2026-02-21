@@ -42,7 +42,7 @@ public class ServiceLogAspect {
 
 		// 서비스 시작 로그
 		logServiceStart(signature);
-		
+
 		// 파라미터 로그
 		logParameters(joinPoint);
 
@@ -111,7 +111,7 @@ public class ServiceLogAspect {
 	private String summarizeResult(Object result) {
 
 		if (result instanceof Collection) {
-			return "Collection[size=" + ((Collection<?>) result).size() + "]";
+			return "Collection[size=" + ((Collection<?>)result).size() + "]";
 		}
 
 		if (result instanceof Boolean) {

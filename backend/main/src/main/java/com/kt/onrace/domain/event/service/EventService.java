@@ -8,8 +8,8 @@ import com.kt.onrace.common.exception.BusinessException;
 import com.kt.onrace.common.logging.annotation.ServiceLog;
 import com.kt.onrace.common.response.CursorResponse;
 import com.kt.onrace.domain.event.dto.EventDetailResponse;
-import com.kt.onrace.domain.event.dto.EventSearchRequest;
 import com.kt.onrace.domain.event.dto.EventListResponse;
+import com.kt.onrace.domain.event.dto.EventSearchRequest;
 import com.kt.onrace.domain.event.entity.Event;
 import com.kt.onrace.domain.event.repository.EventRepository;
 

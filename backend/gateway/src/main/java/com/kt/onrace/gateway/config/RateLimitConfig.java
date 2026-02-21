@@ -1,6 +1,4 @@
-package com.kt.gateway.common.config;
-
-import java.util.Objects;
+package com.kt.onrace.gateway.config;
 
 import org.springframework.cloud.gateway.filter.ratelimit.KeyResolver;
 import org.springframework.context.annotation.Bean;

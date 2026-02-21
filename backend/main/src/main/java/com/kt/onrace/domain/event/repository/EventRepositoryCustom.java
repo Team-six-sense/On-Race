@@ -9,5 +9,6 @@ import com.kt.onrace.domain.event.entity.Event;
 public interface EventRepositoryCustom {
 
 	List<Event> findVisibleEvents(EventSearchRequest request, int size);
+
 	Optional<Event> findVisibleEventDetail(Long id);
 }

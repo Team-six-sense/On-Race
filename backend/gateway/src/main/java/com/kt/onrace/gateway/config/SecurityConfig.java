@@ -1,4 +1,4 @@
-package com.kt.gateway.common.config;
+package com.kt.onrace.gateway.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,7 +10,7 @@ import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.context.NoOpServerSecurityContextRepository;
 
-import com.kt.gateway.common.security.JwtAuthenticationWebFilter;
+import com.kt.onrace.gateway.filter.JwtAuthenticationWebFilter;
 
 import lombok.RequiredArgsConstructor;
 

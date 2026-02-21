@@ -1,4 +1,4 @@
-package com.kt.gateway.common.security;
+package com.kt.onrace.gateway.filter;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -27,8 +27,8 @@ public class JwtAuthenticationWebFilter implements WebFilter {
 
 	@Override
 	public @NonNull Mono<Void> filter(
-			@NonNull ServerWebExchange exchange,
-			@NonNull WebFilterChain chain) {
+		@NonNull ServerWebExchange exchange,
+		@NonNull WebFilterChain chain) {
 
 		ServerWebExchange sanitized = stripInternalHeaders(exchange);
 		String token = resolveBearerToken(sanitized);
@@ -51,23 +51,23 @@ public class JwtAuthenticationWebFilter implements WebFilter {
 		String rolesHeader = role == null ? "" : role;
 
 		ServerWebExchange mutatedExchange = sanitized.mutate()
-				.request(request -> request
-						.header(HEADER_USER_ID, userId)
-						.header(HEADER_USER_ROLE, rolesHeader))
-				.build();
+			.request(request -> request
+				.header(HEADER_USER_ID, userId)
+				.header(HEADER_USER_ROLE, rolesHeader))
+			.build();
 
 		return chain.filter(mutatedExchange)
-				.contextWrite(ReactiveSecurityContextHolder.withAuthentication(authentication));
+			.contextWrite(ReactiveSecurityContextHolder.withAuthentication(authentication));
 	}
 
 	private ServerWebExchange stripInternalHeaders(ServerWebExchange exchange) {
 		return exchange.mutate()
-				.request(request -> request
-						.headers(header -> {
-							header.remove(HEADER_USER_ID);
-							header.remove(HEADER_USER_ROLE);
-						}))
-				.build();
+			.request(request -> request
+				.headers(header -> {
+					header.remove(HEADER_USER_ID);
+					header.remove(HEADER_USER_ROLE);
+				}))
+			.build();
 	}
 
 	private String resolveBearerToken(ServerWebExchange exchange) {
