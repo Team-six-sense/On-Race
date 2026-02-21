@@ -11,7 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
 
-import com.kt.gateway.common.security.JwtTokenProvider;
+import com.kt.onrace.common.security.JwtTokenProvider;
 
 import lombok.Data;
 import reactor.core.publisher.Mono;
@@ -33,29 +33,29 @@ public class WaitingRoomFilter extends AbstractGatewayFilterFactory<WaitingRoomF
 	@Override
 	public GatewayFilter apply(Config config) {
 		return (exchange, chain) -> redisTemplate.opsForValue().get(QUEUE_ENABLED_KEY)
-			.defaultIfEmpty("FALSE")
-			.flatMap(isEnabled -> {
-				if (!"TRUE".equalsIgnoreCase(isEnabled)) {
+				.defaultIfEmpty("FALSE")
+				.flatMap(isEnabled -> {
+					if (!"TRUE".equalsIgnoreCase(isEnabled)) {
+						return chain.filter(exchange);
+					}
+
+					String passToken = exchange.getRequest().getHeaders().getFirst("WaitingRoom-Pass-Token");
+
+					if (passToken == null || !jwtTokenProvider.validateToken(passToken)) {
+						ServerHttpResponse response = exchange.getResponse();
+						response.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+						response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+
+						String jsonBody = String.format("{\"error\":\"QUEUE_REQUIRED\", \"queueUrl\":\"%s\"}",
+								config.getQueueUrl());
+						byte[] bytes = jsonBody.getBytes(StandardCharsets.UTF_8);
+						DataBuffer buffer = response.bufferFactory().wrap(bytes);
+
+						return response.writeWith(Mono.just(buffer));
+					}
+
 					return chain.filter(exchange);
-				}
-
-				String passToken = exchange.getRequest().getHeaders().getFirst("WaitingRoom-Pass-Token");
-
-				if (passToken == null || !jwtTokenProvider.validateToken(passToken)) {
-					ServerHttpResponse response = exchange.getResponse();
-					response.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
-					response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
-
-					String jsonBody = String.format("{\"error\":\"QUEUE_REQUIRED\", \"queueUrl\":\"%s\"}",
-						config.getQueueUrl());
-					byte[] bytes = jsonBody.getBytes(StandardCharsets.UTF_8);
-					DataBuffer buffer = response.bufferFactory().wrap(bytes);
-
-					return response.writeWith(Mono.just(buffer));
-				}
-
-				return chain.filter(exchange);
-			});
+				});
 	}
 
 	@Data

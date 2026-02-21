@@ -1,4 +1,4 @@
-package com.kt.onrace.auth.security;
+package com.kt.onrace.common.security;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
@@ -11,7 +11,7 @@ import lombok.Setter;
 @Component
 @ConfigurationProperties(prefix = "jwt")
 public class JwtProperties {
-	private String secret;
-	private Long accessTokenExpiration;
-	private Long refreshTokenExpiration;
+    private String secret;
+    private Long accessTokenExpiration;
+    private Long refreshTokenExpiration;
 }
