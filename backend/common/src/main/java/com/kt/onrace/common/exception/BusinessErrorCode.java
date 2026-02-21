@@ -31,9 +31,7 @@ public enum BusinessErrorCode implements ErrorCode {
 	MEDIA_CONFIRM_FAILED(HttpStatus.BAD_REQUEST, "MDA_004", "업로드 확정에 실패했습니다."),
 
 	//EVENT
-	EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "EVT_001", "이벤트를 찾을 수 없습니다.")
-
-	;
+	EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "EVT_001", "이벤트를 찾을 수 없습니다.");
 
 	private final HttpStatus status;
 	private final String code;

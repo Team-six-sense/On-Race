@@ -73,9 +73,9 @@ public class Event extends BaseEntity {
 
 	@Builder
 	public Event(String title, EventStatus status, String thumbnailImg, String detailImg,
-		String courseMapImg, EventType type, LocalDateTime eventAt,
-		LocalDateTime appStartAt, LocalDateTime appEndAt, String venueAddress,
-		LocalDateTime lotteryAnnouncedAt, String notice, Boolean isView) {
+			String courseMapImg, EventType type, LocalDateTime eventAt,
+			LocalDateTime appStartAt, LocalDateTime appEndAt, String venueAddress,
+			LocalDateTime lotteryAnnouncedAt, String notice, Boolean isView) {
 		this.title = title;
 		this.status = status;
 		this.thumbnailImg = thumbnailImg;
@@ -93,9 +93,9 @@ public class Event extends BaseEntity {
 	}
 
 	public void update(String title, EventStatus status, String thumbnailImg, String detailImg,
-		String courseMapImg, EventType type, LocalDateTime eventAt,
-		LocalDateTime appStartAt, LocalDateTime appEndAt, String venueAddress,
-		LocalDateTime lotteryAnnouncedAt, String notice, Boolean isView) {
+			String courseMapImg, EventType type, LocalDateTime eventAt,
+			LocalDateTime appStartAt, LocalDateTime appEndAt, String venueAddress,
+			LocalDateTime lotteryAnnouncedAt, String notice, Boolean isView) {
 		this.title = title;
 		this.status = status;
 		this.thumbnailImg = thumbnailImg;

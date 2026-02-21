@@ -2,8 +2,8 @@ package com.kt.onrace.domain.event.repository;
 
 import static com.kt.onrace.domain.event.entity.QEvent.*;
 import static com.kt.onrace.domain.event.entity.QEventCourse.*;
-import static com.kt.onrace.domain.event.entity.QEventPackage.*;
 import static com.kt.onrace.domain.event.entity.QEventPace.*;
+import static com.kt.onrace.domain.event.entity.QEventPackage.*;
 
 import java.util.List;
 import java.util.Optional;

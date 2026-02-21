@@ -7,8 +7,8 @@ import org.springframework.stereotype.Service;
 
 import com.kt.onrace.auth.entity.User;
 import com.kt.onrace.auth.repository.UserRepository;
-import com.kt.onrace.common.exception.BusinessException;
 import com.kt.onrace.common.exception.BusinessErrorCode;
+import com.kt.onrace.common.exception.BusinessException;
 
 import lombok.RequiredArgsConstructor;
 

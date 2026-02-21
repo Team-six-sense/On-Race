@@ -52,11 +52,13 @@ public class User extends BaseEntity {
 		this.isDeleted = false;
 	}
 
-	public static User createUser(String loginId, String name, String password, String email, String mobile, Gender gender) {
+	public static User createUser(String loginId, String name, String password, String email, String mobile,
+		Gender gender) {
 		return new User(loginId, name, password, email, mobile, gender, Role.USER);
 	}
 
-	public static User createAdmin(String loginId, String name, String password, String email, String mobile, Gender gender) {
+	public static User createAdmin(String loginId, String name, String password, String email, String mobile,
+		Gender gender) {
 		return new User(loginId, name, password, email, mobile, gender, Role.ADMIN);
 	}
 }

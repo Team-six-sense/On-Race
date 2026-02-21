@@ -106,7 +106,7 @@ public class ApiLogAspect {
 
 	private int getStatusCode(Object result) {
 		if (result instanceof ResponseEntity) {
-			return ((ResponseEntity<?>) result).getStatusCode().value();
+			return ((ResponseEntity<?>)result).getStatusCode().value();
 		}
 		return 200; // 기본값
 	}

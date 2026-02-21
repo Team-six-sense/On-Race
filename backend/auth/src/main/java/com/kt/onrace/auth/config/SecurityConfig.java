@@ -22,7 +22,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-	private static final String[] GET_PERMIT_ALL = {"/api/health/**", "/swagger-ui.html","/swagger-ui/**",
+	private static final String[] GET_PERMIT_ALL = {"/api/health/**", "/swagger-ui.html", "/swagger-ui/**",
 		"/v3/api-docs/**", "/actuator/**", "/api/main/**"};
 	private static final String[] POST_PERMIT_ALL = {};
 	private static final String[] PUT_PERMIT_ALL = {"/api/v1/public/**"};

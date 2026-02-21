@@ -1,7 +1,5 @@
 package com.kt.onrace.common.config;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.redisson.Redisson;
 import org.redisson.api.RedissonClient;
 import org.redisson.config.Config;
@@ -10,6 +8,9 @@ import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Profile("!test")
 @Slf4j
@@ -35,7 +36,7 @@ public class RedissonConfig {
     }
 
     @Bean
-    @Profile({"dev", "prod"})
+    @Profile({ "dev", "prod" })
     public RedissonClient redissonSentinelClient() {
         var config = new Config();
         String protocol = redisProperties.getSsl().isEnabled() ? "rediss" : "redis";
@@ -43,8 +44,7 @@ public class RedissonConfig {
         SentinelServersConfig sentinelConfig = config.useSentinelServers();
 
         sentinelConfig.setMasterName(
-                redisProperties.getSentinel().getMaster()
-        );
+                redisProperties.getSentinel().getMaster());
 
         for (String node : redisProperties.getSentinel().getNodes()) {
             String uri = String.format("%s://%s", protocol, node);

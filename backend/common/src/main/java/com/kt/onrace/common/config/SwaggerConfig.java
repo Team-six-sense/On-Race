@@ -7,7 +7,6 @@ import org.springframework.context.annotation.Configuration;
 
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
-import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
@@ -15,30 +14,30 @@ import io.swagger.v3.oas.models.servers.Server;
 
 @Configuration
 public class SwaggerConfig {
-    @Bean
-    public OpenAPI openAPI(){
-			return new OpenAPI()
-				.info(apiInfo())
-				.servers(servers())
-				.components(securityComponents())
-				.addSecurityItem(securityRequirement());
-    }
+	@Bean
+	public OpenAPI openAPI() {
+		return new OpenAPI()
+			.info(apiInfo())
+			.servers(servers())
+			.components(securityComponents())
+			.addSecurityItem(securityRequirement());
+	}
 
 	private Info apiInfo() {
 		return new Info()
 			.title("On-Race (Traffic Master) API")
 			.description("""
-                        대용량 티켓팅 플랫폼 API 문서
-                        
-                        개발팀 구성
-                        - 풀스택: 이세현(팀장), 최우수
-                        - 백엔드: 정종한, 양정요
-                        - 프론트엔드: 이현수, 이주형
-                        
-                        기술 스택
-                        - Backend: ?
-                        - Database: ?
-                        """)
+				대용량 티켓팅 플랫폼 API 문서
+				
+				개발팀 구성
+				- 풀스택: 이세현(팀장), 최우수
+				- 백엔드: 정종한, 양정요
+				- 프론트엔드: 이현수, 이주형
+				
+				기술 스택
+				- Backend: ?
+				- Database: ?
+				""")
 			.version("v1.0.0");
 	}
 

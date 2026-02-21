@@ -2,7 +2,6 @@ package com.kt.onrace.common.exception;
 
 import org.springframework.http.HttpStatus;
 
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor

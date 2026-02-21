@@ -1,6 +1,4 @@
-package com.kt.gateway.common.config;
-
-import java.util.Objects;
+package com.kt.onrace.gateway.config;
 
 import org.springframework.cloud.gateway.filter.ratelimit.KeyResolver;
 import org.springframework.context.annotation.Bean;
@@ -24,8 +22,8 @@ public class RateLimitConfig {
 
 			if (ip == null || ip.isBlank()) {
 				ip = java.util.Optional.ofNullable(exchange.getRequest().getRemoteAddress())
-					.map(addr -> addr.getAddress().getHostAddress())
-					.orElse("unknown");
+						.map(addr -> addr.getAddress().getHostAddress())
+						.orElse("unknown");
 			} else {
 				ip = ip.split(",")[0].trim();
 			}

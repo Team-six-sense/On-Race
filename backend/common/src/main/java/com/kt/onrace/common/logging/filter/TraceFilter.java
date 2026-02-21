@@ -29,7 +29,7 @@ public class TraceFilter implements Filter {
 	public void doFilter(ServletRequest request, ServletResponse response, FilterChain filterChain)
 		throws IOException, ServletException {
 
-		HttpServletRequest httpRequest = (HttpServletRequest) request;
+		HttpServletRequest httpRequest = (HttpServletRequest)request;
 
 		try {
 			TraceIdGenerator.getOrCreateTraceId(httpRequest);
