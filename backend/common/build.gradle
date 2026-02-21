@@ -1,34 +1,35 @@
 plugins {
     id 'org.springframework.boot'
+    id 'java-library'
 }
 
 dependencies {
     // CORE
-    implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.springframework.boot:spring-boot-starter-validation'
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'org.springframework.boot:spring-boot-starter-aop'
-    implementation 'org.redisson:redisson-spring-boot-starter:3.32.0'
+    compileOnly 'org.springframework.boot:spring-boot-starter-web'
+    api 'org.springframework.boot:spring-boot-starter-validation'
+    api 'org.springframework.boot:spring-boot-starter-data-jpa'
+    api 'org.springframework.boot:spring-boot-starter-aop'
+    api 'org.redisson:redisson-spring-boot-starter:3.32.0'
     
     // S3
-    implementation platform("software.amazon.awssdk:bom:2.31.66")
-    implementation "software.amazon.awssdk:s3"
+    api platform("software.amazon.awssdk:bom:2.31.66")
+    api "software.amazon.awssdk:s3"
 
     // OPENAPI/SWAGGER
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0'
+    api 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0'
 
     // MICROMETER CONTEXT PROPAGATION
-    implementation 'io.micrometer:context-propagation:1.1.2'
+    api 'io.micrometer:context-propagation:1.1.2'
 
     // QUERYDSL
-    implementation 'com.querydsl:querydsl-jpa:5.1.0:jakarta'
+    api 'com.querydsl:querydsl-jpa:5.1.0:jakarta'
     annotationProcessor 'com.querydsl:querydsl-apt:5.1.0:jakarta'
     annotationProcessor 'jakarta.annotation:jakarta.annotation-api'
     annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
     
     // SECURITY
-    implementation 'org.springframework.boot:spring-boot-starter-security'
-    implementation 'io.jsonwebtoken:jjwt-api:0.13.0'
+    api 'org.springframework.boot:spring-boot-starter-security'
+    api 'io.jsonwebtoken:jjwt-api:0.13.0'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.13.0'
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.13.0'
 }
