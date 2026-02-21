@@ -7,29 +7,20 @@ dependencies {
 
     // CORE
     implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'org.springframework.boot:spring-boot-starter-validation'
-    implementation 'org.redisson:redisson-spring-boot-starter:3.32.0'
     runtimeOnly 'com.mysql:mysql-connector-j'
 
     // UTILS
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0'
 
     // TEST
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
-    // S3
-    implementation platform("software.amazon.awssdk:bom:2.31.66")
-    implementation "software.amazon.awssdk:s3"
 
     // OBSERVABILITY
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
-    implementation 'io.micrometer:context-propagation:1.1.2'
 
     // QUERYDSL
-    implementation 'com.querydsl:querydsl-jpa:5.1.0:jakarta'
     annotationProcessor 'com.querydsl:querydsl-apt:5.1.0:jakarta'
     annotationProcessor 'jakarta.annotation:jakarta.annotation-api'
     annotationProcessor 'jakarta.persistence:jakarta.persistence-api'

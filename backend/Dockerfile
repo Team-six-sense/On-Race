@@ -4,7 +4,9 @@ WORKDIR /workspace
 
 COPY gradlew gradlew.bat settings.gradle build.gradle ./
 COPY gradle ./gradle
+COPY common ./common
 COPY gateway/build.gradle ./gateway/build.gradle
+COPY auth/build.gradle ./auth/build.gradle
 COPY main/build.gradle ./main/build.gradle
 
 RUN chmod +x ./gradlew
