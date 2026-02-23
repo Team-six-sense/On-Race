@@ -14,7 +14,6 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-@ServiceLog
 public class AuthService {
 
 	private final UserRepository userRepository;
@@ -33,8 +32,5 @@ public class AuthService {
 		User user = User.createForSignup(email, name, encodedPassword, mobile);
 		User saved = userRepository.save(user);
 		return new SignupResult(saved.getId(), saved.getEmail(), saved.getCreatedAt());
-	}
-
-	public record SignupResult(Long id, String email, java.time.LocalDateTime createdAt) {
 	}
 }
