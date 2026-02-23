@@ -1,0 +1,39 @@
+server:
+  port: ${GATEWAY_SERVER_PORT}
+
+spring:
+  application:
+    name: gateway
+  cloud:
+    gateway:
+      server:
+        webflux:
+          globalcors:
+            add-to-simple-url-handler-mapping: true
+            cors-configurations:
+              '[/**]':
+                allowed-origin-patterns:
+                  - ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:3000}
+                allowed-methods:
+                  - GET
+                  - POST
+                  - PUT
+                  - PATCH
+                  - DELETE
+                  - OPTIONS
+                allowed-headers:
+                  - "*"
+                exposed-headers:
+                  - Authorization
+                  - X-Request-Id
+                allow-credentials: true
+                max-age: 3600
+          routes:
+            - id: main-route
+              uri: ${MAIN_SERVICE_URI}
+              predicates:
+                - Path=/main/**
+              filters:
+                - StripPrefix=1
+jwt:
+  secret-key: ${JWT_SECRET}
