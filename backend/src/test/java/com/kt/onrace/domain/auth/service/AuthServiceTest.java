@@ -48,7 +48,6 @@ class AuthServiceTest {
 			String name = "홍길동";
 			String mobile = "01012345678";
 			String encodedPassword = "$2a$10$encoded";
-			User savedUser = User.createForSignup(email, name, encodedPassword, mobile);
 			// BaseEntity id, createdAt은 JPA가 채움 - 리플렉션으로 설정하거나 별도 생성
 			when(userRepository.existsByEmail(email)).thenReturn(false);
 			when(passwordEncoder.encode(rawPassword)).thenReturn(encodedPassword);
@@ -63,8 +62,9 @@ class AuthServiceTest {
 					var createdAtField = base.getDeclaredField("createdAt");
 					createdAtField.setAccessible(true);
 					createdAtField.set(u, fixedTime);
-				} catch (Exception ignored) {
-				}
+				} } catch (Exception e) {
+				org.junit.jupiter.api.Assertions.fail("Reflection failed in test setup", e);
+			}
 				return u;
 			});
 
@@ -72,7 +72,7 @@ class AuthServiceTest {
 
 			assertThat(result.id()).isEqualTo(1L);
 			assertThat(result.email()).isEqualTo(email);
-			assertThat(result.createdAt()).isNotNull();
+			assertThat(result.createdAt()).isEqualTo(fixedTime);
 			verify(userRepository).existsByEmail(email);
 			verify(passwordEncoder).encode(rawPassword);
 			verify(userRepository).save(any(User.class));
