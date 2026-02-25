@@ -18,12 +18,12 @@ import lombok.Setter;
 public class SignupRequest {
 
 	@NotBlank(message = "로그인 ID를 입력해 주세요.")
-	@Size(max = 30)
+	@Size(max = 100)
 	private String loginId;
 
 	@NotBlank(message = "이메일을 입력해 주세요.")
 	@Email(message = "올바른 이메일 형식이 아닙니다.")
-	@Size(max = 30)
+	@Size(max = 100)
 	private String email;
 
 	@NotBlank(message = "비밀번호를 입력해 주세요.")
@@ -34,11 +34,11 @@ public class SignupRequest {
 	private String password;
 
 	@NotBlank(message = "이름을 입력해 주세요.")
-	@Size(max = 20)
+	@Size(max = 50)
 	private String name;
 
 	@NotBlank(message = "휴대폰 번호를 입력해 주세요.")
-	@Size(max = 13)
+	@Size(max = 20)
 	private String mobile;
 
 	@NotNull(message = "성별을 선택해 주세요.")
