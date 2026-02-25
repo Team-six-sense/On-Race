@@ -43,6 +43,9 @@ public class SecurityConfig {
 					request.requestMatchers(HttpMethod.PATCH, PATCH_PERMIT_ALL).permitAll();
 					request.requestMatchers(HttpMethod.PUT, PUT_PERMIT_ALL).permitAll();
 					request.requestMatchers(HttpMethod.DELETE, DELETE_PERMIT_ALL).permitAll();
+					// auth 서비스는 Gateway 뒤에 위치하며 JWT 검증은 Gateway가 담당한다.
+					// 보호 엔드포인트(logout, withdraw)의 userId는 Gateway가 주입한 X-User-Id 헤더로 전달된다.
+					request.requestMatchers("/api/auth/**").permitAll();
 					request.anyRequest().authenticated();
 				}
 			)

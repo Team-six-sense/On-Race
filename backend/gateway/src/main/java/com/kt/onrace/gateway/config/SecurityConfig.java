@@ -32,6 +32,9 @@ public class SecurityConfig {
 			.authorizeExchange(exchanges -> exchanges
 				.pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 				.pathMatchers("/main/**").permitAll()
+				.pathMatchers(HttpMethod.POST, "/auth/api/auth/signup").permitAll()
+				.pathMatchers(HttpMethod.POST, "/auth/api/auth/login").permitAll()
+				.pathMatchers(HttpMethod.POST, "/auth/api/auth/token/refresh").permitAll()
 				.anyExchange().authenticated()
 			)
 			.addFilterAt(jwtAuthenticationWebFilter, SecurityWebFiltersOrder.AUTHENTICATION);
