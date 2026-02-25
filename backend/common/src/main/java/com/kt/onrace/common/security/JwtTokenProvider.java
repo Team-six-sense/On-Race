@@ -14,6 +14,7 @@ import javax.crypto.SecretKey;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.stereotype.Component;
 
 import com.kt.onrace.common.exception.BusinessErrorCode;
@@ -29,6 +30,7 @@ import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
 
 @Component
+@ConditionalOnClass(name = "org.springframework.security.core.Authentication")
 @RequiredArgsConstructor
 public class JwtTokenProvider {
 
