@@ -10,6 +10,13 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     runtimeOnly 'com.mysql:mysql-connector-j'
 
+    // SECURITY
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+
+    // JWT (common이 jjwt-api를 api로 export하지만 impl/jackson은 runtimeOnly라 전파되지 않음)
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.13.0'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.13.0'
+
     // UTILS
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
@@ -17,7 +24,6 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-
 
     // OBSERVABILITY
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
