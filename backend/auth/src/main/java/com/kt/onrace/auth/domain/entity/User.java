@@ -1,4 +1,6 @@
-package com.kt.onrace.auth.entity;
+package com.kt.onrace.auth.domain.entity;
+
+import static com.kt.onrace.auth.domain.entity.Role.*;
 
 import com.kt.onrace.common.entity.BaseEntity;
 
@@ -54,11 +56,11 @@ public class User extends BaseEntity {
 
 	public static User createUser(String loginId, String name, String password, String email, String mobile,
 		Gender gender) {
-		return new User(loginId, name, password, email, mobile, gender, Role.USER);
+		return new User(loginId, name, password, email, mobile, gender, USER);
 	}
 
 	public static User createAdmin(String loginId, String name, String password, String email, String mobile,
 		Gender gender) {
-		return new User(loginId, name, password, email, mobile, gender, Role.ADMIN);
+		return new User(loginId, name, password, email, mobile, gender, ADMIN);
 	}
 }

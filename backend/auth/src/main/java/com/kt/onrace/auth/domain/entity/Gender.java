@@ -1,4 +1,4 @@
-package com.kt.onrace.auth.entity;
+package com.kt.onrace.auth.domain.entity;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
