@@ -6,8 +6,8 @@ import lombok.Builder;
 public record EntryInfoResponse(
 	long entryCount,
 	int capacity,
-	boolean isCompetitive,
-	double rate,
+	double competitionRate,
+	double fillRatePercent,
 	long price
 ) {
 }

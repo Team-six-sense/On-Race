@@ -10,9 +10,9 @@ import com.kt.onrace.domain.event.entity.EventPace;
 
 public interface EventPaceRepository extends JpaRepository<EventPace, Long> {
 
-	default EventPace findByIdAndEventCourseIdOrThrow(Long id, Long eventId, ErrorCode errorCode) {
-		return findByIdAndEventCourseId(id, eventId).orElseThrow(() -> new BusinessException(errorCode));
+	default EventPace findByIdAndEventCourseIdOrThrow(Long id, Long courseId, ErrorCode errorCode) {
+		return findByIdAndEventCourseId(id, courseId).orElseThrow(() -> new BusinessException(errorCode));
 	}
 
-	Optional<EventPace> findByIdAndEventCourseId(Long eventId, Long userId);
+	Optional<EventPace> findByIdAndEventCourseId(Long id, Long courseId);
 }

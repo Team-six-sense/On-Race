@@ -43,12 +43,13 @@ public class EntryService {
 
 		Preconditions.validate(event.getStatus() == EventStatus.READY, BusinessErrorCode.EVENT_NOT_IN_STANDBY);
 
-		EventCourse course = eventCourseRepository.findByIdAndEventIdOrThrow(request.courseId(), eventId, BusinessErrorCode.EVENT_COURSE_NOT_FOUND);
+		EventCourse course = eventCourseRepository.findByIdAndEventIdOrThrow(request.courseId(), eventId, BusinessErrorCode.ENTRY_COURSE_NOT_FOUND);
 
-		EventPace pace = eventPaceRepository.findByIdAndEventCourseIdOrThrow(request.paceId(), request.courseId(), BusinessErrorCode.EVENT_PACE_NOT_FOUND);
+		EventPace pace = eventPaceRepository.findByIdAndEventCourseIdOrThrow(request.paceId(), request.courseId(), BusinessErrorCode.ENTRY_PACE_NOT_FOUND);
 
 		Entry entry = entryRepository.findByUserIdAndEventId(userId, eventId)
 			.map(e -> {
+				Preconditions.validate(e.getStatus() == EntryStatus.PRE_SAVED, BusinessErrorCode.ENTRY_EVENT_NOT_IN_STANDBY);
 				e.updatePreSave(course, pace);
 				return e;
 			})
@@ -78,30 +79,32 @@ public class EntryService {
 			paceId, List.of(EntryStatus.PRE_SAVED, EntryStatus.APPLIED)
 		);
 
+		// TODO 계산 로직은 추후 분리 및 수정할 예정입니다(프론트 협업위해 가능 서비스 용도)
 		int capacity = pace.getCapacity();
-		boolean isCompetitive = capacity > 0 && entryCount > capacity;
 
-		double rate;
-		if (capacity == 0) {
-			rate = 0;
-		} else if (isCompetitive) {
-			rate = Math.round((double) entryCount / capacity * 10) / 10.0;
-		} else {
-			rate = Math.round((double) entryCount / capacity * 1000) / 10.0;
+		double competitionRate = 0;
+		double fillRatePercent = 0;
+
+		if (capacity > 0) {
+			if (entryCount > capacity) {
+				competitionRate = Math.round((double) entryCount / capacity * 10) / 10.0;
+			} else {
+				fillRatePercent = Math.round((double) entryCount / capacity * 1000) / 10.0;
+			}
 		}
 
 		return EntryInfoResponse.builder()
 			.entryCount(entryCount)
 			.capacity(capacity)
-			.isCompetitive(isCompetitive)
-			.rate(rate)
+			.competitionRate(competitionRate)
+			.fillRatePercent(fillRatePercent)
 			.price(course.getPrice())
 			.build();
 	}
 
 	@ServiceLog(slowMs = 2000)
 	@Transactional
-	public void deletePreSave(Long userId, Long eventId) {
+	public Long deletePreSave(Long userId, Long eventId) {
 		//TODO : User 검증 추가
 
 		Entry entry = entryRepository.findByUserIdAndEventIdOrThrow(userId, eventId, BusinessErrorCode.ENTRY_NOT_FOUND);
@@ -109,5 +112,7 @@ public class EntryService {
 		Preconditions.validate(entry.getStatus() == EntryStatus.PRE_SAVED, BusinessErrorCode.ENTRY_EVENT_NOT_IN_STANDBY);
 
 		entryRepository.deleteByUserIdAndEventId(userId, eventId);
+
+		return entry.getId();
 	}
 }
