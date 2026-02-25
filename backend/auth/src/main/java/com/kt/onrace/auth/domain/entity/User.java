@@ -63,4 +63,8 @@ public class User extends BaseEntity {
 		Gender gender) {
 		return new User(loginId, name, password, email, mobile, gender, ADMIN);
 	}
+
+	public void markDeleted() {
+		this.isDeleted = true;
+	}
 }

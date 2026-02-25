@@ -4,12 +4,15 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Date;
+
 import com.kt.onrace.auth.api.dto.LoginRequest;
 import com.kt.onrace.auth.api.dto.LoginResponse;
 import com.kt.onrace.auth.api.dto.SignupRequest;
 import com.kt.onrace.auth.api.dto.SignupResponse;
 import com.kt.onrace.auth.api.dto.TokenRefreshRequest;
 import com.kt.onrace.auth.api.dto.TokenRefreshResponse;
+import com.kt.onrace.auth.api.dto.WithdrawRequest;
 import com.kt.onrace.auth.domain.entity.User;
 import com.kt.onrace.auth.domain.repository.UserRepository;
 import com.kt.onrace.auth.infrastructure.TokenStoreService;
@@ -100,5 +103,34 @@ public class AuthService {
 			user.getId(), user.getLoginId(), user.getRole().name());
 
 		return new TokenRefreshResponse(newAccessToken, jwtProperties.getAccessTokenExpiration());
+	}
+
+	public void logout(Long userId, String accessToken) {
+		String jti = jwtTokenProvider.getJti(accessToken);
+		Date expiration = jwtTokenProvider.getExpiration(accessToken);
+		long remainingTtlMs = expiration.getTime() - System.currentTimeMillis();
+
+		if (remainingTtlMs > 0) {
+			tokenStoreService.blacklistJti(jti, remainingTtlMs);
+		}
+
+		tokenStoreService.deleteRefreshToken(userId);
+	}
+
+	@Transactional
+	public void withdraw(Long userId, String accessToken, WithdrawRequest request) {
+		User user = userRepository.findById(userId)
+			.orElseThrow(() -> new BusinessException(BusinessErrorCode.AUTH_NOT_FOUND_USER));
+
+		if (user.isDeleted()) {
+			throw new BusinessException(BusinessErrorCode.AUTH_ALREADY_WITHDRAWN);
+		}
+
+		if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+			throw new BusinessException(BusinessErrorCode.AUTH_INVALID_PASSWORD);
+		}
+
+		user.markDeleted();
+		logout(userId, accessToken);
 	}
 }
