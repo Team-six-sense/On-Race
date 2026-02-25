@@ -48,7 +48,7 @@
             </rollingPolicy>
         </appender>
         <springProfile name="dev">
-            <logger name="com.kt.${projectName}" level="INFO"/>
+            <logger name="com.kt.onrace" level="INFO"/>
 
             <root level="WARN">
                 <appender-ref ref="CONSOLE"/>
@@ -57,7 +57,7 @@
         </springProfile>
 
         <springProfile name="prod">
-            <logger name="com.kt.${projectName}" level="WARN"/>
+            <logger name="com.kt.onrace" level="WARN"/>
 
             <root level="WARN">
                 <appender-ref ref="CONSOLE"/>
@@ -67,7 +67,7 @@
     </springProfile>
 
     <springProfile name="local">
-        <logger name="com.kt.${projectName}" level="DEBUG" additivity="false">
+        <logger name="com.kt.onrace" level="DEBUG" additivity="false">
             <appender-ref ref="CONSOLE"/>
         </logger>
         <logger name="org.hibernate.SQL" level="DEBUG"/>

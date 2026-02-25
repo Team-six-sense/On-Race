@@ -32,11 +32,15 @@ public class EventPace extends BaseEntity {
 	@Column(nullable = false)
 	private int minutes = 0;
 
+	@Column(nullable = false)
+	private int capacity = 0;
+
 	@Builder
-	public EventPace(EventCourse eventCourse, String name, Integer hour, Integer minutes) {
+	public EventPace(EventCourse eventCourse, String name, Integer hour, Integer minutes, Integer capacity) {
 		this.eventCourse = eventCourse;
 		this.name = name;
 		this.hour = hour != null ? hour : 0;
 		this.minutes = minutes != null ? minutes : 0;
+		this.capacity = capacity != null ? capacity : 0;
 	}
 }
