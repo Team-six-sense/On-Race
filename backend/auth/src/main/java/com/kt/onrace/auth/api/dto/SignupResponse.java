@@ -1,4 +1,4 @@
-package com.kt.onrace.api.auth.dto;
+package com.kt.onrace.auth.api.dto;
 
 import java.time.LocalDateTime;
 
