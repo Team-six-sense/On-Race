@@ -20,10 +20,10 @@ export default function Header() {
   }, []);
 
   const navItems = [
-    // { name: '공지사항', href: '/notice' },
+    { name: '홈', href: '/' },
     { name: '이벤트', href: '/schedule' },
-    { name: '기록조회', href: '/records' },
-    { name: '대회신청내역', href: '/history' },
+    // { name: '기록조회', href: '/records' },
+    // { name: '대회신청내역', href: '/history' },
   ];
 
   return (

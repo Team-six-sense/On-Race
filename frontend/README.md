@@ -76,7 +76,7 @@ front/
 
 ```bash
 # 저장소 클론
-git clone https://github.com.git
+git clone https://github.com/Team-six-sense/On-Race.git
 cd frontend
 
 # 의존성 설치
