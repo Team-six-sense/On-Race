@@ -12,7 +12,7 @@ export default function OrderDetailPage() {
     <div className="max-w-6xl mx-auto px-4 pt-8 pb-0">
       {/* 1. 상단 네비게이션: 목록으로 가기 */}
       <div className="flex justify-self-start">
-        <Button variant="text">
+        <Button variant="text" onClick={() => router.push('/schedule')}>
           <LuArrowLeft size={20} />
           뒤로가기
         </Button>
