@@ -28,6 +28,7 @@ public enum BusinessErrorCode implements ErrorCode {
 	AUTH_INVALID_PASSWORD(HttpStatus.UNAUTHORIZED, "AUTH_010", "비밀번호가 일치하지 않습니다."),
 	AUTH_INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_011", "유효하지 않은 리프레시 토큰입니다."),
 	AUTH_ALREADY_WITHDRAWN(HttpStatus.BAD_REQUEST, "AUTH_012", "이미 탈퇴한 계정입니다."),
+	AUTH_DUPLICATE_USER_ID(HttpStatus.BAD_REQUEST, "AUTH_013", "이미 해당 계정은 생성되었습니다."),
 
 	//MEDIA
 	MEDIA_UNSUPPORTED_CONTENT_TYPE(HttpStatus.BAD_REQUEST, "MDA_001", "허용되지 않은 Content_type 입니다."),

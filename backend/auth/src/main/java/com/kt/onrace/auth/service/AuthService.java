@@ -6,6 +6,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.kt.onrace.auth.common.client.MainServiceClient;
 import com.kt.onrace.auth.dto.LoginRequest;
 import com.kt.onrace.auth.dto.LoginResponse;
 import com.kt.onrace.auth.dto.SignupRequest;
@@ -27,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 public class AuthService {
 
 	private final UserRepository userRepository;
+	private final MainServiceClient mainServiceClient;
 	private final PasswordEncoder passwordEncoder;
 	private final JwtTokenProvider jwtTokenProvider;
 	private final JwtProperties jwtProperties;
@@ -46,6 +48,8 @@ public class AuthService {
 		);
 
 		User saved = userRepository.save(user);
+
+		mainServiceClient.syncUserCreated(saved.getId());
 
 		return new SignupResponse(saved.getId(), saved.getEmail(), saved.getCreatedAt());
 	}
@@ -122,6 +126,8 @@ public class AuthService {
 		}
 
 		user.markDeleted();
+		mainServiceClient.syncUserDeleted(userId);
+		
 		logout(userId, accessToken);
 	}
 }
