@@ -1,4 +1,4 @@
-package com.kt.onrace.auth.infrastructure;
+package com.kt.onrace.auth.service;
 
 import java.time.Duration;
 import java.util.Optional;

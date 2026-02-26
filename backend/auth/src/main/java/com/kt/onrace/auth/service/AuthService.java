@@ -1,21 +1,20 @@
 package com.kt.onrace.auth.service;
 
+import java.util.Date;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Date;
-
-import com.kt.onrace.auth.api.dto.LoginRequest;
-import com.kt.onrace.auth.api.dto.LoginResponse;
-import com.kt.onrace.auth.api.dto.SignupRequest;
-import com.kt.onrace.auth.api.dto.SignupResponse;
-import com.kt.onrace.auth.api.dto.TokenRefreshRequest;
-import com.kt.onrace.auth.api.dto.TokenRefreshResponse;
-import com.kt.onrace.auth.api.dto.WithdrawRequest;
-import com.kt.onrace.auth.domain.entity.User;
-import com.kt.onrace.auth.domain.repository.UserRepository;
-import com.kt.onrace.auth.infrastructure.TokenStoreService;
+import com.kt.onrace.auth.dto.LoginRequest;
+import com.kt.onrace.auth.dto.LoginResponse;
+import com.kt.onrace.auth.dto.SignupRequest;
+import com.kt.onrace.auth.dto.SignupResponse;
+import com.kt.onrace.auth.dto.TokenRefreshRequest;
+import com.kt.onrace.auth.dto.TokenRefreshResponse;
+import com.kt.onrace.auth.dto.WithdrawRequest;
+import com.kt.onrace.auth.entity.User;
+import com.kt.onrace.auth.repository.UserRepository;
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
 import com.kt.onrace.common.security.JwtProperties;
@@ -35,23 +34,15 @@ public class AuthService {
 
 	@Transactional
 	public SignupResponse signup(SignupRequest request) {
-		if (userRepository.existsByLoginId(request.getLoginId())) {
-			throw new BusinessException(BusinessErrorCode.AUTH_DUPLICATE_LOGIN_ID);
-		}
-
-		if (userRepository.existsByEmail(request.getEmail())) {
+		if (userRepository.existsByEmail(request.email())) {
 			throw new BusinessException(BusinessErrorCode.AUTH_DUPLICATE_EMAIL);
 		}
 
-		String encodedPassword = passwordEncoder.encode(request.getPassword());
+		String encodedPassword = passwordEncoder.encode(request.password());
 
 		User user = User.createUser(
-			request.getLoginId(),
-			request.getName(),
-			encodedPassword,
-			request.getEmail(),
-			request.getMobile(),
-			request.getGender()
+			request.email(),
+			encodedPassword
 		);
 
 		User saved = userRepository.save(user);
@@ -61,15 +52,15 @@ public class AuthService {
 
 	@Transactional(readOnly = true)
 	public LoginResponse login(LoginRequest request) {
-		User user = userRepository.findByLoginIdAndIsDeletedFalse(request.getLoginId())
+		User user = userRepository.findByEmailAndIsDeletedFalse(request.email())
 			.orElseThrow(() -> new BusinessException(BusinessErrorCode.AUTH_NOT_FOUND_USER));
 
-		if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+		if (!passwordEncoder.matches(request.password(), user.getPassword())) {
 			throw new BusinessException(BusinessErrorCode.AUTH_INVALID_PASSWORD);
 		}
 
 		String accessToken = jwtTokenProvider.generateAccessToken(
-			user.getId(), user.getLoginId(), user.getRole().name());
+			user.getId(), user.getEmail(), user.getRole().name());
 		String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
 
 		tokenStoreService.saveRefreshToken(
@@ -80,7 +71,7 @@ public class AuthService {
 
 	@Transactional(readOnly = true)
 	public TokenRefreshResponse refreshToken(TokenRefreshRequest request) {
-		String refreshToken = request.getRefreshToken();
+		String refreshToken = request.refreshToken();
 
 		if (!jwtTokenProvider.validateToken(refreshToken)) {
 			throw new BusinessException(BusinessErrorCode.AUTH_INVALID_REFRESH_TOKEN);
@@ -100,7 +91,7 @@ public class AuthService {
 			.orElseThrow(() -> new BusinessException(BusinessErrorCode.AUTH_NOT_FOUND_USER));
 
 		String newAccessToken = jwtTokenProvider.generateAccessToken(
-			user.getId(), user.getLoginId(), user.getRole().name());
+			user.getId(), user.getEmail(), user.getRole().name());
 
 		return new TokenRefreshResponse(newAccessToken, jwtProperties.getAccessTokenExpiration());
 	}
@@ -126,7 +117,7 @@ public class AuthService {
 			throw new BusinessException(BusinessErrorCode.AUTH_ALREADY_WITHDRAWN);
 		}
 
-		if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+		if (!passwordEncoder.matches(request.password(), user.getPassword())) {
 			throw new BusinessException(BusinessErrorCode.AUTH_INVALID_PASSWORD);
 		}
 

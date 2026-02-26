@@ -1,4 +1,4 @@
-package com.kt.onrace.auth.config;
+package com.kt.onrace.auth.common.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,33 +22,31 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-	private static final String[] GET_PERMIT_ALL = {"/api/health/**", "/swagger-ui.html", "/swagger-ui/**",
-		"/v3/api-docs/**", "/actuator/**", "/api/main/**"};
+	private static final String[] GET_PERMIT_ALL = { "/api/health/**", "/swagger-ui.html", "/swagger-ui/**",
+			"/v3/api-docs/**", "/actuator/**", "/api/main/**" };
 	private static final String[] POST_PERMIT_ALL = {};
-	private static final String[] PUT_PERMIT_ALL = {"/api/v1/public/**"};
-	private static final String[] PATCH_PERMIT_ALL = {"/api/v1/public/**"};
-	private static final String[] DELETE_PERMIT_ALL = {"/api/v1/public/**"};
+	private static final String[] PUT_PERMIT_ALL = { "/api/v1/public/**" };
+	private static final String[] PATCH_PERMIT_ALL = { "/api/v1/public/**" };
+	private static final String[] DELETE_PERMIT_ALL = { "/api/v1/public/**" };
 
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 		http
-			.csrf(AbstractHttpConfigurer::disable)
-			.sessionManagement(session ->
-				session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-			)
-			.authorizeHttpRequests(
-				request -> {
-					request.requestMatchers(HttpMethod.GET, GET_PERMIT_ALL).permitAll();
-					request.requestMatchers(HttpMethod.POST, POST_PERMIT_ALL).permitAll();
-					request.requestMatchers(HttpMethod.PATCH, PATCH_PERMIT_ALL).permitAll();
-					request.requestMatchers(HttpMethod.PUT, PUT_PERMIT_ALL).permitAll();
-					request.requestMatchers(HttpMethod.DELETE, DELETE_PERMIT_ALL).permitAll();
-					// auth 서비스는 Gateway 뒤에 위치하며 JWT 검증은 Gateway가 담당한다.
-					// 보호 엔드포인트(logout, withdraw)의 userId는 Gateway가 주입한 X-User-Id 헤더로 전달된다.
-					request.requestMatchers("/api/auth/**").permitAll();
-					request.anyRequest().authenticated();
-				}
-			)
+				.csrf(AbstractHttpConfigurer::disable)
+				.logout(AbstractHttpConfigurer::disable)
+				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+				.authorizeHttpRequests(
+						request -> {
+							request.requestMatchers(HttpMethod.GET, GET_PERMIT_ALL).permitAll();
+							request.requestMatchers(HttpMethod.POST, POST_PERMIT_ALL).permitAll();
+							request.requestMatchers(HttpMethod.PATCH, PATCH_PERMIT_ALL).permitAll();
+							request.requestMatchers(HttpMethod.PUT, PUT_PERMIT_ALL).permitAll();
+							request.requestMatchers(HttpMethod.DELETE, DELETE_PERMIT_ALL).permitAll();
+							// auth 서비스는 Gateway 뒤에 위치하며 JWT 검증은 Gateway가 담당한다.
+							// 보호 엔드포인트(logout, withdraw)의 userId는 Gateway가 주입한 X-User-Id 헤더로 전달된다.
+							request.requestMatchers("/**").permitAll();
+							request.anyRequest().authenticated();
+						})
 
 		;
 
@@ -65,4 +63,3 @@ public class SecurityConfig {
 		return configuration.getAuthenticationManager();
 	}
 }
-
