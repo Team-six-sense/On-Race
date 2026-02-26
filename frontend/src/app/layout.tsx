@@ -30,14 +30,15 @@ export default function RootLayout({
       <body className="antialiased" suppressHydrationWarning={true}>
         <Providers>
           {/* 전체 화면 고정, 스크롤 방지 */}
-          <div className="flex flex-col h-screen overflow-hidden">
+          <div className="flex flex-col h-screen overflow-auto">
             <Header />
 
             {/* 
                overflow-y-auto: 내용이 부모 높이를 넘칠 때만 스크롤바 생성
                scrollbar-hide: (선택사항) 스크롤바 디자인이 보기 싫다면 클래스 추가 가능
             */}
-            <main className="flex-1 overflow-y-auto bg-white">{children}</main>
+            <main className="bg-white">{children}</main>
+            {/* {children} */}
 
             <Footer />
           </div>
