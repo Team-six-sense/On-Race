@@ -17,19 +17,19 @@ import lombok.NoArgsConstructor;
 public class User extends BaseEntity {
 	//TODO: 추후 도메인 내용은 변경
 
-	@Column(nullable = false, length = 30)
+	@Column(nullable = false, length = 100)
 	private String loginId;
 
-	@Column(nullable = false, length = 20)
+	@Column(nullable = false, length = 50)
 	private String name;
 
-	@Column(nullable = false, length = 256)
+	@Column(nullable = false, length = 255)
 	private String password;
 
-	@Column(nullable = false, length = 30)
+	@Column(nullable = false, length = 100)
 	private String email;
 
-	@Column(nullable = false, length = 13)
+	@Column(nullable = false, length = 20)
 	private String mobile;
 
 	@Enumerated(EnumType.STRING)
@@ -62,5 +62,9 @@ public class User extends BaseEntity {
 	public static User createAdmin(String loginId, String name, String password, String email, String mobile,
 		Gender gender) {
 		return new User(loginId, name, password, email, mobile, gender, ADMIN);
+	}
+
+	public void markDeleted() {
+		this.isDeleted = true;
 	}
 }

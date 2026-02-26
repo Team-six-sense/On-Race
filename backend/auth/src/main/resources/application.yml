@@ -2,6 +2,11 @@ spring:
   application:
     name: auth
 
+  data:
+    redis:
+      host: ${AUTH_REDIS_HOST:localhost}
+      port: ${AUTH_REDIS_PORT:6379}
+
   datasource:
     url: jdbc:mysql://${AUTH_DB_HOST}:${AUTH_DB_PORT}/${AUTH_DB_NAME}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
     username: ${AUTH_DB_USERNAME}
