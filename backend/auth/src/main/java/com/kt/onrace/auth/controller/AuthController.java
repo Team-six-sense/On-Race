@@ -1,4 +1,4 @@
-package com.kt.onrace.auth.api.controller;
+package com.kt.onrace.auth.controller;
 
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -7,18 +7,17 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.kt.onrace.auth.api.dto.LoginRequest;
-import com.kt.onrace.auth.api.dto.LoginResponse;
-import com.kt.onrace.auth.api.dto.SignupRequest;
-import com.kt.onrace.auth.api.dto.SignupResponse;
-import com.kt.onrace.auth.api.dto.TokenRefreshRequest;
-import com.kt.onrace.auth.api.dto.TokenRefreshResponse;
-import com.kt.onrace.auth.api.dto.WithdrawRequest;
+import com.kt.onrace.auth.dto.LoginRequest;
+import com.kt.onrace.auth.dto.LoginResponse;
+import com.kt.onrace.auth.dto.SignupRequest;
+import com.kt.onrace.auth.dto.SignupResponse;
+import com.kt.onrace.auth.dto.TokenRefreshRequest;
+import com.kt.onrace.auth.dto.TokenRefreshResponse;
+import com.kt.onrace.auth.dto.WithdrawRequest;
 import com.kt.onrace.auth.service.AuthService;
 import com.kt.onrace.common.logging.annotation.ApiLog;
 import com.kt.onrace.common.response.ApiResponse;
 import com.kt.onrace.common.swagger.SwaggerAssistance;
-
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -28,7 +27,7 @@ import lombok.RequiredArgsConstructor;
 @Tag(name = "Auth", description = "인증/회원 API")
 @ApiLog
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping
 @RequiredArgsConstructor
 public class AuthController extends SwaggerAssistance {
 

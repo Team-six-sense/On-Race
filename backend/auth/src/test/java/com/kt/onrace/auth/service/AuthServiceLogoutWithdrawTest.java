@@ -17,11 +17,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import com.kt.onrace.auth.api.dto.WithdrawRequest;
-import com.kt.onrace.auth.domain.entity.Gender;
-import com.kt.onrace.auth.domain.entity.User;
-import com.kt.onrace.auth.domain.repository.UserRepository;
-import com.kt.onrace.auth.infrastructure.TokenStoreService;
+import com.kt.onrace.auth.dto.WithdrawRequest;
+import com.kt.onrace.auth.entity.User;
+import com.kt.onrace.auth.repository.UserRepository;
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
 import com.kt.onrace.common.security.JwtProperties;
@@ -52,7 +50,7 @@ class AuthServiceLogoutWithdrawTest {
 
 	@BeforeEach
 	void setUp() {
-		testUser = User.createUser("testuser", "테스터", "encodedPw", "test@test.com", "010-1234-5678", Gender.MALE);
+		testUser = User.createUser("test@test.com", "encodedPw");
 		ReflectionTestUtils.setField(testUser, "id", 1L);
 	}
 
@@ -96,8 +94,7 @@ class AuthServiceLogoutWithdrawTest {
 	@DisplayName("회원탈퇴 성공: 비밀번호 확인 → is_deleted=true + 토큰 무효화")
 	void withdraw_success() {
 		// given
-		WithdrawRequest request = new WithdrawRequest();
-		request.setPassword("password123!");
+		WithdrawRequest request = new WithdrawRequest("password123!");
 
 		Date futureExpiration = new Date(System.currentTimeMillis() + 300000L);
 		given(userRepository.findById(1L)).willReturn(Optional.of(testUser));
@@ -118,49 +115,46 @@ class AuthServiceLogoutWithdrawTest {
 	@DisplayName("회원탈퇴 실패: 존재하지 않는 userId")
 	void withdraw_userNotFound() {
 		// given
-		WithdrawRequest request = new WithdrawRequest();
-		request.setPassword("password123!");
+		WithdrawRequest request = new WithdrawRequest("password123!");
 
 		given(userRepository.findById(999L)).willReturn(Optional.empty());
 
 		// when & then
 		assertThatThrownBy(() -> authService.withdraw(999L, "access-token", request))
-			.isInstanceOf(BusinessException.class)
-			.extracting(e -> ((BusinessException) e).getErrorCode())
-			.isEqualTo(BusinessErrorCode.AUTH_NOT_FOUND_USER);
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(BusinessErrorCode.AUTH_NOT_FOUND_USER);
 	}
 
 	@Test
 	@DisplayName("회원탈퇴 실패: 이미 탈퇴한 계정")
 	void withdraw_alreadyWithdrawn() {
 		// given
-		WithdrawRequest request = new WithdrawRequest();
-		request.setPassword("password123!");
+		WithdrawRequest request = new WithdrawRequest("password123!");
 
 		testUser.markDeleted();
 		given(userRepository.findById(1L)).willReturn(Optional.of(testUser));
 
 		// when & then
 		assertThatThrownBy(() -> authService.withdraw(1L, "access-token", request))
-			.isInstanceOf(BusinessException.class)
-			.extracting(e -> ((BusinessException) e).getErrorCode())
-			.isEqualTo(BusinessErrorCode.AUTH_ALREADY_WITHDRAWN);
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(BusinessErrorCode.AUTH_ALREADY_WITHDRAWN);
 	}
 
 	@Test
 	@DisplayName("회원탈퇴 실패: 비밀번호 불일치")
 	void withdraw_passwordMismatch() {
 		// given
-		WithdrawRequest request = new WithdrawRequest();
-		request.setPassword("wrongPassword!");
+		WithdrawRequest request = new WithdrawRequest("wrongPassword!");
 
 		given(userRepository.findById(1L)).willReturn(Optional.of(testUser));
 		given(passwordEncoder.matches("wrongPassword!", "encodedPw")).willReturn(false);
 
 		// when & then
 		assertThatThrownBy(() -> authService.withdraw(1L, "access-token", request))
-			.isInstanceOf(BusinessException.class)
-			.extracting(e -> ((BusinessException) e).getErrorCode())
-			.isEqualTo(BusinessErrorCode.AUTH_INVALID_PASSWORD);
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(BusinessErrorCode.AUTH_INVALID_PASSWORD);
 	}
 }

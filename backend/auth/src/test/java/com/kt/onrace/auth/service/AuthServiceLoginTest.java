@@ -1,7 +1,6 @@
 package com.kt.onrace.auth.service;
 
 import static org.assertj.core.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.*;
 
 import java.util.Optional;
@@ -16,14 +15,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import com.kt.onrace.auth.api.dto.LoginRequest;
-import com.kt.onrace.auth.api.dto.LoginResponse;
-import com.kt.onrace.auth.api.dto.TokenRefreshRequest;
-import com.kt.onrace.auth.api.dto.TokenRefreshResponse;
-import com.kt.onrace.auth.domain.entity.Gender;
-import com.kt.onrace.auth.domain.entity.User;
-import com.kt.onrace.auth.domain.repository.UserRepository;
-import com.kt.onrace.auth.infrastructure.TokenStoreService;
+import com.kt.onrace.auth.dto.LoginRequest;
+import com.kt.onrace.auth.dto.LoginResponse;
+import com.kt.onrace.auth.dto.TokenRefreshRequest;
+import com.kt.onrace.auth.dto.TokenRefreshResponse;
+import com.kt.onrace.auth.entity.User;
+import com.kt.onrace.auth.repository.UserRepository;
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
 import com.kt.onrace.common.security.JwtProperties;
@@ -54,7 +51,7 @@ class AuthServiceLoginTest {
 
 	@BeforeEach
 	void setUp() {
-		testUser = User.createUser("testuser", "테스터", "encodedPw", "test@test.com", "010-1234-5678", Gender.MALE);
+		testUser = User.createUser("test@test.com", "encodedPw");
 		ReflectionTestUtils.setField(testUser, "id", 1L);
 	}
 
@@ -64,13 +61,11 @@ class AuthServiceLoginTest {
 	@DisplayName("로그인 성공: 올바른 자격증명으로 Access/Refresh Token 반환")
 	void login_success() {
 		// given
-		LoginRequest request = new LoginRequest();
-		request.setLoginId("testuser");
-		request.setPassword("password123!");
+		LoginRequest request = new LoginRequest("test@test.com", "password123!");
 
-		given(userRepository.findByLoginIdAndIsDeletedFalse("testuser")).willReturn(Optional.of(testUser));
+		given(userRepository.findByEmailAndIsDeletedFalse("test@test.com")).willReturn(Optional.of(testUser));
 		given(passwordEncoder.matches("password123!", "encodedPw")).willReturn(true);
-		given(jwtTokenProvider.generateAccessToken(1L, "testuser", "USER")).willReturn("access-token");
+		given(jwtTokenProvider.generateAccessToken(1L, "test@test.com", "USER")).willReturn("access-token");
 		given(jwtTokenProvider.generateRefreshToken(1L)).willReturn("refresh-token");
 		given(jwtProperties.getRefreshTokenExpiration()).willReturn(43200000L);
 		given(jwtProperties.getAccessTokenExpiration()).willReturn(300000L);
@@ -91,35 +86,31 @@ class AuthServiceLoginTest {
 	@DisplayName("로그인 실패: 존재하지 않는 loginId")
 	void login_userNotFound() {
 		// given
-		LoginRequest request = new LoginRequest();
-		request.setLoginId("unknown");
-		request.setPassword("password123!");
+		LoginRequest request = new LoginRequest("unknown@test.com", "password123!");
 
-		given(userRepository.findByLoginIdAndIsDeletedFalse("unknown")).willReturn(Optional.empty());
+		given(userRepository.findByEmailAndIsDeletedFalse("unknown@test.com")).willReturn(Optional.empty());
 
 		// when & then
 		assertThatThrownBy(() -> authService.login(request))
-			.isInstanceOf(BusinessException.class)
-			.extracting(e -> ((BusinessException) e).getErrorCode())
-			.isEqualTo(BusinessErrorCode.AUTH_NOT_FOUND_USER);
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(BusinessErrorCode.AUTH_NOT_FOUND_USER);
 	}
 
 	@Test
 	@DisplayName("로그인 실패: 비밀번호 불일치")
 	void login_passwordMismatch() {
 		// given
-		LoginRequest request = new LoginRequest();
-		request.setLoginId("testuser");
-		request.setPassword("wrongPassword!");
+		LoginRequest request = new LoginRequest("test@test.com", "wrongPassword!");
 
-		given(userRepository.findByLoginIdAndIsDeletedFalse("testuser")).willReturn(Optional.of(testUser));
+		given(userRepository.findByEmailAndIsDeletedFalse("test@test.com")).willReturn(Optional.of(testUser));
 		given(passwordEncoder.matches("wrongPassword!", "encodedPw")).willReturn(false);
 
 		// when & then
 		assertThatThrownBy(() -> authService.login(request))
-			.isInstanceOf(BusinessException.class)
-			.extracting(e -> ((BusinessException) e).getErrorCode())
-			.isEqualTo(BusinessErrorCode.AUTH_INVALID_PASSWORD);
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(BusinessErrorCode.AUTH_INVALID_PASSWORD);
 	}
 
 	// ── refreshToken ───────────────────────────────────────────
@@ -128,14 +119,13 @@ class AuthServiceLoginTest {
 	@DisplayName("토큰 재발급 성공: 유효한 Refresh Token으로 새 Access Token 반환")
 	void refreshToken_success() {
 		// given
-		TokenRefreshRequest request = new TokenRefreshRequest();
-		request.setRefreshToken("valid-refresh-token");
+		TokenRefreshRequest request = new TokenRefreshRequest("valid-refresh-token");
 
 		given(jwtTokenProvider.validateToken("valid-refresh-token")).willReturn(true);
 		given(jwtTokenProvider.getUserId("valid-refresh-token")).willReturn(1L);
 		given(tokenStoreService.getRefreshToken(1L)).willReturn(Optional.of("valid-refresh-token"));
 		given(userRepository.findById(1L)).willReturn(Optional.of(testUser));
-		given(jwtTokenProvider.generateAccessToken(1L, "testuser", "USER")).willReturn("new-access-token");
+		given(jwtTokenProvider.generateAccessToken(1L, "test@test.com", "USER")).willReturn("new-access-token");
 		given(jwtProperties.getAccessTokenExpiration()).willReturn(300000L);
 
 		// when
@@ -150,24 +140,22 @@ class AuthServiceLoginTest {
 	@DisplayName("토큰 재발급 실패: 유효하지 않은 JWT (서명 오류 또는 만료)")
 	void refreshToken_invalidToken() {
 		// given
-		TokenRefreshRequest request = new TokenRefreshRequest();
-		request.setRefreshToken("invalid-token");
+		TokenRefreshRequest request = new TokenRefreshRequest("invalid-token");
 
 		given(jwtTokenProvider.validateToken("invalid-token")).willReturn(false);
 
 		// when & then
 		assertThatThrownBy(() -> authService.refreshToken(request))
-			.isInstanceOf(BusinessException.class)
-			.extracting(e -> ((BusinessException) e).getErrorCode())
-			.isEqualTo(BusinessErrorCode.AUTH_INVALID_REFRESH_TOKEN);
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(BusinessErrorCode.AUTH_INVALID_REFRESH_TOKEN);
 	}
 
 	@Test
 	@DisplayName("토큰 재발급 실패: Redis에 저장된 Refresh Token 없음 (로그아웃 상태)")
 	void refreshToken_notInRedis() {
 		// given
-		TokenRefreshRequest request = new TokenRefreshRequest();
-		request.setRefreshToken("valid-refresh-token");
+		TokenRefreshRequest request = new TokenRefreshRequest("valid-refresh-token");
 
 		given(jwtTokenProvider.validateToken("valid-refresh-token")).willReturn(true);
 		given(jwtTokenProvider.getUserId("valid-refresh-token")).willReturn(1L);
@@ -175,17 +163,16 @@ class AuthServiceLoginTest {
 
 		// when & then
 		assertThatThrownBy(() -> authService.refreshToken(request))
-			.isInstanceOf(BusinessException.class)
-			.extracting(e -> ((BusinessException) e).getErrorCode())
-			.isEqualTo(BusinessErrorCode.AUTH_INVALID_REFRESH_TOKEN);
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(BusinessErrorCode.AUTH_INVALID_REFRESH_TOKEN);
 	}
 
 	@Test
 	@DisplayName("토큰 재발급 실패: Redis 값과 요청 토큰 불일치 (재사용 공격)")
 	void refreshToken_tokenMismatch() {
 		// given
-		TokenRefreshRequest request = new TokenRefreshRequest();
-		request.setRefreshToken("valid-refresh-token");
+		TokenRefreshRequest request = new TokenRefreshRequest("valid-refresh-token");
 
 		given(jwtTokenProvider.validateToken("valid-refresh-token")).willReturn(true);
 		given(jwtTokenProvider.getUserId("valid-refresh-token")).willReturn(1L);
@@ -193,8 +180,8 @@ class AuthServiceLoginTest {
 
 		// when & then
 		assertThatThrownBy(() -> authService.refreshToken(request))
-			.isInstanceOf(BusinessException.class)
-			.extracting(e -> ((BusinessException) e).getErrorCode())
-			.isEqualTo(BusinessErrorCode.AUTH_INVALID_REFRESH_TOKEN);
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(BusinessErrorCode.AUTH_INVALID_REFRESH_TOKEN);
 	}
 }
