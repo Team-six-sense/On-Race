@@ -31,7 +31,9 @@ export default function MarathonDetailPage() {
   const [selectedCourse, setSelectedCourse] = useState('');
   const [selectedPace, setSelectedPace] = useState('');
   const [activeTab, setActiveTab] = useState('product');
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+  const [isOptionModalOpen, setIsOptionModalOpen] = useState(false);
 
   // 데이터 로드
   useEffect(() => {
@@ -601,7 +603,7 @@ export default function MarathonDetailPage() {
               <Button
                 variant="primary1"
                 rounded="none"
-                onClick={() => setIsModalOpen(true)}
+                onClick={() => setIsUserModalOpen(true)}
               >
                 신청하기
               </Button>
@@ -613,22 +615,31 @@ export default function MarathonDetailPage() {
           </div>
         </aside>
         <div>
-          {/* <UserConfirmModal
-            isOpen={isModalOpen}
-            onClose={() => setIsModalOpen(false)}
-            onConfirm={() => setIsModalOpen(false)}
+          <UserConfirmModal
+            isOpen={isUserModalOpen}
+            onClose={() => setIsUserModalOpen(false)}
+            onConfirm={() => {
+              setIsUserModalOpen(false);
+              setIsEventModalOpen(true);
+            }}
             data={userData}
-          /> */}
-          {/* <EventConfirmModal
-            isOpen={isModalOpen}
-            onClose={() => setIsModalOpen(false)}
-            onConfirm={() => setIsModalOpen(false)}
+          />
+          <EventConfirmModal
+            isOpen={isEventModalOpen}
+            onClose={() => setIsEventModalOpen(false)}
+            onConfirm={() => {
+              setIsEventModalOpen(false);
+              setIsOptionModalOpen(true);
+            }}
             data={eventData}
-          /> */}
+          />
           <OptionConfirmModal
-            isOpen={isModalOpen}
-            onClose={() => setIsModalOpen(false)}
-            onConfirm={() => setIsModalOpen(false)}
+            isOpen={isOptionModalOpen}
+            onClose={() => setIsOptionModalOpen(false)}
+            onConfirm={() => {
+              setIsOptionModalOpen(false);
+              handleApply();
+            }}
             data={optionData}
           />
         </div>
