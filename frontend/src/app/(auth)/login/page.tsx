@@ -8,8 +8,8 @@ import { useRouter } from 'next/navigation';
 export default function LoginPage() {
   const router = useRouter();
   return (
-    <div className="mt-20 flex flex-col items-center justify-center bg-primary">
-      <div className="p-8 rounded-2xl w-full max-w-md flex flex-col">
+    <div className="flex-1 flex flex-col items-center justify-center bg-primary">
+      <div className="flex flex-col w-full max-w-md p-8 ">
         <h1 className="my-2 text-xl font-bold">이메일 로그인</h1>
 
         <Input

@@ -1,18 +1,18 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
 import { Providers } from '@/components/providers';
+import localFont from 'next/font/local';
 import '@/styles/globals.css';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+import { cn } from '@/lib/utils';
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
+// 폰트 설정
+const pretendard = localFont({
+  // src: '../public/fonts/PretendardVariable.woff2', // 폰트 파일 경로
+  src: '../../public/fonts/PretendardVariable.woff2',
+  display: 'swap',
+  weight: '45 920', // 가변 폰트의 경우 굵기 범위 지정
+  variable: '--font-pretendard', // Tailwind에서 사용할 변수명
 });
 
 export const metadata: Metadata = {
@@ -26,18 +26,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="antialiased" suppressHydrationWarning={true}>
+    <html lang="en" className={pretendard.variable}>
+      <body
+        className={cn('antialiased', pretendard.className)}
+        suppressHydrationWarning={true}
+      >
         <Providers>
-          {/* 전체 화면 고정, 스크롤 방지 */}
-          <div className="flex flex-col h-screen overflow-hidden">
+          <div className="flex flex-col min-h-screen overflow-auto">
             <Header />
 
-            {/* 
-               overflow-y-auto: 내용이 부모 높이를 넘칠 때만 스크롤바 생성
-               scrollbar-hide: (선택사항) 스크롤바 디자인이 보기 싫다면 클래스 추가 가능
-            */}
-            <main className="flex-1 overflow-y-auto bg-white">{children}</main>
+            <main className="flex-1 bg-white content-center">{children}</main>
 
             <Footer />
           </div>

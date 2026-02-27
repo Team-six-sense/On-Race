@@ -16,4 +16,12 @@ public class RedisKeyGenerator {
 	public String blacklistKey(String jti) {
 		return String.format("blacklist:jti:%s", jti);
 	}
+
+	public String emailVerifyCodeKey(String email) {
+		return String.format("email:verify_code:%s", email);
+	}
+
+	public String emailVerifiedKey(String email) {
+		return String.format("email:verified:%s", email);
+	}
 }
