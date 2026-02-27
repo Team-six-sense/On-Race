@@ -7,7 +7,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
-import com.kt.onrace.common.logging.annotation.ServiceLog;
 import com.kt.onrace.domain.address.dto.AddressDto;
 import com.kt.onrace.domain.address.entity.Address;
 import com.kt.onrace.domain.address.repository.AddressRepository;
@@ -15,7 +14,6 @@ import com.kt.onrace.domain.address.repository.AddressRepository;
 import lombok.RequiredArgsConstructor;
 
 @Service
-@ServiceLog
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class AddressService {
@@ -37,12 +35,12 @@ public class AddressService {
 	}
 
 	@Transactional
-	public AddressDto.Response create(Long userId, AddressDto.CreateRequest request) {
+	public AddressDto.Response create(Long userId, AddressDto.SaveRequest request) {
 		boolean hasAny = addressRepository.existsByUserId(userId);
 
 		boolean shouldBeDefault = !hasAny || Boolean.TRUE.equals(request.isDefault());
 
-		if (shouldBeDefault) {
+		if (shouldBeDefault && hasAny) {
 			unsetDefaultIfExists(userId);
 		}
 
@@ -61,15 +59,18 @@ public class AddressService {
 	}
 
 	@Transactional
-	public AddressDto.Response update(Long userId, Long addressId, AddressDto.UpdateRequest request) {
+	public AddressDto.Response update(Long userId, Long addressId, AddressDto.SaveRequest request) {
 		Address address = addressRepository.findByIdAndUserId(addressId, userId)
 			.orElseThrow(() -> new BusinessException(BusinessErrorCode.ADDRESS_NOT_FOUND));
 
-		boolean wantDefault = Boolean.TRUE.equals(request.isDefault());
+		Boolean wantDefault = request.isDefault();
 
-		if (wantDefault && !address.isDefault()) {
+		if (Boolean.TRUE.equals(wantDefault) && !address.isDefault()) {
 			unsetDefaultIfExists(userId);
 			address.markDefault();
+		} else if (Boolean.FALSE.equals(wantDefault) && address.isDefault()) {
+			address.unmarkDefault();
+			promoteDefaultIfNeededExcluding(userId, addressId);
 		}
 
 		address.update(
@@ -78,8 +79,7 @@ public class AddressService {
 			request.zipcode(),
 			request.address1(),
 			request.address2(),
-			request.memo(),
-			null
+			request.memo()
 		);
 
 		return AddressDto.Response.from(address);
@@ -123,5 +123,16 @@ public class AddressService {
 			return;
 		}
 		remaining.get(0).markDefault();
+	}
+
+	private void promoteDefaultIfNeededExcluding(Long userId, Long excludedAddressId) {
+		List<Address> remaining = addressRepository.findByUserIdOrderByCreatedAtDesc(userId);
+		if (remaining.isEmpty()) {
+			return;
+		}
+		remaining.stream()
+			.filter(address -> !address.getId().equals(excludedAddressId))
+			.findFirst()
+			.ifPresent(Address::markDefault);
 	}
 }

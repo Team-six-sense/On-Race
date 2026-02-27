@@ -4,18 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 
 public class AddressDto {
 
-	public record CreateRequest(
-		@NotBlank String receiverName,
-		@NotBlank String phone,
-		@NotBlank String zipcode,
-		@NotBlank String address1,
-		String address2,
-		String memo,
-		Boolean isDefault
-	) {
-	}
-
-	public record UpdateRequest(
+	public record SaveRequest(
 		@NotBlank String receiverName,
 		@NotBlank String phone,
 		@NotBlank String zipcode,

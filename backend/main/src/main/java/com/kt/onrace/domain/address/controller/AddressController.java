@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.kt.onrace.common.logging.annotation.ApiLog;
 import com.kt.onrace.common.response.ApiResponse;
 import com.kt.onrace.domain.address.dto.AddressDto;
 import com.kt.onrace.domain.address.service.AddressService;
@@ -21,7 +20,6 @@ import com.kt.onrace.domain.address.service.AddressService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
-@ApiLog
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/addresses")
@@ -47,7 +45,7 @@ public class AddressController {
 	@PostMapping
 	public ApiResponse<AddressDto.Response> create(
 		@RequestHeader("X-User-Id") Long userId,
-		@Valid @RequestBody AddressDto.CreateRequest request
+		@Valid @RequestBody AddressDto.SaveRequest request
 	) {
 		return ApiResponse.success(addressService.create(userId, request));
 	}
@@ -56,7 +54,7 @@ public class AddressController {
 	public ApiResponse<AddressDto.Response> update(
 		@RequestHeader("X-User-Id") Long userId,
 		@PathVariable Long id,
-		@Valid @RequestBody AddressDto.UpdateRequest request
+		@Valid @RequestBody AddressDto.SaveRequest request
 	) {
 		return ApiResponse.success(addressService.update(userId, id, request));
 	}

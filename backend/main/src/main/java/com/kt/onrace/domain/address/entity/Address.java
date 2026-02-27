@@ -60,17 +60,13 @@ public class Address extends BaseEntity {
 	}
 
 	public void update(String receiverName, String phone, String zipcode,
-					String address1, String address2, String memo, Boolean isDefault) {
+					String address1, String address2, String memo) {
 		this.receiverName = receiverName;
 		this.phone = phone;
 		this.zipcode = zipcode;
 		this.address1 = address1;
 		this.address2 = address2;
 		this.memo = memo;
-
-		if (isDefault != null) {
-			this.isDefault = isDefault;
-		}
 	}
 
 	public void markDefault() {

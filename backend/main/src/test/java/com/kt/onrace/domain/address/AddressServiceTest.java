@@ -102,6 +102,18 @@ class AddressServiceTest {
 	}
 
 	@Test
+	@DisplayName("기본배송지를 isDefault=false로 수정하면 다른 배송지가 기본으로 승격된다")
+	void updateDefaultToNormalPromotesAnother() {
+		AddressDto.Response first = addressService.create(1L, createRequest("기본주소", false));
+		AddressDto.Response second = addressService.create(1L, createRequest("둘주소", false));
+
+		addressService.update(1L, first.id(), createRequest("기본주소", false));
+
+		Address defaultAddress = addressRepository.findFirstByUserIdAndIsDefaultTrue(1L).orElseThrow();
+		assertThat(defaultAddress.getId()).isEqualTo(second.id());
+	}
+
+	@Test
 	@DisplayName("다른 유저의 배송지 조회는 NOT_FOUND 예외가 발생한다")
 	void getAddressOfAnotherUserReturnsNotFound() {
 		AddressDto.Response response = addressService.create(1L, createRequest("첫주소", false));
@@ -112,8 +124,8 @@ class AddressServiceTest {
 			.isEqualTo(BusinessErrorCode.ADDRESS_NOT_FOUND);
 	}
 
-	private AddressDto.CreateRequest createRequest(String receiverName, Boolean isDefault) {
-		return new AddressDto.CreateRequest(
+	private AddressDto.SaveRequest createRequest(String receiverName, Boolean isDefault) {
+		return new AddressDto.SaveRequest(
 			receiverName,
 			"010-1111-2222",
 			"12345",
