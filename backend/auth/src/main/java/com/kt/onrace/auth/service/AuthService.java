@@ -33,9 +33,14 @@ public class AuthService {
 	private final JwtTokenProvider jwtTokenProvider;
 	private final JwtProperties jwtProperties;
 	private final TokenStoreService tokenStoreService;
+	private final EmailVerifyService emailVerifyService;
 
 	@Transactional
 	public SignupResponse signup(SignupRequest request) {
+		if (!emailVerifyService.isVerified(request.email())) {
+			throw new BusinessException(BusinessErrorCode.AUTH_EMAIL_NOT_VERIFIED);
+		}
+
 		if (userRepository.existsByEmail(request.email())) {
 			throw new BusinessException(BusinessErrorCode.AUTH_DUPLICATE_EMAIL);
 		}
@@ -50,6 +55,8 @@ public class AuthService {
 		User saved = userRepository.save(user);
 
 		mainServiceClient.syncUserCreated(saved.getId());
+
+		emailVerifyService.deleteVerified(request.email());
 
 		return new SignupResponse(saved.getId(), saved.getEmail(), saved.getCreatedAt());
 	}
