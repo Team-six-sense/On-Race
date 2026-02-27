@@ -10,7 +10,7 @@ import { useQueue } from '@/features/ticketing/hooks';
  */
 export default function WaitingPage() {
   const params = useParams();
-  const eventId = params.eventId as string;
+  const eventId = params.id as string;
 
   // 1. 커스텀 훅을 사용하여 상태와 부드러운 프로그래스 바 값 추출
   const { status, progress } = useQueue(eventId);

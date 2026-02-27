@@ -54,10 +54,18 @@ export default function MarathonDetailPage() {
   if (!event)
     return <div className="p-10 text-center">대회를 찾을 수 없습니다.</div>;
 
-  const options = [
-    { value: 'all', label: '전체' },
-    { value: 'banana', label: 'Banana' },
-    { value: 'orange', label: 'Orange' },
+  const courses = [
+    { value: '5km', label: '5km' },
+    { value: '10km', label: '10km' },
+    { value: 'Half', label: 'Half' },
+    { value: 'Full', label: 'Full' },
+  ];
+  const paces = [
+    { label: 'Sub-3 (2:59:59)', value: '179' },
+    { label: '3시간 30분', value: '210' },
+    { label: 'Sub-4 (3:59:59)', value: '239' },
+    { label: '4시간 30분', value: '270' },
+    { label: '5시간 완주', value: '300' },
   ];
 
   const handleApply = () => {
@@ -559,7 +567,7 @@ export default function MarathonDetailPage() {
                     <SelectValue placeholder="코스을 선택하세요" />
                   </SelectTrigger>
                   <SelectContent>
-                    {options.map((opt) => (
+                    {courses.map((opt) => (
                       <SelectItem key={opt.value} value={opt.value}>
                         {opt.label}
                       </SelectItem>
@@ -574,7 +582,7 @@ export default function MarathonDetailPage() {
                     <SelectValue placeholder="페이스를 선택하세요" />
                   </SelectTrigger>
                   <SelectContent>
-                    {options.map((opt) => (
+                    {paces.map((opt) => (
                       <SelectItem key={opt.value} value={opt.value}>
                         {opt.label}
                       </SelectItem>
