@@ -7,17 +7,12 @@ import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 import { Button } from '../ui/button';
 import { LuHeadset, LuSearch, LuUser } from 'react-icons/lu';
+import Image from 'next/image';
 
 export default function Header() {
   const { data: session, status } = useSession();
-  const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const pathname = usePathname(); // 현재 경로에 따른 활성화 표시를 위함
-
-  // 하이드레이션 오류 방지: 클라이언트 마운트 이후에만 UI를 그리도록 설정
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // 현재 페이지가 메인(홈)인지 확인
   const isHome = pathname === '/';
@@ -29,22 +24,18 @@ export default function Header() {
 
   return (
     <div className="relative w-full">
-      {/* --- 1. HEADER (페이지에 따라 스타일 가변) --- */}
       <header
         className={cn(
           'w-full z-50 transition-all duration-300',
-          isHome
-            ? 'absolute top-0 bg-transparent'
-            : 'relative bg-white border-b border-gray-100',
+          isHome ? 'absolute top-0 ' : 'relative bg-white ',
         )}
       >
         <div className="max-w-[1200px] mx-auto flex items-center justify-between h-20 px-6">
-          {/* 왼쪽: 로고 + 메인 메뉴 */}
           <div className="flex items-center gap-12">
             <Link href="/">
               <h1
                 className={cn(
-                  'text-2xl font-black tracking-tighter',
+                  'text-2xl font-black tracking-tighter transition-colors duration-500',
                   isHome ? 'text-white' : 'text-black',
                 )}
               >
@@ -91,60 +82,67 @@ export default function Header() {
           {/* 오른쪽: 유저 메뉴 */}
           <div
             className={cn(
-              'flex items-center gap-5 text-[12px] font-bold',
+              'flex items-center gap-4 text-xs font-bold transition-colors duration-500',
               isHome ? 'text-white/80' : 'text-gray-600',
             )}
           >
             {session ? (
-              <div className="flex items-center gap-4">
-                <span className="hidden sm:block opacity-60">반갑습니다님</span>
-                <button
-                  className={isHome ? 'hover:text-white' : 'hover:text-black'}
+              <div className="flex">
+                <p
+                  className={cn(
+                    'flex items-center font-bold text-xs mr-4 transition-colors duration-500',
+                    isHome
+                      ? 'text-white/80 hover:text-white'
+                      : 'text-gray-600 hover:text-black',
+                  )}
+                >
+                  반갑습니다 {session.user?.name} 님!
+                </p>
+                <Button
+                  className={cn(
+                    'flex items-center font-bold text-xs p-0 transition-colors duration-500 cursor-pointer',
+                    isHome
+                      ? 'text-white/80 hover:text-white'
+                      : 'text-gray-600 hover:text-black',
+                  )}
+                  variant="text"
+                  size="fit"
+                  onClick={() => signOut()}
                 >
                   로그아웃
-                </button>
+                </Button>
               </div>
             ) : (
               <>
                 <Link
                   href="/login"
-                  className={isHome ? 'hover:text-white' : 'hover:text-black'}
+                  className={cn(
+                    'flex items-center transition-colors duration-500',
+                    isHome ? 'hover:text-white' : 'hover:text-black',
+                  )}
                 >
                   로그인
                 </Link>
                 <Link
                   href="/signup"
-                  className={isHome ? 'hover:text-white' : 'hover:text-black'}
+                  className={cn(
+                    'flex items-center transition-colors duration-500',
+                    isHome ? 'hover:text-white' : 'hover:text-black',
+                  )}
                 >
-                  회원가입
+                  <span className=""> 회원가입 </span>
                 </Link>
               </>
             )}
-            <div
-              className={cn(
-                'w-[1px] h-3 mx-1',
-                isHome ? 'bg-white/20' : 'bg-gray-200',
-              )}
-            />
+
             <Link
               href="/support"
               className={cn(
-                'flex items-center gap-1',
+                'flex items-center transition-colors duration-500',
                 isHome ? 'hover:text-white' : 'hover:text-black',
               )}
             >
-              <LuHeadset size={14} />{' '}
-              <span className="hidden sm:inline">고객센터</span>
-            </Link>
-            <Link
-              href="/mypage"
-              className={cn(
-                'flex items-center gap-1',
-                isHome ? 'hover:text-white' : 'hover:text-black',
-              )}
-            >
-              <LuUser size={14} />{' '}
-              <span className="hidden sm:inline">마이페이지</span>
+              <span className="">고객센터</span>
             </Link>
           </div>
         </div>
@@ -153,10 +151,12 @@ export default function Header() {
       {/* --- 2. BANNER SECTION (메인 페이지에서만 렌더링) --- */}
       {isHome && (
         <section className="relative h-[700px] w-full bg-black overflow-hidden">
-          <img
+          <Image
             src="/banner.jpg"
             alt="Main Banner"
-            className="absolute inset-0 w-full h-full object-cover opacity-70"
+            fill
+            priority
+            className="object-cover opacity-70"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent" />
           <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-full max-w-[1200px] px-6 z-10">
