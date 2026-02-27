@@ -45,7 +45,7 @@ export default function MarathonSchedulePage() {
       {/* 1. Header */}
       <header className="bg-primary text-black py-6  px-4 ">
         <div className="max-w-5xl mx-auto">
-          <h1 className="text-3xl font-bold mb-2">이벤트 </h1>
+          <h2 className="text-3xl font-bold mb-2">이벤트 </h2>
           <p className="opacity-80">
             참여 가능한 러닝 이벤트를 확인하고 신청해 보세요!
           </p>

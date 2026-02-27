@@ -146,7 +146,7 @@ export default function Body() {
           {/* 섹션 타이틀 */}
           <div className="mb-12 flex justify-between items-end">
             <div>
-              <h2 className="text-4xl font-black text-black tracking-tighter">
+              <h2 className="text-4xl font-bold text-black tracking-tighter">
                 다가오는 러닝 이벤트
               </h2>
             </div>
