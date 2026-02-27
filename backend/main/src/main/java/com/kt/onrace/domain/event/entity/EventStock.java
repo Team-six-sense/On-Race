@@ -1,8 +1,6 @@
 package com.kt.onrace.domain.event.entity;
 
 import com.kt.onrace.common.entity.BaseEntity;
-import com.kt.onrace.common.exception.BusinessErrorCode;
-import com.kt.onrace.common.util.Preconditions;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
