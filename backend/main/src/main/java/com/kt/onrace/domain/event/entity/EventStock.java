@@ -43,9 +43,9 @@ public class EventStock extends BaseEntity {
 	private Long version;
 
 	@Builder
-	private EventStock(EventPace eventPace, int totalStock) {
+	private EventStock(EventPace eventPace, Integer totalStock) {
 		this.eventPace = eventPace;
-		this.totalStock = totalStock;
+		this.totalStock = totalStock != null ? totalStock : 0;
 		this.confirmedStock = 0;
 	}
 }
