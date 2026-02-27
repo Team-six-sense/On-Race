@@ -1,18 +1,18 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
 import { Providers } from '@/components/providers';
+import localFont from 'next/font/local';
 import '@/styles/globals.css';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+import { cn } from '@/lib/utils';
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
+// 폰트 설정
+const pretendard = localFont({
+  // src: '../public/fonts/PretendardVariable.woff2', // 폰트 파일 경로
+  src: '../../public/fonts/PretendardVariable.woff2',
+  display: 'swap',
+  weight: '45 920', // 가변 폰트의 경우 굵기 범위 지정
+  variable: '--font-pretendard', // Tailwind에서 사용할 변수명
 });
 
 export const metadata: Metadata = {
@@ -26,8 +26,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="antialiased" suppressHydrationWarning={true}>
+    <html lang="en" className={pretendard.variable}>
+      <body
+        className={cn('antialiased', pretendard.className)}
+        suppressHydrationWarning={true}
+      >
         <Providers>
           <div className="flex flex-col min-h-screen overflow-auto">
             <Header />
