@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import React from 'react';
 
 interface UserData {
@@ -14,6 +15,7 @@ interface ModalProps {
   onClose: () => void;
   onConfirm: () => void;
   data: UserData;
+  template: number;
 }
 
 export const UserConfirmModal = ({
@@ -21,6 +23,7 @@ export const UserConfirmModal = ({
   onClose,
   onConfirm,
   data,
+  template,
 }: ModalProps) => {
   if (!isOpen) return null;
 
@@ -79,7 +82,12 @@ export const UserConfirmModal = ({
         </div>
 
         {/* 하단 버튼 */}
-        <div className="flex gap-3 px-6 py-4">
+        <div
+          className={cn(
+            'flex gap-2 px-6 py-4',
+            template === 0 ? 'flex-row' : 'flex-col',
+          )}
+        >
           <Button variant="outline" onClick={onClose}>
             정보 수정
           </Button>

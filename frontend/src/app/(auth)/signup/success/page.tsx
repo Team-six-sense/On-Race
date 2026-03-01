@@ -8,8 +8,8 @@ export default function LoginSuccess() {
   const router = useRouter();
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-white p-4">
-      <div className="max-w-xl w-full  space-y-6 p-10 rounded-2xl border-3 border-gray-300 ">
+    <div className="flex flex-col items-center justify-center bg-white p-4">
+      <div className="max-w-xl w-full space-y-6 p-10 rounded-2xl border-3 border-gray-300 ">
         <div>
           <h2 className="text-2xl font-extrabold text-black">
             회원가입이 완료되었습니다.

@@ -27,6 +27,8 @@ export default function MarathonDetailPage() {
 
   const [events, setEvents] = useState<MarathonEvent[]>([]);
 
+  const [template, setTemplate] = useState(0);
+
   // 상태 관리: 코스 및 페이스 선택
   const [selectedCourse, setSelectedCourse] = useState('');
   const [selectedPace, setSelectedPace] = useState('');
@@ -631,6 +633,7 @@ export default function MarathonDetailPage() {
               setIsEventModalOpen(true);
             }}
             data={userData}
+            template={template}
           />
           <EventConfirmModal
             isOpen={isEventModalOpen}
@@ -640,6 +643,7 @@ export default function MarathonDetailPage() {
               setIsOptionModalOpen(true);
             }}
             data={eventData}
+            template={template}
           />
           <OptionConfirmModal
             isOpen={isOptionModalOpen}
@@ -649,6 +653,7 @@ export default function MarathonDetailPage() {
               handleApply();
             }}
             data={optionData}
+            template={template}
           />
         </div>
       </div>
