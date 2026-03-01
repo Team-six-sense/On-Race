@@ -20,6 +20,7 @@ export default function Header() {
   const navItems = [
     { name: '홈', href: '/' },
     { name: '이벤트', href: '/schedule' },
+    { name: '마우스이벤트(테스트용)', href: '/mouse-event' },
   ];
 
   return (

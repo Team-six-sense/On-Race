@@ -14,6 +14,7 @@ interface ModalProps {
   onClose: () => void;
   onConfirm: () => void;
   data: EventData;
+  template: number;
 }
 
 export const EventConfirmModal = ({
@@ -21,6 +22,7 @@ export const EventConfirmModal = ({
   onClose,
   onConfirm,
   data,
+  template,
 }: ModalProps) => {
   if (!isOpen) return null;
 
@@ -99,9 +101,14 @@ export const EventConfirmModal = ({
         </div>
 
         {/* 하단 버튼 */}
-        <div className="flex gap-3 px-6 py-4">
+        <div
+          className={cn(
+            'flex gap-2 px-6 py-4',
+            template === 0 ? 'flex-row' : 'flex-col',
+          )}
+        >
           <Button variant="outline" rounded="sm" onClick={onClose}>
-            정보 수정
+            닫기
           </Button>
           <Button variant="primary1" rounded="sm" onClick={onConfirm}>
             확인
