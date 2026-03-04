@@ -5,7 +5,6 @@ export default function Footer() {
     <footer className="bg-gray-50 border-t border-gray-200">
       <div className="max-w-7xl mx-auto px-4 py-12 md:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row justify-between gap-10">
-          
           {/* 왼쪽: 로고 및 설명 */}
           <div className="md:w-1/3">
             <div className="flex items-center gap-2 mb-3">
@@ -20,20 +19,25 @@ export default function Footer() {
 
           {/* 오른쪽: 서비스 약관 및 고객센터 */}
           <div className="grid grid-cols-3 gap-1">
-            
-             {/* 서비스 정책 섹션 */}
+            {/* 서비스 정책 섹션 */}
             <div>
               <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">
                 서비스
               </h3>
               <ul className="space-y-3">
                 <li>
-                  <Link href="/" className="text-sm text-gray-600 hover:text-black transition-colors">
+                  <Link
+                    href="/schedule"
+                    className="text-sm text-gray-600 hover:text-black transition-colors"
+                  >
                     이벤트
                   </Link>
                 </li>
                 <li>
-                  <Link href="/" className="text-sm text-gray-600 hover:text-black transition-colors">
+                  <Link
+                    href="/mypage"
+                    className="text-sm text-gray-600 hover:text-black transition-colors"
+                  >
                     마이페이지
                   </Link>
                 </li>
@@ -47,17 +51,26 @@ export default function Footer() {
               </h3>
               <ul className="space-y-3">
                 <li>
-                  <Link href="/" className="text-sm text-gray-600 hover:text-black transition-colors">
+                  <Link
+                    href="/"
+                    className="text-sm text-gray-600 hover:text-black transition-colors"
+                  >
                     이용약관
                   </Link>
                 </li>
                 <li>
-                  <Link href="/" className="text-sm text-gray-600 hover:text-black transition-colors">
+                  <Link
+                    href="/"
+                    className="text-sm text-gray-600 hover:text-black transition-colors"
+                  >
                     개인정보 처리방침
                   </Link>
                 </li>
                 <li>
-                  <Link href="/" className="text-sm text-gray-600 hover:text-black transition-colors">
+                  <Link
+                    href="/"
+                    className="text-sm text-gray-600 hover:text-black transition-colors"
+                  >
                     환불/교환정책
                   </Link>
                 </li>
@@ -87,7 +100,6 @@ export default function Footer() {
                 </li>
               </ul>
             </div>
-
           </div>
         </div>
       </div>

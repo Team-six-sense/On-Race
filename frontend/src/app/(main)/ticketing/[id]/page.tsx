@@ -123,10 +123,13 @@ export default function MarathonDetailPage() {
               {/* 메인 컨텐츠 영역 */}
               <div className="p-2">
                 {/* 상품정보 탭 */}
-                {activeTab === 'product' && <EventProductInfo />}
-
+                <div className={activeTab === 'product' ? 'block' : 'hidden'}>
+                  <EventProductInfo />
+                </div>
                 {/* 판매정보 탭 */}
-                {activeTab === 'sales' && <EventSalesInfo />}
+                <div className={activeTab === 'sales' ? 'block' : 'hidden'}>
+                  <EventSalesInfo />
+                </div>
               </div>
             </div>
           </div>

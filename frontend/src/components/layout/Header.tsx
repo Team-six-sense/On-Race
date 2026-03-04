@@ -4,9 +4,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { useEffect, useState } from 'react';
 import { Button } from '../ui/button';
-import { LuHeadset, LuSearch, LuUser } from 'react-icons/lu';
 import Image from 'next/image';
 
 export default function Header() {
@@ -153,7 +151,7 @@ export default function Header() {
       {isHome && (
         <section className="relative h-[700px] w-full bg-black overflow-hidden">
           <Image
-            src="/banner.jpg"
+            src="/image/banner.jpg"
             alt="Main Banner"
             fill
             priority

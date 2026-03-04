@@ -26,6 +26,9 @@ dependencies {
     // MAIL
     implementation 'org.springframework.boot:spring-boot-starter-mail'
 
+    // SMS
+    implementation 'com.solapi:sdk:1.1.0'
+
     // UTILS
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
 

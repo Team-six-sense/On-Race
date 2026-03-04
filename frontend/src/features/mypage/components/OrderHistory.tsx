@@ -3,11 +3,42 @@
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
+import { OrderPendingCard } from './OrderPendingCard';
+import { OrderCompleteCard } from './OrderCompleteCard';
 
 export function OrderHistory() {
   // 하이드레이션 오류 방지를 위한 마운트 상태 관리
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('pending');
+
+  const events = [
+    {
+      id: 1,
+      status: '신청중',
+      thumbnail:
+        'https://images.unsplash.com/photo-1530541930197-ff16ac917b0e?auto=format&fit=crop&w=800&q=80',
+      price: 35000,
+      title: '서울 마라톤 대회 2026',
+      course: '풀코스 (42.195km)',
+      pace: '중급 (6:00 ~ 7:00/km)',
+      applyDate: '2026.02.10',
+      resultDate: '2026.03.15',
+      orderDate: '2026.03.15 ~ 2026.03.15',
+    },
+    {
+      id: 4,
+      status: '신청 마감',
+      thumbnail:
+        'https://images.unsplash.com/photo-1530541930197-ff16ac917b0e?auto=format&fit=crop&w=800&q=80',
+      price: 35000,
+      title: '제주 올레길 마라톤',
+      course: '하프 (21.1km)',
+      pace: '초보 (7:00 ~ 8:00/km)',
+      applyDate: '2026.02.05',
+      resultDate: '2026.03.20',
+      orderDate: '2026.03.15 ~ 2026.03.15',
+    },
+  ];
 
   // 컴포넌트가 마운트된 후에만 렌더링을 허용
   useEffect(() => {
@@ -72,9 +103,11 @@ export function OrderHistory() {
             <div className="space-y-4">
               <section>
                 <div>
-                  <h2 className="text-xl font-bold mb-2 flex items-center">
-                    결제 대기 탭
-                  </h2>
+                  {events.map((event, index) => (
+                    <div key={index} className="flex flex-col py-2">
+                      <OrderPendingCard key={index} {...event} />
+                    </div>
+                  ))}
                 </div>
               </section>
             </div>
@@ -85,9 +118,11 @@ export function OrderHistory() {
             <div className="space-y-6">
               <section>
                 <div>
-                  <h2 className="text-xl font-bold mb-2 flex items-center">
-                    결제 완료 탭
-                  </h2>
+                  {events.map((event, index) => (
+                    <div key={index} className="flex flex-col py-2">
+                      <OrderCompleteCard key={index} {...event} />
+                    </div>
+                  ))}
                 </div>
               </section>
             </div>

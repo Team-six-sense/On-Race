@@ -8,14 +8,14 @@ import lombok.RequiredArgsConstructor;
 public enum BusinessErrorCode implements ErrorCode {
 	// [도메인]_[상태]_[대상]
 
-	//COMMON
+	// COMMON
 	COMMON_INVALID_REQUEST(HttpStatus.BAD_REQUEST, "CMN_001", "잘못된 요청입니다."),
 	COMMON_INVALID_PARAMETER(HttpStatus.BAD_REQUEST, "CMN_002", "유효하지 않은 요청 파라미터입니다"),
 	COMMON_INVALID_FORMAT(HttpStatus.BAD_REQUEST, "CMN_003", "잘못된 형식의 값입니다."),
 	COMMON_SYSTEM_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "CMN_004", "시스템 오류가 발생했습니다."),
 	COMMON_HTTP_METHOD_NOT_SUPPORTED(HttpStatus.METHOD_NOT_ALLOWED, "CMN_005", "지원되지 않는 HTTP 메서드입니다."),
 
-	//AUTH
+	// AUTH
 	AUTH_INVALID_JWT_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_001", "유효하지 않은 JWT 토큰입니다."),
 	AUTH_EXPIRED_JWT_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_002", "만료된 JWT 토큰입니다."),
 	AUTH_MALFORMED_JWT_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_003", "잘못된 형식의 JWT 토큰입니다."),
@@ -25,39 +25,44 @@ public enum BusinessErrorCode implements ErrorCode {
 	AUTH_FORBIDDEN_USER(HttpStatus.FORBIDDEN, "AUTH_007", "접근 권한이 없습니다."),
 	AUTH_DUPLICATE_LOGIN_ID(HttpStatus.BAD_REQUEST, "AUTH_008", "이미 사용 중인 로그인 ID입니다."),
 	AUTH_DUPLICATE_EMAIL(HttpStatus.BAD_REQUEST, "AUTH_009", "이미 사용 중인 이메일입니다."),
+	AUTH_DUPLICATE_PHONE(HttpStatus.BAD_REQUEST, "AUTH_018", "이미 가입된 휴대폰 번호입니다."),
+	AUTH_TOO_MANY_VERIFY_ATTEMPTS(HttpStatus.TOO_MANY_REQUESTS, "AUTH_019", "인증 시도 횟수를 초과해 차단되었습니다. 인증 번호를 다시 요청해주세요."),
+	AUTH_TOO_MANY_SEND_ATTEMPTS(HttpStatus.TOO_MANY_REQUESTS, "AUTH_020", "인증 번호 전송 횟수를 초과했습니다. 잠시 후 다시 시도해주세요."),
 	AUTH_INVALID_PASSWORD(HttpStatus.UNAUTHORIZED, "AUTH_010", "비밀번호가 일치하지 않습니다."),
 	AUTH_INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_011", "유효하지 않은 리프레시 토큰입니다."),
 	AUTH_ALREADY_WITHDRAWN(HttpStatus.BAD_REQUEST, "AUTH_012", "이미 탈퇴한 계정입니다."),
 	AUTH_DUPLICATE_USER_ID(HttpStatus.BAD_REQUEST, "AUTH_013", "이미 해당 계정은 생성되었습니다."),
-	AUTH_INVALID_EMAIL_CODE(HttpStatus.BAD_REQUEST, "AUTH_014", "인증코드가 올바르지 않거나 만료되었습니다."),
+	AUTH_INVALID_EMAIL_CODE(HttpStatus.BAD_REQUEST, "AUTH_014", "이메일 인증코드가 올바르지 않거나 만료되었습니다."),
 	AUTH_EMAIL_NOT_VERIFIED(HttpStatus.BAD_REQUEST, "AUTH_015", "이메일 인증이 완료되지 않았습니다."),
+	AUTH_INVALID_PHONE_CODE(HttpStatus.BAD_REQUEST, "AUTH_016", "휴대폰 인증코드가 올바르지 않거나 만료되었습니다."),
+	AUTH_PHONE_NOT_VERIFIED(HttpStatus.BAD_REQUEST, "AUTH_017", "휴대폰 인증이 완료되지 않았습니다."),
 
-	//MEDIA
+	// MEDIA
 	MEDIA_UNSUPPORTED_CONTENT_TYPE(HttpStatus.BAD_REQUEST, "MDA_001", "허용되지 않은 Content_type 입니다."),
 	MEDIA_NOT_FOUND(HttpStatus.NOT_FOUND, "MDA_002", "미디어 정보를 찾을 수 없습니다."),
 	MEDIA_OBJECT_NOT_FOUND(HttpStatus.NOT_FOUND, "MDA_003", "S3에서 업로드된 파일을 찾을 수 없습니다."),
 	MEDIA_CONFIRM_FAILED(HttpStatus.BAD_REQUEST, "MDA_004", "업로드 확정에 실패했습니다."),
 
-	//EVENT
+	// EVENT
 	EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "EVT_001", "이벤트를 찾을 수 없습니다."),
 	EVENT_NOT_IN_STANDBY(HttpStatus.BAD_REQUEST, "EVT_002", "사전정보 저장은 대기중 상태에서만 가능합니다."),
 	EVENT_COURSE_NOT_FOUND(HttpStatus.NOT_FOUND, "EVT_003", "해당 이벤트의 코스를 찾을 수 없습니다."),
 	EVENT_PACE_NOT_FOUND(HttpStatus.NOT_FOUND, "EVT_004", "해당 코스의 페이스를 찾을 수 없습니다."),
 	EVENT_PRE_SAVE_NOT_FOUND(HttpStatus.NOT_FOUND, "EVT_005", "사전정보를 찾을 수 없습니다."),
 
-	//ADDRESS
+	// ADDRESS
 	ADDRESS_NOT_FOUND(HttpStatus.NOT_FOUND, "ADR_001", "배송지를 찾을 수 없습니다."),
 
-	//ENTRY
+	// ENTRY
 	ENTRY_NOT_FOUND(HttpStatus.NOT_FOUND, "ENT_001", "신청 정보를 찾을 수 없습니다."),
 	ENTRY_COURSE_NOT_FOUND(HttpStatus.NOT_FOUND, "ENT_002", "해당 이벤트의 코스를 찾을 수 없습니다."),
 	ENTRY_PACE_NOT_FOUND(HttpStatus.NOT_FOUND, "ENT_003", "해당 코스의 페이스를 찾을 수 없습니다."),
 	ENTRY_EVENT_NOT_IN_STANDBY(HttpStatus.BAD_REQUEST, "ENT_004", "대기중 상태에서만 가능합니다."),
 
-	//STOCK
+	// STOCK
 	STOCK_NOT_FOUND(HttpStatus.NOT_FOUND, "STK_001", "재고 정보를 찾을 수 없습니다."),
 
-	//SALES_INFO
+	// SALES_INFO
 	SALES_INFO_NOT_FOUND(HttpStatus.NOT_FOUND, "SLS_001", "판매 정보를 찾을 수 없습니다.");
 
 	private final HttpStatus status;

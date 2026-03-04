@@ -2,6 +2,18 @@ spring:
   application:
     name: auth
 
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:dummy@gmail.com}
+    password: ${MAIL_PASSWORD:dummy}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
   data:
     redis:
       host: ${AUTH_REDIS_HOST:localhost}
@@ -35,3 +47,8 @@ jwt:
 api:
   url:
     main: ${MAIN_SERVICE_URI}
+
+solapi:
+  api-key: ${SOLAPI_API_KEY:dummy_key}
+  api-secret: ${SOLAPI_API_SECRET:dummy_secret}
+  sender: ${SOLAPI_SENDER:01012345678}
