@@ -27,6 +27,7 @@ public class EntryRepositoryImpl implements EntryRepositoryCustom {
 					.when(entry.status.eq(EntryStatus.APPLIED)).then(1L)
 					.otherwise(0L)
 					.sum()
+					.coalesce(0L)
 			)
 			.from(entry)
 			.where(
@@ -40,8 +41,8 @@ public class EntryRepositoryImpl implements EntryRepositoryCustom {
 		}
 
 		long totalCount = result.get(0, Long.class);
-		Long appliedSum = result.get(1, Long.class);
+		long appliedCount = result.get(1, Long.class);
 
-		return new EntryCountResult(totalCount, appliedSum != null ? appliedSum : 0L);
+		return new EntryCountResult(totalCount, appliedCount);
 	}
 }
