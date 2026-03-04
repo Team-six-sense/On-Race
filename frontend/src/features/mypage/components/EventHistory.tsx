@@ -3,11 +3,52 @@
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
+import { EventEntryCard } from './EventEntryCard';
+import { EventPendingCard } from './EventPendingCard';
 
 export function EventHistory() {
   // 하이드레이션 오류 방지를 위한 마운트 상태 관리
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('entry');
+
+  const events = [
+    {
+      id: 1,
+      status: '신청중',
+      thumbnail:
+        'https://images.unsplash.com/photo-1530541930197-ff16ac917b0e?auto=format&fit=crop&w=800&q=80',
+      price: 35000,
+      title: '서울 마라톤 대회 2026',
+      course: '풀코스 (42.195km)',
+      pace: '중급 (6:00 ~ 7:00/km)',
+      applyDate: '2026.02.10',
+      resultDate: '2026.03.15',
+    },
+    {
+      id: 2,
+      status: '신청 마감',
+      thumbnail:
+        'https://images.unsplash.com/photo-1530541930197-ff16ac917b0e?auto=format&fit=crop&w=800&q=80',
+      price: 35000,
+      title: '부산 바다 러닝 페스티벌',
+      course: '풀코스 (42.195km)',
+      pace: '중급 (6:00 ~ 7:00/km)',
+      applyDate: '2026.02.10',
+      resultDate: '2026.03.15',
+    },
+    {
+      id: 4,
+      status: '결과 발표',
+      thumbnail:
+        'https://images.unsplash.com/photo-1530541930197-ff16ac917b0e?auto=format&fit=crop&w=800&q=80',
+      price: 35000,
+      title: '제주 올레길 마라톤',
+      course: '풀코스 (42.195km)',
+      pace: '중급 (6:00 ~ 7:00/km)',
+      applyDate: '2026.02.10',
+      resultDate: '2026.03.15',
+    },
+  ];
 
   // 컴포넌트가 마운트된 후에만 렌더링을 허용
   useEffect(() => {
@@ -72,9 +113,15 @@ export function EventHistory() {
             <div className="space-y-4">
               <section>
                 <div>
-                  <h2 className="text-xl font-bold mb-2 flex items-center">
-                    응모 탭
+                  <h2 className="text-md font-bold mb-2 flex items-center">
+                    {`응모 내역 (${events.length})`}
                   </h2>
+
+                  {events.map((event, index) => (
+                    <div key={index} className="flex flex-col py-2">
+                      <EventEntryCard key={index} {...event} />
+                    </div>
+                  ))}
                 </div>
               </section>
             </div>
@@ -85,9 +132,15 @@ export function EventHistory() {
             <div className="space-y-6">
               <section>
                 <div>
-                  <h2 className="text-xl font-bold mb-2 flex items-center">
-                    대기 탭
+                  <h2 className="text-md font-bold mb-2 flex items-center">
+                    {`대기 내역 (${events.length})`}
                   </h2>
+
+                  {events.map((event, index) => (
+                    <div key={index} className="flex flex-col py-2">
+                      <EventPendingCard key={index} {...event} />
+                    </div>
+                  ))}
                 </div>
               </section>
             </div>

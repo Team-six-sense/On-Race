@@ -20,7 +20,7 @@ export function EventThumbnail({ event }: { event: MarathonEvent }) {
 
   return (
     <div className="grid grid-cols-1 gap-10">
-      <div className="relative w-full  overflow-hidden bg-gray-200 h-[500px]">
+      <div className="relative w-full  overflow-hidden bg-gray-200">
         {event.thumbnailImg ? (
           <img
             src={event.thumbnailImg}
