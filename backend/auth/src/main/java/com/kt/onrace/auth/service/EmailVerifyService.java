@@ -10,6 +10,7 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
+import com.kt.onrace.auth.repository.UserRepository;
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
 import com.kt.onrace.common.util.RedisKeyGenerator;
@@ -26,12 +27,16 @@ public class EmailVerifyService {
 	private final RedissonClient redissonClient;
 	private final RedisKeyGenerator redisKeyGenerator;
 	private final JavaMailSender mailSender;
+	private final UserRepository userRepository;
 
 	public void sendCode(String email) {
+		if (userRepository.existsByEmail(email)) {
+			throw new BusinessException(BusinessErrorCode.AUTH_DUPLICATE_EMAIL);
+		}
 		String code = generateCode();
 
 		RBucket<String> bucket = redissonClient.getBucket(redisKeyGenerator.emailVerifyCodeKey(email),
-			StringCodec.INSTANCE);
+				StringCodec.INSTANCE);
 		bucket.set(code, Duration.ofMinutes(CODE_TTL_MINUTES));
 
 		sendEmail(email, code);
@@ -39,7 +44,7 @@ public class EmailVerifyService {
 
 	public void verifyCode(String email, String code) {
 		RBucket<String> bucket = redissonClient.getBucket(redisKeyGenerator.emailVerifyCodeKey(email),
-			StringCodec.INSTANCE);
+				StringCodec.INSTANCE);
 		String stored = bucket.get();
 
 		if (stored == null || !stored.equals(code)) {
