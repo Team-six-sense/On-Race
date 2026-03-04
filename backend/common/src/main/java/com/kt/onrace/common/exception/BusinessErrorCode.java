@@ -31,6 +31,12 @@ public enum BusinessErrorCode implements ErrorCode {
 	AUTH_DUPLICATE_USER_ID(HttpStatus.BAD_REQUEST, "AUTH_013", "이미 해당 계정은 생성되었습니다."),
 	AUTH_INVALID_EMAIL_CODE(HttpStatus.BAD_REQUEST, "AUTH_014", "인증코드가 올바르지 않거나 만료되었습니다."),
 	AUTH_EMAIL_NOT_VERIFIED(HttpStatus.BAD_REQUEST, "AUTH_015", "이메일 인증이 완료되지 않았습니다."),
+	AUTH_PASSWORD_RESET_EMAIL_NOT_FOUND(HttpStatus.BAD_REQUEST, "AUTH_016", "가입되지 않은 이메일이거나 비밀번호 재설정이 불가한 계정입니다."),
+	AUTH_PASSWORD_RESET_COOLDOWN(HttpStatus.TOO_MANY_REQUESTS, "AUTH_017", "재발송은 1분 후에 가능합니다."),
+	AUTH_PASSWORD_RESET_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "AUTH_018", "비밀번호 재설정 요청 횟수를 초과했습니다. (5회/24시간)"),
+	AUTH_INVALID_PASSWORD_RESET_TOKEN(HttpStatus.BAD_REQUEST, "AUTH_019", "유효하지 않거나 만료된 비밀번호 재설정 링크입니다."),
+	AUTH_PASSWORD_RESET_NOT_VERIFIED(HttpStatus.BAD_REQUEST, "AUTH_020", "비밀번호 재설정 인증이 완료되지 않았습니다."),
+	AUTH_SAME_PASSWORD(HttpStatus.BAD_REQUEST, "AUTH_021", "기존 비밀번호와 동일한 비밀번호는 사용할없습니다."),
 
 	//MEDIA
 	MEDIA_UNSUPPORTED_CONTENT_TYPE(HttpStatus.BAD_REQUEST, "MDA_001", "허용되지 않은 Content_type 입니다."),

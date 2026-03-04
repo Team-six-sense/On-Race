@@ -47,3 +47,7 @@ jwt:
 api:
   url:
     main: ${MAIN_SERVICE_URI}
+
+app:
+  password-reset:
+    base-url: ${PASSWORD_RESET_BASE_URL:http://localhost:3000/password/reset}

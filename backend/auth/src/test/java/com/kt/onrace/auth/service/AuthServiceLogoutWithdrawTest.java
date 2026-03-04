@@ -17,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import com.kt.onrace.auth.common.client.MainServiceClient;
 import com.kt.onrace.auth.dto.WithdrawRequest;
 import com.kt.onrace.auth.entity.User;
 import com.kt.onrace.auth.repository.UserRepository;
@@ -45,6 +46,9 @@ class AuthServiceLogoutWithdrawTest {
 
 	@Mock
 	private TokenStoreService tokenStoreService;
+
+	@Mock
+	private MainServiceClient mainServiceClient;
 
 	private User testUser;
 

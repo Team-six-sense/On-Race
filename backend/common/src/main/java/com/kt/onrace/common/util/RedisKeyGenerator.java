@@ -24,4 +24,20 @@ public class RedisKeyGenerator {
 	public String emailVerifiedKey(String email) {
 		return String.format("email:verified:%s", email);
 	}
+
+	public String passwordResetTokenKey(String token) {
+		return String.format("password:reset_token:%s", token);
+	}
+
+	public String passwordResetVerifiedKey(Long userId) {
+		return String.format("password:reset_verified:%d", userId);
+	}
+
+	public String passwordResetCooldownKey(String email) {
+		return String.format("password:reset_cooldown:%s", email);
+	}
+
+	public String passwordResetCountKey(String email, String date) {
+		return String.format("password:reset_count:%s:%s", email, date);
+	}
 }

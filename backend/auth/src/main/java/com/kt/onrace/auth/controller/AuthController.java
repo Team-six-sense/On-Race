@@ -40,7 +40,7 @@ public class AuthController extends SwaggerAssistance {
 		return ApiResponse.success(response);
 	}
 
-	@Operation(summary = "로그인", description = "이메일로 로그인 후 Access Token, Refresh Token 발급")
+	@Operation(summary = "로그인", description = "이메일, 비밀번호로 로그인 후 Access Token, Refresh Token 발급")
 	@PostMapping("/login")
 	public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
 		LoginResponse response = authService.login(request);

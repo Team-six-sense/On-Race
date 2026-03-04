@@ -44,4 +44,8 @@ public class User extends BaseEntity {
 		this.isDeleted = true;
 	}
 
+	public void changePassword(String encodedPassword) {
+		this.password = encodedPassword;
+	}
+
 }
