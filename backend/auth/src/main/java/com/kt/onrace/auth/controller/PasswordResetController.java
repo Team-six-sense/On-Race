@@ -12,6 +12,7 @@ import com.kt.onrace.auth.dto.PasswordResetConfirmRequest;
 import com.kt.onrace.auth.dto.PasswordResetRequest;
 import com.kt.onrace.auth.service.PasswordResetService;
 import com.kt.onrace.common.logging.annotation.ApiLog;
+import com.kt.onrace.common.logging.annotation.SensitiveLog;
 import com.kt.onrace.common.response.ApiResponse;
 import com.kt.onrace.common.swagger.SwaggerAssistance;
 
@@ -41,7 +42,7 @@ public class PasswordResetController extends SwaggerAssistance {
 
 	@Operation(summary = "비밀번호 재설정 링크 인증", description = "재설정 링크 내 토큰 검증 (1회성)")
 	@GetMapping("/reset-verify")
-	public ApiResponse<Void> verifyResetToken(@RequestParam String token) {
+	public ApiResponse<Void> verifyResetToken(@SensitiveLog @RequestParam String token) {
 		passwordResetService.verifyResetToken(token);
 		return ApiResponse.success();
 	}

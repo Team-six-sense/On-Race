@@ -1,9 +1,12 @@
 package com.kt.onrace.auth.dto;
 
+import com.kt.onrace.common.logging.annotation.SensitiveLog;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
+@SensitiveLog
 public record PasswordResetConfirmRequest(
 	@NotBlank String token,
 
