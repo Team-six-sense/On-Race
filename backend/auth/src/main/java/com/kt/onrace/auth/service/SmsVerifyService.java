@@ -9,6 +9,7 @@ import org.redisson.client.codec.StringCodec;
 import org.springframework.stereotype.Service;
 
 import com.kt.onrace.auth.common.config.SolapiProperties;
+import com.kt.onrace.auth.repository.UserRepository;
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
 import com.kt.onrace.common.util.RedisKeyGenerator;
@@ -29,12 +30,16 @@ public class SmsVerifyService {
 
 	private final DefaultMessageService messageService;
 	private final SolapiProperties properties;
+	private final UserRepository userRepository;
 
 	public void sendCode(String phoneNumber) {
+		if (userRepository.existsByPhoneNumber(phoneNumber)) {
+			throw new BusinessException(BusinessErrorCode.AUTH_DUPLICATE_PHONE);
+		}
 		String code = generateCode();
 
 		RBucket<String> bucket = redissonClient.getBucket(redisKeyGenerator.smsVerifyCodeKey(phoneNumber),
-			StringCodec.INSTANCE);
+				StringCodec.INSTANCE);
 		bucket.set(code, Duration.ofMinutes(CODE_TTL_MINUTES));
 
 		String text = "[On-Race] 휴대폰 인증 코드: [" + code + "] 3분 이내에 입력해 주세요.";
@@ -53,7 +58,7 @@ public class SmsVerifyService {
 
 	public void verifyCode(String phoneNumber, String code) {
 		RBucket<String> bucket = redissonClient.getBucket(redisKeyGenerator.smsVerifyCodeKey(phoneNumber),
-			StringCodec.INSTANCE);
+				StringCodec.INSTANCE);
 		String stored = bucket.get();
 
 		if (stored == null || !stored.equals(code)) {

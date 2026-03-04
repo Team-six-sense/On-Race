@@ -25,6 +25,7 @@ public enum BusinessErrorCode implements ErrorCode {
 	AUTH_FORBIDDEN_USER(HttpStatus.FORBIDDEN, "AUTH_007", "접근 권한이 없습니다."),
 	AUTH_DUPLICATE_LOGIN_ID(HttpStatus.BAD_REQUEST, "AUTH_008", "이미 사용 중인 로그인 ID입니다."),
 	AUTH_DUPLICATE_EMAIL(HttpStatus.BAD_REQUEST, "AUTH_009", "이미 사용 중인 이메일입니다."),
+	AUTH_DUPLICATE_PHONE(HttpStatus.BAD_REQUEST, "AUTH_018", "이미 가입된 휴대폰 번호입니다."),
 	AUTH_INVALID_PASSWORD(HttpStatus.UNAUTHORIZED, "AUTH_010", "비밀번호가 일치하지 않습니다."),
 	AUTH_INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_011", "유효하지 않은 리프레시 토큰입니다."),
 	AUTH_ALREADY_WITHDRAWN(HttpStatus.BAD_REQUEST, "AUTH_012", "이미 탈퇴한 계정입니다."),

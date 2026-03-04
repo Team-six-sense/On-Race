@@ -50,6 +50,10 @@ public class AuthService {
 			throw new BusinessException(BusinessErrorCode.AUTH_DUPLICATE_EMAIL);
 		}
 
+		if (userRepository.existsByPhoneNumber(request.phoneNumber())) {
+			throw new BusinessException(BusinessErrorCode.AUTH_DUPLICATE_PHONE);
+		}
+
 		String encodedPassword = passwordEncoder.encode(request.password());
 
 		User user = User.createUser(
