@@ -34,11 +34,16 @@ public class AuthService {
 	private final JwtProperties jwtProperties;
 	private final TokenStoreService tokenStoreService;
 	private final EmailVerifyService emailVerifyService;
+	private final SmsVerifyService smsVerifyService;
 
 	@Transactional
 	public SignupResponse signup(SignupRequest request) {
 		if (!emailVerifyService.isVerified(request.email())) {
 			throw new BusinessException(BusinessErrorCode.AUTH_EMAIL_NOT_VERIFIED);
+		}
+
+		if (!smsVerifyService.isVerified(request.phoneNumber())) {
+			throw new BusinessException(BusinessErrorCode.AUTH_PHONE_NOT_VERIFIED);
 		}
 
 		if (userRepository.existsByEmail(request.email())) {
@@ -48,15 +53,16 @@ public class AuthService {
 		String encodedPassword = passwordEncoder.encode(request.password());
 
 		User user = User.createUser(
-			request.email(),
-			encodedPassword
-		);
+				request.email(),
+				encodedPassword,
+				request.phoneNumber());
 
 		User saved = userRepository.save(user);
 
 		mainServiceClient.syncUserCreated(saved.getId());
 
 		emailVerifyService.deleteVerified(request.email());
+		smsVerifyService.deleteVerified(request.phoneNumber());
 
 		return new SignupResponse(saved.getId(), saved.getEmail(), saved.getCreatedAt());
 	}
@@ -64,18 +70,18 @@ public class AuthService {
 	@Transactional(readOnly = true)
 	public LoginResponse login(LoginRequest request) {
 		User user = userRepository.findByEmailAndIsDeletedFalse(request.email())
-			.orElseThrow(() -> new BusinessException(BusinessErrorCode.AUTH_NOT_FOUND_USER));
+				.orElseThrow(() -> new BusinessException(BusinessErrorCode.AUTH_NOT_FOUND_USER));
 
 		if (!passwordEncoder.matches(request.password(), user.getPassword())) {
 			throw new BusinessException(BusinessErrorCode.AUTH_INVALID_PASSWORD);
 		}
 
 		String accessToken = jwtTokenProvider.generateAccessToken(
-			user.getId(), user.getEmail(), user.getRole().name());
+				user.getId(), user.getEmail(), user.getRole().name());
 		String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
 
 		tokenStoreService.saveRefreshToken(
-			user.getId(), refreshToken, jwtProperties.getRefreshTokenExpiration());
+				user.getId(), refreshToken, jwtProperties.getRefreshTokenExpiration());
 
 		return new LoginResponse(accessToken, refreshToken, "Bearer", jwtProperties.getAccessTokenExpiration());
 	}
@@ -91,18 +97,18 @@ public class AuthService {
 		Long userId = jwtTokenProvider.getUserId(refreshToken);
 
 		String stored = tokenStoreService.getRefreshToken(userId)
-			.orElseThrow(() -> new BusinessException(BusinessErrorCode.AUTH_INVALID_REFRESH_TOKEN));
+				.orElseThrow(() -> new BusinessException(BusinessErrorCode.AUTH_INVALID_REFRESH_TOKEN));
 
 		if (!stored.equals(refreshToken)) {
 			throw new BusinessException(BusinessErrorCode.AUTH_INVALID_REFRESH_TOKEN);
 		}
 
 		User user = userRepository.findById(userId)
-			.filter(u -> !u.isDeleted())
-			.orElseThrow(() -> new BusinessException(BusinessErrorCode.AUTH_NOT_FOUND_USER));
+				.filter(u -> !u.isDeleted())
+				.orElseThrow(() -> new BusinessException(BusinessErrorCode.AUTH_NOT_FOUND_USER));
 
 		String newAccessToken = jwtTokenProvider.generateAccessToken(
-			user.getId(), user.getEmail(), user.getRole().name());
+				user.getId(), user.getEmail(), user.getRole().name());
 
 		return new TokenRefreshResponse(newAccessToken, jwtProperties.getAccessTokenExpiration());
 	}
@@ -122,7 +128,7 @@ public class AuthService {
 	@Transactional
 	public void withdraw(Long userId, String accessToken, WithdrawRequest request) {
 		User user = userRepository.findById(userId)
-			.orElseThrow(() -> new BusinessException(BusinessErrorCode.AUTH_NOT_FOUND_USER));
+				.orElseThrow(() -> new BusinessException(BusinessErrorCode.AUTH_NOT_FOUND_USER));
 
 		if (user.isDeleted()) {
 			throw new BusinessException(BusinessErrorCode.AUTH_ALREADY_WITHDRAWN);
@@ -134,7 +140,7 @@ public class AuthService {
 
 		user.markDeleted();
 		mainServiceClient.syncUserDeleted(userId);
-		
+
 		logout(userId, accessToken);
 	}
 }

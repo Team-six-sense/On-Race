@@ -47,3 +47,8 @@ jwt:
 api:
   url:
     main: ${MAIN_SERVICE_URI}
+
+solapi:
+  api-key: ${SOLAPI_API_KEY:dummy_key}
+  api-secret: ${SOLAPI_API_SECRET:dummy_secret}
+  sender: ${SOLAPI_SENDER:01012345678}

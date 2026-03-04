@@ -24,4 +24,12 @@ public class RedisKeyGenerator {
 	public String emailVerifiedKey(String email) {
 		return String.format("email:verified:%s", email);
 	}
+
+	public String smsVerifyCodeKey(String phoneNumber) {
+		return String.format("sms:verify_code:%s", phoneNumber);
+	}
+
+	public String smsVerifiedKey(String phoneNumber) {
+		return String.format("sms:verified:%s", phoneNumber);
+	}
 }
