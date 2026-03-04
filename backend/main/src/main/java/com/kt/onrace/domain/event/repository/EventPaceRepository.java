@@ -8,7 +8,7 @@ import com.kt.onrace.common.exception.BusinessException;
 import com.kt.onrace.common.exception.ErrorCode;
 import com.kt.onrace.domain.event.entity.EventPace;
 
-public interface EventPaceRepository extends JpaRepository<EventPace, Long> {
+public interface EventPaceRepository extends JpaRepository<EventPace, Long>, EventPaceRepositoryCustom {
 
 	default EventPace findByIdAndEventCourseIdOrThrow(Long id, Long courseId, ErrorCode errorCode) {
 		return findByIdAndEventCourseId(id, courseId).orElseThrow(() -> new BusinessException(errorCode));

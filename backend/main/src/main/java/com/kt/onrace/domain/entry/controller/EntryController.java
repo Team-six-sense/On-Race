@@ -12,9 +12,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.kt.onrace.common.logging.annotation.ApiLog;
 import com.kt.onrace.common.response.ApiResponse;
+import com.kt.onrace.domain.entry.dto.EntryOverviewResponse;
 import com.kt.onrace.domain.entry.dto.EntryPreSaveRequest;
 import com.kt.onrace.domain.entry.dto.EntryPreSaveResponse;
-import com.kt.onrace.domain.entry.dto.EntryInfoResponse;
+import com.kt.onrace.domain.entry.dto.EntryRateResponse;
 import com.kt.onrace.domain.entry.service.EntryService;
 
 import jakarta.validation.Valid;
@@ -28,6 +29,14 @@ public class EntryController {
 
 	private final EntryService entryService;
 
+	@GetMapping("/overview")
+	public ApiResponse<EntryOverviewResponse> getEntryOverview(
+		@RequestHeader(value = "X-User-Id", required = false) Long userId,
+		@PathVariable Long eventId
+	) {
+		return ApiResponse.success(entryService.getEntryOverview(userId, eventId));
+	}
+
 	@PostMapping("/pre-save")
 	public ApiResponse<EntryPreSaveResponse> savePreSave(
 		@RequestHeader("X-User-Id") Long userId,
@@ -37,13 +46,13 @@ public class EntryController {
 		return ApiResponse.success(entryService.savePreSave(userId, eventId, request));
 	}
 
-	@GetMapping("/participation-info")
-	public ApiResponse<EntryInfoResponse> getParticipationInfo(
+	@GetMapping("/rate")
+	public ApiResponse<EntryRateResponse> getEntryRate(
 		@PathVariable Long eventId,
 		@RequestParam Long courseId,
 		@RequestParam Long paceId
 	) {
-		return ApiResponse.success(entryService.getParticipationInfo(eventId, courseId, paceId));
+		return ApiResponse.success(entryService.getEntryRate(eventId, courseId, paceId));
 	}
 
 	@DeleteMapping("/pre-save")

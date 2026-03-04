@@ -8,11 +8,13 @@ import org.springframework.transaction.annotation.Transactional;
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.logging.annotation.ServiceLog;
 import com.kt.onrace.common.util.Preconditions;
+import com.kt.onrace.domain.entry.dto.EntryOverviewResponse;
 import com.kt.onrace.domain.entry.dto.EntryPreSaveRequest;
 import com.kt.onrace.domain.entry.dto.EntryPreSaveResponse;
-import com.kt.onrace.domain.entry.dto.EntryInfoResponse;
+import com.kt.onrace.domain.entry.dto.EntryRateResponse;
 import com.kt.onrace.domain.entry.entity.Entry;
 import com.kt.onrace.domain.entry.entity.EntryStatus;
+import com.kt.onrace.domain.entry.dto.EntryCountResult;
 import com.kt.onrace.domain.entry.repository.EntryRepository;
 import com.kt.onrace.domain.event.entity.Event;
 import com.kt.onrace.domain.event.entity.EventCourse;
@@ -21,6 +23,7 @@ import com.kt.onrace.domain.event.entity.EventStatus;
 import com.kt.onrace.domain.event.repository.EventCourseRepository;
 import com.kt.onrace.domain.event.repository.EventPaceRepository;
 import com.kt.onrace.domain.event.repository.EventRepository;
+import com.kt.onrace.domain.member.repository.MemberRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -33,11 +36,12 @@ public class EntryService {
 	private final EventCourseRepository eventCourseRepository;
 	private final EntryRepository entryRepository;
 	private final EventPaceRepository eventPaceRepository;
+	private final MemberRepository memberRepository;
 
 	@ServiceLog(slowMs = 2000)
 	@Transactional
 	public EntryPreSaveResponse savePreSave(Long userId, Long eventId, EntryPreSaveRequest request) {
-		//TODO : User 검증 추가
+		memberRepository.findByIdAndIsDeletedFalseOrThrow(userId, BusinessErrorCode.MEMBER_NOT_FOUND);
 
 		Event event = eventRepository.findByIdOrThrow(eventId, BusinessErrorCode.EVENT_NOT_FOUND);
 
@@ -68,44 +72,62 @@ public class EntryService {
 	}
 
 	@ServiceLog(slowMs = 2000)
-	public EntryInfoResponse getParticipationInfo(Long eventId, Long courseId, Long paceId) {
-		eventRepository.findByIdOrThrow(eventId, BusinessErrorCode.EVENT_NOT_FOUND);
+	public EntryOverviewResponse getEntryOverview(Long userId, Long eventId) {
+		Event event = eventRepository.findEventWithCoursesAndPacesOrThrow(eventId, BusinessErrorCode.EVENT_NOT_FOUND);
 
-		EventCourse course = eventCourseRepository.findByIdAndEventIdOrThrow(courseId, eventId, BusinessErrorCode.EVENT_COURSE_NOT_FOUND);
+		List<EntryOverviewResponse.CourseOptionDto> courses = event.getCourses().stream()
+			.map(EntryOverviewResponse.CourseOptionDto::from)
+			.toList();
 
-		EventPace pace = eventPaceRepository.findByIdAndEventCourseIdOrThrow(paceId, courseId, BusinessErrorCode.EVENT_PACE_NOT_FOUND);
-
-		long entryCount = entryRepository.countByEventPaceIdAndStatusIn(
-			paceId, List.of(EntryStatus.PRE_SAVED, EntryStatus.APPLIED)
-		);
-
-		// TODO 계산 로직은 추후 분리 및 수정할 예정입니다(프론트 협업위해 가능 서비스 용도)
-		int capacity = pace.getCapacity();
-
-		double competitionRate = 0;
-		double fillRatePercent = 0;
-
-		if (capacity > 0) {
-			if (entryCount > capacity) {
-				competitionRate = Math.round((double) entryCount / capacity * 10) / 10.0;
-			} else {
-				fillRatePercent = Math.round((double) entryCount / capacity * 1000) / 10.0;
-			}
+		// 비로그인 사용자일 경우(코스/페이스 목록만 반환)
+		if (userId == null) {
+			return EntryOverviewResponse.builder()
+				.hasEntry(false)
+				.entry(null)
+				.courses(courses)
+				.rateInfo(null)
+				.build();
 		}
 
-		return EntryInfoResponse.builder()
-			.entryCount(entryCount)
-			.capacity(capacity)
-			.competitionRate(competitionRate)
-			.fillRatePercent(fillRatePercent)
-			.price(course.getPrice())
-			.build();
+		// 로그인 사용자(사전정보 조회 포함임)
+		return entryRepository.findByUserIdAndEventId(userId, eventId)
+			.map(entry -> {
+				EntryCountResult counts = entryRepository.countTotalAndAppliedByPaceId(entry.getEventPace().getId());
+
+				return EntryOverviewResponse.builder()
+					.hasEntry(true)
+					.entry(EntryOverviewResponse.EntryDto.from(entry))
+					.courses(courses)
+					.rateInfo(EntryOverviewResponse.RateInfoDto.of(
+						counts.totalCount(), counts.appliedCount(),
+						entry.getEventPace().getCapacity(), entry.getEventCourse().getPrice()
+					))
+					.build();
+			})
+			.orElseGet(() -> EntryOverviewResponse.builder()
+				.hasEntry(false)
+				.entry(null)
+				.courses(courses)
+				.rateInfo(null)
+				.build()
+			);
+	}
+
+	@ServiceLog(slowMs = 2000)
+	public EntryRateResponse getEntryRate(Long eventId, Long courseId, Long paceId) {
+		EventPace pace = eventPaceRepository.findWithCourseOrThrow(
+			paceId, courseId, eventId, BusinessErrorCode.ENTRY_PACE_NOT_FOUND
+		);
+
+		EntryCountResult counts = entryRepository.countTotalAndAppliedByPaceId(paceId);
+
+		return EntryRateResponse.of(counts.totalCount(), counts.appliedCount(), pace.getCapacity(), pace.getEventCourse().getPrice());
 	}
 
 	@ServiceLog(slowMs = 2000)
 	@Transactional
 	public Long deletePreSave(Long userId, Long eventId) {
-		//TODO : User 검증 추가
+		memberRepository.findByIdAndIsDeletedFalseOrThrow(userId, BusinessErrorCode.MEMBER_NOT_FOUND);
 
 		Entry entry = entryRepository.findByUserIdAndEventIdOrThrow(userId, eventId, BusinessErrorCode.ENTRY_NOT_FOUND);
 
