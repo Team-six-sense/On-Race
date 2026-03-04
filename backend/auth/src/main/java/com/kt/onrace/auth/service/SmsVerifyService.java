@@ -3,6 +3,7 @@ package com.kt.onrace.auth.service;
 import java.security.SecureRandom;
 import java.time.Duration;
 
+import org.redisson.api.RAtomicLong;
 import org.redisson.api.RBucket;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
@@ -36,6 +37,9 @@ public class SmsVerifyService {
 		if (userRepository.existsByPhoneNumber(phoneNumber)) {
 			throw new BusinessException(BusinessErrorCode.AUTH_DUPLICATE_PHONE);
 		}
+
+		redissonClient.getAtomicLong(redisKeyGenerator.smsVerifyAttemptKey(phoneNumber)).delete();
+
 		String code = generateCode();
 
 		RBucket<String> bucket = redissonClient.getBucket(redisKeyGenerator.smsVerifyCodeKey(phoneNumber),
@@ -57,6 +61,17 @@ public class SmsVerifyService {
 	}
 
 	public void verifyCode(String phoneNumber, String code) {
+		RAtomicLong attemptCounter = redissonClient.getAtomicLong(redisKeyGenerator.smsVerifyAttemptKey(phoneNumber));
+		long currentAttempts = attemptCounter.incrementAndGet();
+
+		if (currentAttempts == 1) {
+			attemptCounter.expire(Duration.ofMinutes(CODE_TTL_MINUTES));
+		}
+
+		if (currentAttempts > 5) {
+			throw new BusinessException(BusinessErrorCode.AUTH_TOO_MANY_VERIFY_ATTEMPTS);
+		}
+
 		RBucket<String> bucket = redissonClient.getBucket(redisKeyGenerator.smsVerifyCodeKey(phoneNumber),
 				StringCodec.INSTANCE);
 		String stored = bucket.get();
@@ -65,6 +80,7 @@ public class SmsVerifyService {
 			throw new BusinessException(BusinessErrorCode.AUTH_INVALID_PHONE_CODE);
 		}
 
+		attemptCounter.delete();
 		bucket.delete();
 
 		RBucket<String> verifiedBucket = redissonClient.getBucket(redisKeyGenerator.smsVerifiedKey(phoneNumber));
