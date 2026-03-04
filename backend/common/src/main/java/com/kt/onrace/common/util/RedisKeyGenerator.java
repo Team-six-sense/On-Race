@@ -36,4 +36,8 @@ public class RedisKeyGenerator {
 	public String smsVerifyAttemptKey(String phoneNumber) {
 		return String.format("sms:verify_attempt:%s", phoneNumber);
 	}
+
+	public String smsSendAttemptKey(String phoneNumber) {
+		return String.format("sms:send_attempt:%s", phoneNumber);
+	}
 }

@@ -38,6 +38,19 @@ public class SmsVerifyService {
 			throw new BusinessException(BusinessErrorCode.AUTH_DUPLICATE_PHONE);
 		}
 
+		RAtomicLong sendAttemptCounter = redissonClient.getAtomicLong(redisKeyGenerator.smsSendAttemptKey(phoneNumber));
+		long currentSendAttempts = sendAttemptCounter.incrementAndGet();
+
+		// 하루 단위로 전송 제한 (자정에 만료되도록 설정하는 것도 좋으나, 여기선 24시간 기준으로 설정)
+		if (currentSendAttempts == 1) {
+			sendAttemptCounter.expire(Duration.ofHours(24));
+		}
+
+		// 하루 최대 5회까지만 SMS 전송 허용
+		if (currentSendAttempts > 5) {
+			throw new BusinessException(BusinessErrorCode.AUTH_TOO_MANY_SEND_ATTEMPTS);
+		}
+
 		redissonClient.getAtomicLong(redisKeyGenerator.smsVerifyAttemptKey(phoneNumber)).delete();
 
 		String code = generateCode();
