@@ -36,8 +36,7 @@ public enum BusinessErrorCode implements ErrorCode {
 	AUTH_PASSWORD_RESET_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "AUTH_018", "비밀번호 재설정 요청 횟수를 초과했습니다. (5회/24시간)"),
 	AUTH_INVALID_PASSWORD_RESET_TOKEN(HttpStatus.BAD_REQUEST, "AUTH_019", "유효하지 않거나 만료된 비밀번호 재설정 링크입니다."),
 	AUTH_PASSWORD_RESET_NOT_VERIFIED(HttpStatus.BAD_REQUEST, "AUTH_020", "비밀번호 재설정 인증이 완료되지 않았습니다."),
-	AUTH_SAME_PASSWORD(HttpStatus.BAD_REQUEST, "AUTH_021", "기존 비밀번호와 동일한 비밀번호는 사용할없습니다."),
-
+	AUTH_SAME_PASSWORD(HttpStatus.BAD_REQUEST, "AUTH_021", "기존 비밀번호와 동일한 비밀번호는 사용할 수 없습니다."),
 	//MEDIA
 	MEDIA_UNSUPPORTED_CONTENT_TYPE(HttpStatus.BAD_REQUEST, "MDA_001", "허용되지 않은 Content_type 입니다."),
 	MEDIA_NOT_FOUND(HttpStatus.NOT_FOUND, "MDA_002", "미디어 정보를 찾을 수 없습니다."),

@@ -146,7 +146,7 @@ public class PasswordResetService {
 		message.setSubject("[On-Race] 비밀번호 재설정");
 		message.setText("아래 링크를 클릭하여 비밀번호를 재설정해 주세요.\n\n"
 			+ resetBaseUrl + "?token=" + token
-			+ "\n\n링크는 15분 후 만료됩니다.");
+			+ "\n\n링크는 " + RESET_TOKEN_TTL_MINUTES + "분 후 만료됩니다.");
 		mailSender.send(message);
 	}
 }
