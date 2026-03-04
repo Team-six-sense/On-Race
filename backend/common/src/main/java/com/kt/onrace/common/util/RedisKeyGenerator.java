@@ -39,5 +39,19 @@ public class RedisKeyGenerator {
 
 	public String passwordResetCountKey(String email, String date) {
 		return String.format("password:reset_count:%s:%s", email, date);
+	public String smsVerifyCodeKey(String phoneNumber) {
+		return String.format("sms:verify_code:%s", phoneNumber);
+	}
+
+	public String smsVerifiedKey(String phoneNumber) {
+		return String.format("sms:verified:%s", phoneNumber);
+	}
+
+	public String smsVerifyAttemptKey(String phoneNumber) {
+		return String.format("sms:verify_attempt:%s", phoneNumber);
+	}
+
+	public String smsSendAttemptKey(String phoneNumber) {
+		return String.format("sms:send_attempt:%s", phoneNumber);
 	}
 }
