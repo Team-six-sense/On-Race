@@ -19,8 +19,14 @@ public class User extends BaseEntity {
 	@Column(nullable = false, length = 100)
 	private String email;
 
+	@Column(nullable = false, length = 50)
+	private String name;
+
 	@Column(nullable = false, length = 20)
 	private String phoneNumber;
+
+	@Column(length = 20)
+	private String mobile;
 
 	@Column(nullable = false, length = 255)
 	private String password;
@@ -32,16 +38,17 @@ public class User extends BaseEntity {
 	@Column(nullable = false)
 	private boolean isDeleted;
 
-	private User(String email, String password, String phoneNumber) {
+	private User(String email, String name, String password, String phoneNumber) {
 		this.email = email;
+		this.name = name;
 		this.password = password;
 		this.phoneNumber = phoneNumber;
 		this.role = USER;
 		this.isDeleted = false;
 	}
 
-	public static User createUser(String email, String password, String phoneNumber) {
-		return new User(email, password, phoneNumber);
+	public static User createUser(String email, String name, String password, String phoneNumber) {
+		return new User(email, name, password, phoneNumber);
 	}
 
 	public void markDeleted() {
