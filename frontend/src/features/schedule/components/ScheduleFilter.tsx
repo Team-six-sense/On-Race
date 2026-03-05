@@ -14,11 +14,28 @@ import DualDateRangePicker from './filter/DualDateRangePicker';
 import { IoLocationOutline } from 'react-icons/io5';
 import { Input } from '@/components/ui/input';
 
-export function ScheduleFilter() {
+export function ScheduleFilter({
+  setSearchDistance,
+  setSearchDate,
+  setSearchLocation,
+  setSearchTerm,
+}: {
+  setSearchDistance: React.Dispatch<
+    React.SetStateAction<{ min: number; max: number }>
+  >;
+  setSearchDate: (range: {
+    start: Date | string | null;
+    end: Date | string | null;
+  }) => void;
+  setSearchLocation: React.Dispatch<React.SetStateAction<string>>;
+  setSearchTerm: React.Dispatch<React.SetStateAction<string>>;
+}) {
   // 하이드레이션 오류 방지를 위한 마운트 상태 관리
   const [mounted, setMounted] = useState(false);
 
-  const [range, setRange] = useState({ min: 0, max: 99 });
+  const [keyword, setKeyword] = useState<string>('');
+  const [location, setLocation] = useState<string>('all');
+  const [range, setRange] = useState({ min: 0, max: 100 });
   const [dateRange, setDateRange] = useState<{
     start: Date | null;
     end: Date | null;
@@ -34,23 +51,36 @@ export function ScheduleFilter() {
 
   const options = [
     { value: 'all', label: '전체' },
-    { value: 'location1', label: '서울' },
-    { value: 'location2', label: '인천' },
-    { value: 'location3', label: '대전' },
-    { value: 'location4', label: '광주' },
-    { value: 'location5', label: '부산' },
-    { value: 'location6', label: '대구' },
-    { value: 'location7', label: '울산' },
-    { value: 'location8', label: '경기' },
-    { value: 'location9', label: '강원' },
-    { value: 'location10', label: '충북' },
-    { value: 'location11', label: '충남' },
-    { value: 'location12', label: '전북' },
-    { value: 'location13', label: '전남' },
-    { value: 'location14', label: '경북' },
-    { value: 'location15', label: '경남' },
-    { value: 'location16', label: '제주' },
+    { value: '서울', label: '서울' },
+    { value: '인천', label: '인천' },
+    { value: '대전', label: '대전' },
+    { value: '광주', label: '광주' },
+    { value: '부산', label: '부산' },
+    { value: '대구', label: '대구' },
+    { value: '울산', label: '울산' },
+    { value: '경기', label: '경기' },
+    { value: '강원', label: '강원' },
+    { value: '충북', label: '충북' },
+    { value: '충남', label: '충남' },
+    { value: '전북', label: '전북' },
+    { value: '전남', label: '전남' },
+    { value: '경북', label: '경북' },
+    { value: '경남', label: '경남' },
+    { value: '제주', label: '제주' },
   ];
+
+  const applyFilter = () => {
+    setSearchDistance(range);
+    setSearchDate(dateRange);
+    setSearchLocation(location);
+    setSearchTerm(keyword);
+  };
+  const initFilter = () => {
+    setKeyword('');
+    setLocation('all');
+    setRange({ min: 0, max: 100 });
+    setDateRange({ start: null, end: null });
+  };
 
   // 아직 마운트되지 않았다면 껍데기(Skeleton) 혹은 null 반환
   if (!mounted) {
@@ -59,9 +89,8 @@ export function ScheduleFilter() {
 
   return (
     <div className="p-6 mb-6 bg-gray-50 rounded-sm">
-      <div className="grid grid-cols-3 space-y-4 gap-4 mb-2">
+      <div className="grid grid-cols-3 space-y-4 gap-4 mb-4">
         <div>
-          <label className="text-sm font-bold">거리</label>
           <DistanceSlider
             min={0}
             max={100}
@@ -75,7 +104,7 @@ export function ScheduleFilter() {
         </div>
         <div>
           <label className="text-sm font-bold">지역</label>
-          <Select>
+          <Select value={location} onValueChange={(val) => setLocation(val)}>
             <SelectTrigger
               variant="default"
               className="justify-between bg-white"
@@ -97,14 +126,24 @@ export function ScheduleFilter() {
 
         <div className="col-span-full space-y-2">
           <label className="text-sm font-bold">키워드</label>
-          <Input />
+          <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} />
         </div>
       </div>
       <div className="flex justify-end items-center gap-2  w-full">
-        <Button variant="primary2" rounded="full" size="fit">
+        <Button
+          variant="primary2"
+          rounded="full"
+          size="fit"
+          onClick={initFilter}
+        >
           필터 초기화
         </Button>
-        <Button variant="primary1" rounded="full" size="fit">
+        <Button
+          variant="primary1"
+          rounded="full"
+          size="fit"
+          onClick={applyFilter}
+        >
           검색하기
         </Button>
       </div>
