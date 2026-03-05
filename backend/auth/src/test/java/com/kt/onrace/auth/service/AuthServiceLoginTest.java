@@ -1,6 +1,7 @@
 package com.kt.onrace.auth.service;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.*;
 
 import java.util.Optional;
@@ -12,6 +13,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.redisson.api.RAtomicLong;
+import org.redisson.api.RedissonClient;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -20,11 +23,13 @@ import com.kt.onrace.auth.dto.LoginResponse;
 import com.kt.onrace.auth.dto.TokenRefreshRequest;
 import com.kt.onrace.auth.dto.TokenRefreshResponse;
 import com.kt.onrace.auth.entity.User;
+import com.kt.onrace.auth.repository.TermsRepository;
 import com.kt.onrace.auth.repository.UserRepository;
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
 import com.kt.onrace.common.security.JwtProperties;
 import com.kt.onrace.common.security.JwtTokenProvider;
+import com.kt.onrace.common.util.RedisKeyGenerator;
 
 @ExtendWith(MockitoExtension.class)
 class AuthServiceLoginTest {
@@ -34,6 +39,9 @@ class AuthServiceLoginTest {
 
 	@Mock
 	private UserRepository userRepository;
+
+	@Mock
+	private TermsRepository termsRepository;
 
 	@Mock
 	private PasswordEncoder passwordEncoder;
@@ -47,12 +55,26 @@ class AuthServiceLoginTest {
 	@Mock
 	private TokenStoreService tokenStoreService;
 
+	@Mock
+	private LoginHistoryService loginHistoryService;
+
+	@Mock
+	private RedissonClient redissonClient;
+
+	@Mock
+	private RedisKeyGenerator redisKeyGenerator;
+
+	@Mock
+	private RAtomicLong rAtomicLong;
+
 	private User testUser;
 
 	@BeforeEach
 	void setUp() {
 		testUser = User.createUser("test@test.com", "테스터", "encodedPw", "01012345678");
 		ReflectionTestUtils.setField(testUser, "id", 1L);
+		given(redissonClient.getAtomicLong(anyString())).willReturn(rAtomicLong);
+		given(rAtomicLong.get()).willReturn(0L);
 	}
 
 	// ── login ──────────────────────────────────────────────────
@@ -71,7 +93,7 @@ class AuthServiceLoginTest {
 		given(jwtProperties.getAccessTokenExpiration()).willReturn(300000L);
 
 		// when
-		LoginResponse response = authService.login(request);
+		LoginResponse response = authService.login(request, "127.0.0.1", "test-agent");
 
 		// then
 		assertThat(response.accessToken()).isEqualTo("access-token");
@@ -89,9 +111,10 @@ class AuthServiceLoginTest {
 		LoginRequest request = new LoginRequest("unknown@test.com", "password123!");
 
 		given(userRepository.findByEmailAndIsDeletedFalse("unknown@test.com")).willReturn(Optional.empty());
+		given(rAtomicLong.incrementAndGet()).willReturn(1L);
 
 		// when & then
-		assertThatThrownBy(() -> authService.login(request))
+		assertThatThrownBy(() -> authService.login(request, "127.0.0.1", "test-agent"))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(BusinessErrorCode.AUTH_NOT_FOUND_USER);
@@ -105,9 +128,10 @@ class AuthServiceLoginTest {
 
 		given(userRepository.findByEmailAndIsDeletedFalse("test@test.com")).willReturn(Optional.of(testUser));
 		given(passwordEncoder.matches("wrongPassword!", "encodedPw")).willReturn(false);
+		given(rAtomicLong.incrementAndGet()).willReturn(1L);
 
 		// when & then
-		assertThatThrownBy(() -> authService.login(request))
+		assertThatThrownBy(() -> authService.login(request, "127.0.0.1", "test-agent"))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(BusinessErrorCode.AUTH_INVALID_PASSWORD);
