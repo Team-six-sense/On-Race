@@ -2,8 +2,10 @@ package com.kt.onrace.auth.service;
 
 import java.security.SecureRandom;
 import java.time.Duration;
+import java.time.LocalDate;
 
 import org.redisson.api.RBucket;
+import org.redisson.api.RAtomicLong;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
 import org.springframework.mail.SimpleMailMessage;
@@ -21,8 +23,11 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class EmailVerifyService {
 
-	private static final long CODE_TTL_MINUTES = 5;
+	private static final long CODE_TTL_MINUTES = 15;
 	private static final long VERIFIED_TTL_MINUTES = 10;
+	private static final long COOLDOWN_SECONDS = 60;
+	private static final long MAX_SEND_COUNT = 5;
+	private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
 	private final RedissonClient redissonClient;
 	private final RedisKeyGenerator redisKeyGenerator;
@@ -33,18 +38,38 @@ public class EmailVerifyService {
 		if (userRepository.existsByEmail(email)) {
 			throw new BusinessException(BusinessErrorCode.AUTH_DUPLICATE_EMAIL);
 		}
+
+		RBucket<String> cooldownBucket = redissonClient.getBucket(
+			redisKeyGenerator.emailSendCooldownKey(email), StringCodec.INSTANCE);
+		if (cooldownBucket.isExists()) {
+			throw new BusinessException(BusinessErrorCode.AUTH_EMAIL_SEND_COOLDOWN);
+		}
+
+		String today = LocalDate.now().toString();
+		RAtomicLong counter = redissonClient.getAtomicLong(redisKeyGenerator.emailSendCountKey(email, today));
+		if (counter.get() >= MAX_SEND_COUNT) {
+			throw new BusinessException(BusinessErrorCode.AUTH_EMAIL_SEND_LIMIT_EXCEEDED);
+		}
+
 		String code = generateCode();
 
 		RBucket<String> bucket = redissonClient.getBucket(redisKeyGenerator.emailVerifyCodeKey(email),
-				StringCodec.INSTANCE);
+			StringCodec.INSTANCE);
 		bucket.set(code, Duration.ofMinutes(CODE_TTL_MINUTES));
+
+		cooldownBucket.set("1", Duration.ofSeconds(COOLDOWN_SECONDS));
+
+		long count = counter.incrementAndGet();
+		if (count == 1) {
+			counter.expire(Duration.ofDays(1));
+		}
 
 		sendEmail(email, code);
 	}
 
 	public void verifyCode(String email, String code) {
 		RBucket<String> bucket = redissonClient.getBucket(redisKeyGenerator.emailVerifyCodeKey(email),
-				StringCodec.INSTANCE);
+			StringCodec.INSTANCE);
 		String stored = bucket.get();
 
 		if (stored == null || !stored.equals(code)) {
@@ -66,14 +91,14 @@ public class EmailVerifyService {
 	}
 
 	private String generateCode() {
-		return String.format("%06d", new SecureRandom().nextInt(1_000_000));
+		return String.format("%04d", SECURE_RANDOM.nextInt(10_000));
 	}
 
 	private void sendEmail(String email, String code) {
 		SimpleMailMessage message = new SimpleMailMessage();
 		message.setTo(email);
 		message.setSubject("[On-Race] 이메일 인증 코드");
-		message.setText("인증 코드: " + code + "\n\n5분 이내에 입력해 주세요.");
+		message.setText("인증 코드: " + code + "\n\n15분 이내에 입력해 주세요.");
 		mailSender.send(message);
 	}
 }
