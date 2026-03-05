@@ -119,6 +119,30 @@ public class EventRepositoryImpl implements EventRepositoryCustom {
 	}
 
 	@Override
+	public Optional<Event> findEventWithCoursesAndPaces(Long id) {
+		Event foundEvent = queryFactory
+			.selectDistinct(event)
+			.from(event)
+			.leftJoin(event.courses, eventCourse).fetchJoin()
+			.where(event.id.eq(id).and(event.isDeleted.isFalse()))
+			.fetchOne();
+
+		if (foundEvent == null) {
+			return Optional.empty();
+		}
+
+		if (!foundEvent.getCourses().isEmpty()) {
+			queryFactory
+				.selectFrom(eventCourse)
+				.leftJoin(eventCourse.eventPaces, eventPace).fetchJoin()
+				.where(eventCourse.event.id.eq(foundEvent.getId()))
+				.fetch();
+		}
+
+		return Optional.of(foundEvent);
+	}
+
+	@Override
 	public Optional<Event> findVisibleEventDetail(Long id) {
 		BooleanBuilder builder = new BooleanBuilder();
 

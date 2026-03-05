@@ -63,7 +63,10 @@ public enum BusinessErrorCode implements ErrorCode {
 	STOCK_NOT_FOUND(HttpStatus.NOT_FOUND, "STK_001", "재고 정보를 찾을 수 없습니다."),
 
 	// SALES_INFO
-	SALES_INFO_NOT_FOUND(HttpStatus.NOT_FOUND, "SLS_001", "판매 정보를 찾을 수 없습니다.");
+	SALES_INFO_NOT_FOUND(HttpStatus.NOT_FOUND, "SLS_001", "판매 정보를 찾을 수 없습니다."),
+
+	// MEMBER
+	MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MBR_001", "회원을 찾을 수 없습니다.");
 
 	private final HttpStatus status;
 	private final String code;
