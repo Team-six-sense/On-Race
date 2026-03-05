@@ -98,10 +98,7 @@ public class ApiLogAspect {
 	}
 
 	private String getFullUrl(HttpServletRequest request) {
-		String url = request.getRequestURI();
-		String queryString = request.getQueryString();
-
-		return queryString != null ? url + "?" + queryString : url;
+		return request.getRequestURI();
 	}
 
 	private int getStatusCode(Object result) {

@@ -48,6 +48,9 @@ api:
   url:
     main: ${MAIN_SERVICE_URI}
 
+app:
+  password-reset:
+    base-url: ${PASSWORD_RESET_BASE_URL:http://localhost:3000/password/reset}
 solapi:
   api-key: ${SOLAPI_API_KEY:dummy_key}
   api-secret: ${SOLAPI_API_SECRET:dummy_secret}

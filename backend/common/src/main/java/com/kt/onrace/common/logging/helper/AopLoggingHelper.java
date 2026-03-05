@@ -8,7 +8,10 @@ import java.util.Set;
 
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.reflect.MethodSignature;
+import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.stereotype.Component;
+
+import com.kt.onrace.common.logging.annotation.SensitiveLog;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,6 +32,7 @@ public class AopLoggingHelper {
 		MethodSignature signature = (MethodSignature)joinPoint.getSignature();
 		String[] paramNames = signature.getParameterNames();
 		Object[] args = joinPoint.getArgs();
+		java.lang.reflect.Parameter[] parameters = signature.getMethod().getParameters();
 
 		Set<String> declaredNames = new HashSet<>();
 		List<String> allParams = new ArrayList<>();
@@ -40,9 +44,15 @@ public class AopLoggingHelper {
 
 				declaredNames.add(name);
 
-				if (!isHttpRelated(value)) {
-					allParams.add(name + "=" + formatValue(value));
+				if (isHttpRelated(value)) {
+					continue;
 				}
+
+				if (isSensitive(parameters[i], value)) {
+					continue;
+				}
+
+				allParams.add(name + "=" + formatValue(value));
 			}
 		}
 
@@ -74,6 +84,16 @@ public class AopLoggingHelper {
 			// JSON 변환 실패 시 클래스명@해시코드
 			return value.getClass().getSimpleName() + "@" + Integer.toHexString(value.hashCode());
 		}
+	}
+
+	private boolean isSensitive(java.lang.reflect.Parameter parameter, Object value) {
+		if (parameter.isAnnotationPresent(SensitiveLog.class)) {
+			return true;
+		}
+		if (value != null && AnnotationUtils.findAnnotation(value.getClass(), SensitiveLog.class) != null) {
+			return true;
+		}
+		return false;
 	}
 
 	private boolean isHttpRelated(Object value) {
