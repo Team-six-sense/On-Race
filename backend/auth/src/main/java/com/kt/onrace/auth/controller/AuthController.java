@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 import com.kt.onrace.auth.dto.LoginRequest;
 import com.kt.onrace.auth.dto.LoginResponse;
 import com.kt.onrace.auth.dto.SignupRequest;
@@ -42,8 +44,10 @@ public class AuthController extends SwaggerAssistance {
 
 	@Operation(summary = "로그인", description = "이메일, 비밀번호로 로그인 후 Access Token, Refresh Token 발급")
 	@PostMapping("/login")
-	public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-		LoginResponse response = authService.login(request);
+	public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
+		String loginIp = httpRequest.getRemoteAddr();
+		String loginAgent = httpRequest.getHeader("User-Agent");
+		LoginResponse response = authService.login(request, loginIp, loginAgent);
 		return ApiResponse.success(response);
 	}
 

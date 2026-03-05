@@ -12,6 +12,9 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
+import com.kt.onrace.auth.entity.EmailSend;
+import com.kt.onrace.auth.entity.EmailSendType;
+import com.kt.onrace.auth.repository.EmailSendRepository;
 import com.kt.onrace.auth.repository.UserRepository;
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
@@ -33,6 +36,7 @@ public class EmailVerifyService {
 	private final RedisKeyGenerator redisKeyGenerator;
 	private final JavaMailSender mailSender;
 	private final UserRepository userRepository;
+	private final EmailSendRepository emailSendRepository;
 
 	public void sendCode(String email) {
 		if (userRepository.existsByEmail(email)) {
@@ -64,7 +68,13 @@ public class EmailVerifyService {
 			counter.expire(Duration.ofDays(1));
 		}
 
-		sendEmail(email, code);
+		try {
+			sendEmail(email, code);
+			emailSendRepository.save(EmailSend.success(email, EmailSendType.EMAIL_VERIFY));
+		} catch (Exception e) {
+			emailSendRepository.save(EmailSend.fail(email, EmailSendType.EMAIL_VERIFY, e.getMessage()));
+			throw e;
+		}
 	}
 
 	public void verifyCode(String email, String code) {
