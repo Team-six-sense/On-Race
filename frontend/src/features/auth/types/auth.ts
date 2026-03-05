@@ -1,17 +1,17 @@
-export interface SocialLoginRequest {
+export interface SignupResponse {
+  id: number;
   email: string;
-  name: string;
-  provider: 'google' | 'kakao' | 'naver';
-  accessToken: string; // 소셜 서버에서 받은 토큰
+  createAt: string;
 }
 
 export interface LoginResponse {
-  accessToken: string; // Spring에서 발급한 JWT
+  accessToken: string;
   refreshToken: string;
-  user: {
-    id: number;
-    email: string;
-    name: string;
-    role: string;
-  };
+  tokenType: string;
+  expiresIn: number;
+}
+
+export interface AccessTokenResponse {
+  accessToken: string;
+  expiresIn: number;
 }

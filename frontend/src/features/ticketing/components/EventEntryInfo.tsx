@@ -33,7 +33,7 @@ export function EventEntryInfo({
   const [selectedPace, setSelectedPace] = useState('');
 
   const isClosed = event.status === 'CLOSED';
-  const isEntry = event.type === 'LOTTERY';
+  const isEntry = event.type === 'LOTTERY' && isClosed;
 
   const getHeaderText = () => {
     if (event.status === 'UPCOMING') return '빠른 신청 준비하기';
