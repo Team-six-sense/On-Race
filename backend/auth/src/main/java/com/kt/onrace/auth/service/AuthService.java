@@ -1,7 +1,10 @@
 package com.kt.onrace.auth.service;
 
+import java.time.Duration;
 import java.util.Date;
 
+import org.redisson.api.RAtomicLong;
+import org.redisson.api.RedissonClient;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,12 +17,15 @@ import com.kt.onrace.auth.dto.SignupResponse;
 import com.kt.onrace.auth.dto.TokenRefreshRequest;
 import com.kt.onrace.auth.dto.TokenRefreshResponse;
 import com.kt.onrace.auth.dto.WithdrawRequest;
+import com.kt.onrace.auth.entity.Terms;
 import com.kt.onrace.auth.entity.User;
+import com.kt.onrace.auth.repository.TermsRepository;
 import com.kt.onrace.auth.repository.UserRepository;
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
 import com.kt.onrace.common.security.JwtProperties;
 import com.kt.onrace.common.security.JwtTokenProvider;
+import com.kt.onrace.common.util.RedisKeyGenerator;
 
 import lombok.RequiredArgsConstructor;
 
@@ -27,7 +33,13 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AuthService {
 
+	private static final long LOGIN_FAIL_WARNING_THRESHOLD = 5;
+	private static final long LOGIN_FAIL_CAPTCHA_THRESHOLD = 10;
+	private static final long LOGIN_FAIL_TTL_MINUTES = 30;
+	private static final String TERMS_VERSION = "1.0";
+
 	private final UserRepository userRepository;
+	private final TermsRepository termsRepository;
 	private final MainServiceClient mainServiceClient;
 	private final PasswordEncoder passwordEncoder;
 	private final JwtTokenProvider jwtTokenProvider;
@@ -35,6 +47,9 @@ public class AuthService {
 	private final TokenStoreService tokenStoreService;
 	private final EmailVerifyService emailVerifyService;
 	private final SmsVerifyService smsVerifyService;
+	private final LoginHistoryService loginHistoryService;
+	private final RedissonClient redissonClient;
+	private final RedisKeyGenerator redisKeyGenerator;
 
 	@Transactional
 	public SignupResponse signup(SignupRequest request) {
@@ -64,6 +79,14 @@ public class AuthService {
 
 		User saved = userRepository.save(user);
 
+		termsRepository.save(Terms.create(
+				saved.getId(),
+				request.isAgreed1(),
+				request.isAgreed2(),
+				request.isAgreed3(),
+				request.isAgreed4(),
+				TERMS_VERSION));
+
 		mainServiceClient.syncUserCreated(saved.getId());
 
 		emailVerifyService.deleteVerified(request.email());
@@ -73,22 +96,60 @@ public class AuthService {
 	}
 
 	@Transactional(readOnly = true)
-	public LoginResponse login(LoginRequest request) {
-		User user = userRepository.findByEmailAndIsDeletedFalse(request.email())
-				.orElseThrow(() -> new BusinessException(BusinessErrorCode.AUTH_NOT_FOUND_USER));
+	public LoginResponse login(LoginRequest request, String loginIp, String loginAgent) {
+		checkLoginFailCount(request.email());
 
-		if (!passwordEncoder.matches(request.password(), user.getPassword())) {
-			throw new BusinessException(BusinessErrorCode.AUTH_INVALID_PASSWORD);
+		try {
+			User user = userRepository.findByEmailAndIsDeletedFalse(request.email())
+					.orElseThrow(() -> new BusinessException(BusinessErrorCode.AUTH_NOT_FOUND_USER));
+
+			if (!passwordEncoder.matches(request.password(), user.getPassword())) {
+				throw new BusinessException(BusinessErrorCode.AUTH_INVALID_PASSWORD);
+			}
+
+			String accessToken = jwtTokenProvider.generateAccessToken(
+					user.getId(), user.getEmail(), user.getRole().name());
+			String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
+
+			tokenStoreService.saveRefreshToken(
+					user.getId(), refreshToken, jwtProperties.getRefreshTokenExpiration());
+
+			resetLoginFailCount(request.email());
+			loginHistoryService.recordSuccess(user.getId(), loginIp, loginAgent);
+
+			return new LoginResponse(accessToken, refreshToken, "Bearer", jwtProperties.getAccessTokenExpiration());
+
+		} catch (BusinessException e) {
+			if (e.getErrorCode() == BusinessErrorCode.AUTH_NOT_FOUND_USER
+					|| e.getErrorCode() == BusinessErrorCode.AUTH_INVALID_PASSWORD) {
+				incrementLoginFailCount(request.email());
+				loginHistoryService.recordFail(loginIp, loginAgent, e.getErrorCode().getMessage());
+			}
+			throw e;
 		}
+	}
 
-		String accessToken = jwtTokenProvider.generateAccessToken(
-				user.getId(), user.getEmail(), user.getRole().name());
-		String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
+	private void checkLoginFailCount(String email) {
+		RAtomicLong counter = redissonClient.getAtomicLong(redisKeyGenerator.loginFailCountKey(email));
+		long count = counter.get();
+		if (count >= LOGIN_FAIL_CAPTCHA_THRESHOLD) {
+			throw new BusinessException(BusinessErrorCode.AUTH_LOGIN_FAIL_CAPTCHA);
+		}
+		if (count >= LOGIN_FAIL_WARNING_THRESHOLD) {
+			throw new BusinessException(BusinessErrorCode.AUTH_LOGIN_FAIL_WARNING);
+		}
+	}
 
-		tokenStoreService.saveRefreshToken(
-				user.getId(), refreshToken, jwtProperties.getRefreshTokenExpiration());
+	private void incrementLoginFailCount(String email) {
+		RAtomicLong counter = redissonClient.getAtomicLong(redisKeyGenerator.loginFailCountKey(email));
+		long count = counter.incrementAndGet();
+		if (count == 1) {
+			counter.expire(Duration.ofMinutes(LOGIN_FAIL_TTL_MINUTES));
+		}
+	}
 
-		return new LoginResponse(accessToken, refreshToken, "Bearer", jwtProperties.getAccessTokenExpiration());
+	private void resetLoginFailCount(String email) {
+		redissonClient.getAtomicLong(redisKeyGenerator.loginFailCountKey(email)).delete();
 	}
 
 	@Transactional(readOnly = true)
