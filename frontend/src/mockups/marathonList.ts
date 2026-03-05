@@ -98,7 +98,7 @@ export const MARATHON_LIST: MarathonList = {
     {
       id: 4,
       title: '제주 올레길 마라톤',
-      status: 'UPCOMING',
+      status: 'CLOSED',
       type: 'FIRST_COME',
       category: 'CLASS',
       thumbnailImg: '/image/default.png',

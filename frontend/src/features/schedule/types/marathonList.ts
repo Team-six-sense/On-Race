@@ -28,7 +28,7 @@ export interface Course {
 export interface MarathonEvent {
   id: number;
   title: string;
-  status: 'UPCOMING' | 'OPEN' | 'CLOSED'; // API 명세에 따른 상태값들
+  status: 'UPCOMING' | 'OPEN' | 'CLOSED' | 'RESULT'; // API 명세에 따른 상태값들
   type: 'LOTTERY' | 'FIRST_COME'; // 응모 방식
   thumbnailImg: string;
   eventAt: string; // ISO 8601

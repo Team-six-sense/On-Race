@@ -45,7 +45,8 @@ export type CategoryId =
 const STATUS_MAP: Record<string, string> = {
   UPCOMING: '오픈 대기',
   OPEN: '신청중',
-  CLOSED: '신청 마감',
+  CLOSED: '모집 마감',
+  RESULT: '모집 마감',
 };
 
 const TYPE_MAP: Record<string, string> = {

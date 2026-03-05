@@ -19,6 +19,11 @@ export function EntryInfo({ event }: { event: MarathonEvent }) {
     return '선착순 신청';
   };
 
+  const recruitmentStatus = () => {
+    if (event.status === 'CLOSED' || event.status === 'RESULT') return '마감';
+    return 'N일 N시간 남음';
+  };
+
   // 아직 마운트되지 않았다면 껍데기(Skeleton) 혹은 null 반환
   if (!mounted) {
     return <div className="mb-6 min-h-[100px]" />; // 레이아웃 시프트를 방지하기 위해 최소 높이 설정
@@ -89,7 +94,7 @@ export function EntryInfo({ event }: { event: MarathonEvent }) {
               <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">
                 모집 현황
               </p>
-              <p className="text-lg font-bold">N일 N시간 남음</p>
+              <p className="text-lg font-bold">{recruitmentStatus()}</p>
             </div>
 
             {/* 중앙 구분선 */}

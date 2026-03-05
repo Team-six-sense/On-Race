@@ -18,7 +18,6 @@ import {
 export default function MarathonSchedulePage() {
   const router = useRouter();
   const [events, setEvents] = useState<MarathonEvent[]>([]);
-  const [selected, setSelected] = useState('all');
 
   // 데이터 로드
   useEffect(() => {
@@ -34,8 +33,15 @@ export default function MarathonSchedulePage() {
     fetchData();
   }, []);
 
-  const { searchTerm, setSearchTerm, filteredEvents } =
-    useMarathonFilter(events);
+  const {
+    searchCategory,
+    setSearchLocation,
+    setSearchTerm,
+    setSearchDistance,
+    setSearchDate,
+    setSearchCategory,
+    filteredEvents,
+  } = useMarathonFilter(events);
 
   return (
     <div className="min-h-screen bg-primary1">
@@ -50,7 +56,12 @@ export default function MarathonSchedulePage() {
       </header>
 
       <main className="max-w-[1100px] mx-auto px-6 pt-6 pb-20 space-y-8">
-        <ScheduleFilter />
+        <ScheduleFilter
+          setSearchTerm={setSearchTerm}
+          setSearchDate={setSearchDate}
+          setSearchLocation={setSearchLocation}
+          setSearchDistance={setSearchDistance}
+        />
 
         <div className="flex flex-wrap gap-2">
           {CATEGORIES.map((category) => (
@@ -59,10 +70,12 @@ export default function MarathonSchedulePage() {
               variant="outline"
               size="fit"
               rounded="full"
-              onClick={() => setSelected(category.id)}
+              onClick={() => {
+                setSearchCategory(category.id);
+              }}
               className={`
             ${
-              selected === category.id
+              searchCategory === category.id
                 ? 'border-2! border-black' // 선택되었을 때 스타일
                 : 'border-gray-400' // 비선택 스타일
             }

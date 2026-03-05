@@ -1,8 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { getStatusLabel, getCategoryLabel } from '@/types/constants';
+import {
+  getStatusLabel,
+  getCategoryLabel,
+  getTypeLabel,
+} from '@/types/constants';
 import { MarathonEvent } from '@/features/schedule/types';
 import { Button } from '@/components/ui/button';
 import { LuChevronLeft, LuShare } from 'react-icons/lu';
@@ -21,14 +24,16 @@ export function EventEntryInfo({
   setIsUserModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
   // 하이드레이션 오류 방지를 위한 마운트 상태 관리
-  const params = useParams();
-  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [actionCard, setActionCard] = useState<Boolean>(false);
+  const [resultCard, setResultCard] = useState<Boolean>(false);
 
   // 상태 관리: 코스 및 페이스 선택
   const [selectedCourse, setSelectedCourse] = useState('');
   const [selectedPace, setSelectedPace] = useState('');
+
+  const isClosed = event.status === 'CLOSED';
+  const isEntry = event.type === 'LOTTERY';
 
   const getHeaderText = () => {
     if (event.status === 'UPCOMING') return '빠른 신청 준비하기';
@@ -68,6 +73,10 @@ export function EventEntryInfo({
       <div className="flex gap-2">
         <div className="text-sm font-semibold bg-gray-100 text-gray-600 px-2 py-0.5 rounded-sm">
           {getCategoryLabel(event.category)}
+        </div>
+
+        <div className="text-sm font-semibold bg-gray-100 text-gray-600 px-2 py-0.5 rounded-sm">
+          {getTypeLabel(event.type)}
         </div>
 
         <div className="text-sm font-semibold bg-gray-100 text-gray-600 px-2 py-0.5 rounded-sm">
@@ -124,14 +133,100 @@ export function EventEntryInfo({
           </div>
         )}
 
-        {!actionCard && (
+        {resultCard && (
+          <div className="p-4 space-y-4 border border-gray-200 rounded-sm">
+            <div className="flex flex-row items-center">
+              <Button
+                variant="ghost"
+                size="fit"
+                onClick={() => setResultCard(false)}
+              >
+                <LuChevronLeft size={20} />
+              </Button>
+              <h2 className="text-lg font-bold text-gray-900">결과 보기</h2>
+            </div>
+
+            <section>
+              <div className="flex flex-col items-center justify-center py-6 space-y-2">
+                <p className="font-bold">당첨을 축하합니다 🎉</p>
+                <p className="text-xl font-bold text-red-600">
+                  2026.04.01 (일) 까지
+                </p>
+                <p>결제를 완료해주세요</p>
+              </div>
+            </section>
+
+            <section>
+              <div className="flex justify-between items-center">
+                <label className="text-sm font-semibold text-gray-700">
+                  예상 결제 금액
+                </label>
+              </div>
+              <div className="rounded-xl p-4 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">10km, 5'30"/km</span>
+                  <span className="text-gray-900 font-medium">50,000원</span>
+                </div>
+              </div>
+            </section>
+
+            <section>
+              <div className="flex justify-between items-center">
+                <label className="text-sm font-semibold text-gray-700">
+                  추가 가능한 옵션
+                </label>
+              </div>
+              <div className="rounded-xl p-4 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">키링</span>
+                  <span className="text-gray-900 font-medium">+7,900원</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">키링 + 텀블러</span>
+                  <span className="text-gray-900 font-medium">+14,000원</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">
+                    키링 + 텀블러 + 후드집업
+                  </span>
+                  <span className="text-gray-900 font-medium">+32,000원</span>
+                </div>
+              </div>
+            </section>
+
+            <EntryNotice />
+
+            <Button
+              variant="primary1"
+              rounded="full"
+              onClick={() => handleAction()}
+            >
+              결제하기
+            </Button>
+          </div>
+        )}
+
+        {!actionCard && !isEntry && (
           <div>
             <Button
+              disabled={isClosed}
               variant="primary1"
               rounded="full"
               onClick={() => setActionCard((prev) => !prev)}
             >
               {getHeaderText()}
+            </Button>
+          </div>
+        )}
+
+        {!resultCard && isEntry && (
+          <div>
+            <Button
+              variant="primary1"
+              rounded="full"
+              onClick={() => setResultCard((prev) => !prev)}
+            >
+              결과보기
             </Button>
           </div>
         )}
