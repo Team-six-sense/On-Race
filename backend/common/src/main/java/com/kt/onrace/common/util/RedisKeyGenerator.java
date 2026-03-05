@@ -45,6 +45,10 @@ public class RedisKeyGenerator {
 		return String.format("email:send_cooldown:%s", email);
 	}
 
+	public String loginFailCountKey(String email) {
+		return String.format("login:fail_count:%s", email);
+	}
+
 	public String emailSendCountKey(String email, String date) {
 		return String.format("email:send_count:%s:%s", email, date);
 	}

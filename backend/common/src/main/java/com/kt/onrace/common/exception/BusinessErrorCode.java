@@ -44,6 +44,8 @@ public enum BusinessErrorCode implements ErrorCode {
 	AUTH_PHONE_NOT_VERIFIED(HttpStatus.BAD_REQUEST, "AUTH_026", "휴대폰 인증이 완료되지 않았습니다."),
 	AUTH_EMAIL_SEND_COOLDOWN(HttpStatus.TOO_MANY_REQUESTS, "AUTH_027", "재발송은 1분 후에 가능합니다."),
 	AUTH_EMAIL_SEND_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "AUTH_028", "인증 이메일 발송 횟수를 초과했습니다. (5회/24시간)"),
+	AUTH_LOGIN_FAIL_WARNING(HttpStatus.UNAUTHORIZED, "AUTH_029", "로그인 5회 연속 실패했습니다. 잠시 후 다시 시도해주세요."),
+	AUTH_LOGIN_FAIL_CAPTCHA(HttpStatus.UNAUTHORIZED, "AUTH_030", "비정상적인 로그인 시도가 감지되었습니다. CAPTCHA를 완료해주세요."),
 
 	// MEDIA
 	MEDIA_UNSUPPORTED_CONTENT_TYPE(HttpStatus.BAD_REQUEST, "MDA_001", "허용되지 않은 Content_type 입니다."),
