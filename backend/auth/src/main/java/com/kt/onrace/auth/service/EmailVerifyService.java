@@ -27,6 +27,7 @@ public class EmailVerifyService {
 	private static final long VERIFIED_TTL_MINUTES = 10;
 	private static final long COOLDOWN_SECONDS = 60;
 	private static final long MAX_SEND_COUNT = 5;
+	private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
 	private final RedissonClient redissonClient;
 	private final RedisKeyGenerator redisKeyGenerator;
@@ -39,7 +40,7 @@ public class EmailVerifyService {
 		}
 
 		RBucket<String> cooldownBucket = redissonClient.getBucket(
-				redisKeyGenerator.emailSendCooldownKey(email), StringCodec.INSTANCE);
+			redisKeyGenerator.emailSendCooldownKey(email), StringCodec.INSTANCE);
 		if (cooldownBucket.isExists()) {
 			throw new BusinessException(BusinessErrorCode.AUTH_EMAIL_SEND_COOLDOWN);
 		}
@@ -53,7 +54,7 @@ public class EmailVerifyService {
 		String code = generateCode();
 
 		RBucket<String> bucket = redissonClient.getBucket(redisKeyGenerator.emailVerifyCodeKey(email),
-				StringCodec.INSTANCE);
+			StringCodec.INSTANCE);
 		bucket.set(code, Duration.ofMinutes(CODE_TTL_MINUTES));
 
 		cooldownBucket.set("1", Duration.ofSeconds(COOLDOWN_SECONDS));
@@ -68,7 +69,7 @@ public class EmailVerifyService {
 
 	public void verifyCode(String email, String code) {
 		RBucket<String> bucket = redissonClient.getBucket(redisKeyGenerator.emailVerifyCodeKey(email),
-				StringCodec.INSTANCE);
+			StringCodec.INSTANCE);
 		String stored = bucket.get();
 
 		if (stored == null || !stored.equals(code)) {
@@ -90,7 +91,7 @@ public class EmailVerifyService {
 	}
 
 	private String generateCode() {
-		return String.format("%04d", new SecureRandom().nextInt(10_000));
+		return String.format("%04d", SECURE_RANDOM.nextInt(10_000));
 	}
 
 	private void sendEmail(String email, String code) {
