@@ -47,7 +47,7 @@ public class EntryService {
 	public EntryPreSaveResponse savePreSave(Long userId, Long eventId, EntryCoursePaceRequest request) {
 		memberRepository.findByIdAndIsDeletedFalseOrThrow(userId, BusinessErrorCode.MEMBER_NOT_FOUND);
 
-		Event event = eventRepository.findByIdOrThrow(eventId, BusinessErrorCode.EVENT_NOT_FOUND);
+		Event event = eventRepository.findByIdAndIsViewTrueAndIsDeletedFalseOrThrow(eventId, BusinessErrorCode.EVENT_NOT_FOUND);
 
 		Preconditions.validate(event.getStatus() == EventStatus.READY, BusinessErrorCode.EVENT_NOT_IN_STANDBY);
 

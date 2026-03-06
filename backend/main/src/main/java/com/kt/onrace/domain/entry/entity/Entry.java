@@ -61,13 +61,11 @@ public class Entry extends BaseEntity {
 	public void updatePreSave(EventCourse eventCourse, EventPace eventPace) {
 		this.eventCourse = eventCourse;
 		this.eventPace = eventPace;
-		this.updatedAt = LocalDateTime.now();
 	}
 
 	public void apply(EventCourse eventCourse, EventPace eventPace) {
 		this.eventCourse = eventCourse;
 		this.eventPace = eventPace;
 		this.status = EntryStatus.APPLIED;
-		this.updatedAt = LocalDateTime.now();
 	}
 }
