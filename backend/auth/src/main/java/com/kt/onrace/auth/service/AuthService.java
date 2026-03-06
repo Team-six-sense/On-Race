@@ -95,7 +95,7 @@ public class AuthService {
 		return new SignupResponse(saved.getId(), saved.getEmail(), saved.getCreatedAt());
 	}
 
-	@Transactional(readOnly = true)
+	@Transactional
 	public LoginResponse login(LoginRequest request, String loginIp, String loginAgent) {
 		checkLoginFailCount(request.email());
 
