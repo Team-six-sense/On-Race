@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.logging.annotation.ServiceLog;
 import com.kt.onrace.common.response.CursorResponse;
+import com.kt.onrace.domain.event.dto.EventCursorData;
 import com.kt.onrace.domain.event.dto.EventDetailResponse;
 import com.kt.onrace.domain.event.dto.EventListResponse;
 import com.kt.onrace.domain.event.dto.EventSalesInfoResponse;
@@ -27,13 +28,13 @@ public class EventService {
 
 	@ServiceLog
 	public CursorResponse<EventListResponse> getEvents(EventSearchRequest request) {
-		int fetchSize = request.cursor().getValidSize();
+		int fetchSize = request.getValidSize();
 
-		return CursorResponse.of(
+		return CursorResponse.ofKeyset(
 			eventRepository.findVisibleEvents(request, fetchSize),
 			fetchSize,
 			EventListResponse::from,
-			EventListResponse::id
+			response -> EventCursorData.from(response).encode()
 		);
 	}
 
