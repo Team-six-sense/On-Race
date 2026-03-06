@@ -1,5 +1,7 @@
 package com.kt.onrace.domain.entry.entity;
 
+import java.time.LocalDateTime;
+
 import com.kt.onrace.common.entity.BaseEntity;
 import com.kt.onrace.domain.event.entity.Event;
 import com.kt.onrace.domain.event.entity.EventCourse;
@@ -59,5 +61,13 @@ public class Entry extends BaseEntity {
 	public void updatePreSave(EventCourse eventCourse, EventPace eventPace) {
 		this.eventCourse = eventCourse;
 		this.eventPace = eventPace;
+		this.updatedAt = LocalDateTime.now();
+	}
+
+	public void apply(EventCourse eventCourse, EventPace eventPace) {
+		this.eventCourse = eventCourse;
+		this.eventPace = eventPace;
+		this.status = EntryStatus.APPLIED;
+		this.updatedAt = LocalDateTime.now();
 	}
 }

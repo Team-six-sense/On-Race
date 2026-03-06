@@ -57,6 +57,7 @@ public enum BusinessErrorCode implements ErrorCode {
 	EVENT_COURSE_NOT_FOUND(HttpStatus.NOT_FOUND, "EVT_003", "해당 이벤트의 코스를 찾을 수 없습니다."),
 	EVENT_PACE_NOT_FOUND(HttpStatus.NOT_FOUND, "EVT_004", "해당 코스의 페이스를 찾을 수 없습니다."),
 	EVENT_PRE_SAVE_NOT_FOUND(HttpStatus.NOT_FOUND, "EVT_005", "사전정보를 찾을 수 없습니다."),
+	EVENT_NOT_IN_PROGRESS(HttpStatus.BAD_REQUEST, "EVT_006", "진행중인 이벤트가 아닙니다."),
 
 	// ADDRESS
 	ADDRESS_NOT_FOUND(HttpStatus.NOT_FOUND, "ADR_001", "배송지를 찾을 수 없습니다."),
@@ -66,6 +67,9 @@ public enum BusinessErrorCode implements ErrorCode {
 	ENTRY_COURSE_NOT_FOUND(HttpStatus.NOT_FOUND, "ENT_002", "해당 이벤트의 코스를 찾을 수 없습니다."),
 	ENTRY_PACE_NOT_FOUND(HttpStatus.NOT_FOUND, "ENT_003", "해당 코스의 페이스를 찾을 수 없습니다."),
 	ENTRY_EVENT_NOT_IN_STANDBY(HttpStatus.BAD_REQUEST, "ENT_004", "대기중 상태에서만 가능합니다."),
+	ENTRY_NOT_IN_PERIOD(HttpStatus.BAD_REQUEST, "ENT_005", "신청 기간이 아닙니다."),
+	ENTRY_ALREADY_APPLIED(HttpStatus.BAD_REQUEST, "ENT_006", "이미 신청한 이벤트입니다."),
+	ENTRY_CANNOT_APPLY(HttpStatus.BAD_REQUEST, "ENT_007", "신청할 수 없는 상태입니다."),
 
 	// STOCK
 	STOCK_NOT_FOUND(HttpStatus.NOT_FOUND, "STK_001", "재고 정보를 찾을 수 없습니다."),

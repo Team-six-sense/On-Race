@@ -1,5 +1,7 @@
 package com.kt.onrace.domain.event.repository;
 
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.kt.onrace.common.exception.BusinessException;
@@ -10,4 +12,10 @@ public interface EventRepository extends JpaRepository<Event, Long>, EventReposi
 	default Event findByIdOrThrow(Long id, ErrorCode errorCode) {
 		return findById(id).orElseThrow(() -> new BusinessException(errorCode));
 	}
+
+	default Event findByIdAndIsViewTrueAndIsDeletedFalseOrThrow(Long id, ErrorCode errorCode) {
+		return findByIdAndIsViewTrueAndIsDeletedFalse(id).orElseThrow(() -> new BusinessException(errorCode));
+	}
+
+	Optional<Event> findByIdAndIsViewTrueAndIsDeletedFalse(Long id);
 }

@@ -1,15 +1,18 @@
 package com.kt.onrace.domain.entry.service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.kt.onrace.common.exception.BusinessErrorCode;
+import com.kt.onrace.common.exception.BusinessException;
 import com.kt.onrace.common.logging.annotation.ServiceLog;
 import com.kt.onrace.common.util.Preconditions;
+import com.kt.onrace.domain.entry.dto.EntryApplyResponse;
 import com.kt.onrace.domain.entry.dto.EntryOverviewResponse;
-import com.kt.onrace.domain.entry.dto.EntryPreSaveRequest;
+import com.kt.onrace.domain.entry.dto.EntryCoursePaceRequest;
 import com.kt.onrace.domain.entry.dto.EntryPreSaveResponse;
 import com.kt.onrace.domain.entry.dto.EntryRateResponse;
 import com.kt.onrace.domain.entry.entity.Entry;
@@ -17,6 +20,7 @@ import com.kt.onrace.domain.entry.entity.EntryStatus;
 import com.kt.onrace.domain.entry.dto.EntryCountResult;
 import com.kt.onrace.domain.entry.repository.EntryRepository;
 import com.kt.onrace.domain.event.entity.Event;
+import com.kt.onrace.domain.event.entity.EventAppType;
 import com.kt.onrace.domain.event.entity.EventCourse;
 import com.kt.onrace.domain.event.entity.EventPace;
 import com.kt.onrace.domain.event.entity.EventStatus;
@@ -40,7 +44,7 @@ public class EntryService {
 
 	@ServiceLog(slowMs = 2000)
 	@Transactional
-	public EntryPreSaveResponse savePreSave(Long userId, Long eventId, EntryPreSaveRequest request) {
+	public EntryPreSaveResponse savePreSave(Long userId, Long eventId, EntryCoursePaceRequest request) {
 		memberRepository.findByIdAndIsDeletedFalseOrThrow(userId, BusinessErrorCode.MEMBER_NOT_FOUND);
 
 		Event event = eventRepository.findByIdOrThrow(eventId, BusinessErrorCode.EVENT_NOT_FOUND);
@@ -137,4 +141,60 @@ public class EntryService {
 
 		return entry.getId();
 	}
+
+	@ServiceLog(slowMs = 2000)
+	@Transactional
+	public EntryApplyResponse apply(Long userId, Long eventId, EntryCoursePaceRequest request) {
+		memberRepository.findByIdAndIsDeletedFalseOrThrow(userId, BusinessErrorCode.MEMBER_NOT_FOUND);
+
+		Event event = eventRepository.findByIdAndIsViewTrueAndIsDeletedFalseOrThrow(eventId,
+			BusinessErrorCode.EVENT_NOT_FOUND);
+
+		LocalDateTime now = LocalDateTime.now();
+		Preconditions.validate(!now.isBefore(event.getAppStartAt()) && !now.isAfter(event.getAppEndAt()),
+			BusinessErrorCode.ENTRY_NOT_IN_PERIOD);
+
+		EventCourse course = eventCourseRepository.findByIdAndEventIdOrThrow(request.courseId(), eventId,
+			BusinessErrorCode.ENTRY_COURSE_NOT_FOUND);
+
+		EventPace pace = eventPaceRepository.findByIdAndEventCourseIdOrThrow(request.paceId(), request.courseId(),
+			BusinessErrorCode.ENTRY_PACE_NOT_FOUND);
+
+		return switch (event.getAppType()) {
+			case LOTTERY -> applyLottery(userId, event, course, pace);
+			case FIRST_COME -> applyFirstCome();
+		};
+	}
+
+	private EntryApplyResponse applyLottery(Long userId, Event event, EventCourse course, EventPace pace) {
+
+		Entry entry = entryRepository.findByUserIdAndEventId(userId, event.getId())
+			.map(e -> {
+				// 이미 신청한 결과가 있을 경우에 분기처리!(상태값 추후에 재점검 필요)
+				switch (e.getStatus()) {
+					case APPLIED -> throw new BusinessException(BusinessErrorCode.ENTRY_ALREADY_APPLIED);
+					case PRE_SAVED -> e.apply(course, pace);
+					default -> throw new BusinessException(BusinessErrorCode.ENTRY_CANNOT_APPLY);
+				}
+
+				return e;
+			})
+			.orElseGet(() -> Entry.builder()
+				.userId(userId)
+				.event(event)
+				.eventCourse(course)
+				.eventPace(pace)
+				.status(EntryStatus.APPLIED)
+				.build()
+			);
+
+		entryRepository.save(entry);
+
+		return EntryApplyResponse.from(entry);
+	}
+
+	private EntryApplyResponse applyFirstCome() {
+		return null;
+	}
+
 }
