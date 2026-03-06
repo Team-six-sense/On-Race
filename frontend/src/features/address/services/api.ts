@@ -16,7 +16,7 @@ export const addressApi: IAddressService = {
       await apiClient.get<ApiResponse<AddressListResponse>>('/address');
     return response.data;
   },
-  getAddressById: async (id: number) => {
+  getAddressById: async (id: string) => {
     const response = await apiClient.get<ApiResponse<AddressResponse>>(
       `/address`,
       {
@@ -32,7 +32,7 @@ export const addressApi: IAddressService = {
     );
     return response.data;
   },
-  updateAddress: async (id: number, data: AddressResponse) => {
+  updateAddress: async (id: string, data: AddressResponse) => {
     const response = await apiClient.put<ApiResponse<AddressResponse>>(
       `/address`,
       data,
@@ -42,16 +42,14 @@ export const addressApi: IAddressService = {
     );
     return response.data;
   },
-  deleteAddress: async (id: number) => {
-    const response = await apiClient.delete<ApiResponse<void>>('/address', {
-      params: { id },
-    });
+  deleteAddress: async (id: string) => {
+    const response = await apiClient.delete<ApiResponse<void>>(
+      `/address/${id}`,
+    );
     return response.data;
   },
-  updateDefaultAddress: async (id: number) => {
-    const response = await apiClient.patch<ApiResponse<void>>('/address/', {
-      params: { id },
-    });
+  updateDefaultAddress: async (id: string) => {
+    const response = await apiClient.patch<ApiResponse<void>>(`/address/${id}`);
     return response.data;
   },
 };

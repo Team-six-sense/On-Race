@@ -18,7 +18,7 @@ export default function WaitingPage() {
   // 초기 로딩 상태 처리
   if (!status) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-500 font-medium">
@@ -31,7 +31,7 @@ export default function WaitingPage() {
 
   // 메인 UI 렌더링
   return (
-    <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
+    <main className="flex flex-col items-center justify-center p-6">
       <QueueStatusCard status={status} progress={progress} />
 
       <footer className="mt-8 text-gray-400 text-[10px] uppercase tracking-widest">

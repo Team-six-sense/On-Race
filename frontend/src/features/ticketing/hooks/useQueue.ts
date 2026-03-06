@@ -9,68 +9,80 @@ export const useQueue = (eventId: string) => {
   const [status, setStatus] = useState<any>(null);
   const [progress, setProgress] = useState(0);
 
-  // [추가] 처음 진입했을 때의 내 순번을 기억합니다.
   const initialPosition = useRef<number | null>(null);
   const isRedirecting = useRef(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null); // 타이머 관리를 위한 Ref
+
+  const resetQueue = () => {
+    initialPosition.current = null;
+    isRedirecting.current = false;
+    setStatus(null);
+    setProgress(0);
+    if (timerRef.current) clearTimeout(timerRef.current);
+  };
 
   useEffect(() => {
-    let pollingTimer: NodeJS.Timeout;
-    let smoothProgressTimer: NodeJS.Timer;
+    let smoothProgressTimer: NodeJS.Timeout;
 
     const fetchStatus = async () => {
+      // 리다이렉트 중이면 더 이상 API를 호출하지 않음
+      if (isRedirecting.current) return;
+
       try {
         const data: any = await getQueueStatus(eventId);
 
-        // 처음 들어왔을 때만 초기 순번을 고정합니다.
         if (initialPosition.current === null) {
           initialPosition.current = data.position;
         }
 
         setStatus(data);
 
-        if (data.position <= 0 && !isRedirecting.current) {
+        // 대기 종료 조건
+        if (data.position <= 0) {
           isRedirecting.current = true;
           setProgress(100);
-          setTimeout(() => router.push(`/ticketing/${eventId}/payment`), 500);
+
+          // 이동 전 모든 타이머 정리
+          clearInterval(smoothProgressTimer);
+
+          // 결제 페이지로 이동
+          router.push(`/ticketing/${eventId}/payment`);
           return;
         }
 
-        // [수정된 공식] 상대적 진행률 계산
-        // (초기순번 - 현재순번) / 초기순번 * 100
-        // 예: 처음에 100번이었는데 지금 80번이면 (100-80)/100 = 20%
         const startPos = initialPosition.current ?? data.position;
         const currentPos = data.position;
-
-        // 처음 위치와 현재 위치의 차이를 이용해 0%부터 시작하게 함
         const baseProgress =
           startPos > 0 ? ((startPos - currentPos) / startPos) * 100 : 0;
 
         if (progress < baseProgress) {
-          setProgress(baseProgress);
+          setProgress(Math.min(baseProgress, 99)); // 100%는 이동 직전에만
         }
 
-        pollingTimer = setTimeout(fetchStatus, 100);
+        // 폴링 간격: 0.1초는 서버에 부하가 큽니다. 보통 1~3초를 권장합니다.
+        timerRef.current = setTimeout(fetchStatus, 1000);
       } catch (error) {
-        console.error(error);
+        console.error('Queue fetch error:', error);
+        // 에러 시 재시도 로직
+        timerRef.current = setTimeout(fetchStatus, 5000);
       }
     };
 
-    // 0.1초마다 조금씩 채워주는 로직 (더 부드럽게)
     smoothProgressTimer = setInterval(() => {
       setProgress((prev) => {
-        if (prev >= 99.9) return prev;
-        // 아주 미세하게 증가시켜서 바가 멈추지 않게 함
-        return prev + 0.02;
+        if (prev >= 99) return prev;
+        return prev + 0.05;
       });
-    }, 100);
+    }, 200);
 
     fetchStatus();
 
+    // 언마운트 시 클린업 (이동 시 자동으로 실행됨)
     return () => {
-      clearTimeout(pollingTimer);
-      clearInterval(smoothProgressTimer as any);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      clearInterval(smoothProgressTimer);
     };
-  }, [eventId]);
+  }, [eventId, router]); // router 의존성 추가
 
-  return { status, progress };
+  return { status, progress, resetQueue };
 };

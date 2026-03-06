@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { Clock, Map, ChevronRight } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radioGroup';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,11 +12,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useParams, useRouter } from 'next/navigation';
 
 export default function CheckoutPage() {
-  const params = useParams();
-  const router = useRouter();
   const [selectedOption, setSelectedOption] = useState('none');
   const [selectedPayment, setSelectedPayment] = useState('card');
 
@@ -63,13 +61,42 @@ export default function CheckoutPage() {
       <div className="max-w-6xl mx-auto">
         <header className="mb-4">
           <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-            주문/결제
+            결제 상세내역
           </h1>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
           {/* 왼쪽 영역: 입력 폼 */}
           <div className="lg:col-span-8">
+            <FormSection title="주문현황">
+              <div className="flex flex-col gap-4">
+                <div className="flex-1 space-y-2">
+                  <div className="flex">
+                    <span className="w-28 text-gray-600">주문번호</span>
+                    <span className="flex-1">ORD20260215001</span>
+                  </div>
+                  <div className="flex">
+                    <span className="w-28 text-gray-600">주문일시</span>
+                    <span className="flex-1">2026-02-15 14:30:25</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="w-28 text-gray-600">주문상태</span>
+                    <span className="flex-1 font-semibold">결제 완료</span>
+                    <Button variant="outline" size="fit">
+                      결제취소
+                    </Button>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="w-28 text-gray-600">배송현황</span>
+                    <span className="flex-1"> - </span>
+                    <Button variant="outline" size="fit" disabled={true}>
+                      배송조회
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </FormSection>
+
             {/* 주문 상품 정보 */}
             <FormSection title="주문 상품">
               <div className="flex flex-col gap-4">
@@ -110,33 +137,46 @@ export default function CheckoutPage() {
                       추가 옵션
                     </span>
                     <div className="w-full bg-gray-100 rounded-sm p-3">
-                      <RadioGroup
-                        value={selectedPayment}
-                        onValueChange={setSelectedPayment}
-                        className="gap-2" // 항목 간 간격 조절
-                      >
-                        {marathonItem.options.map((item) => (
-                          <label
-                            key={item.id}
-                            htmlFor={item.id}
-                            className="flex items-center justify-between rounded-lg cursor-pointer"
-                          >
-                            <div className="flex items-center gap-3">
-                              <RadioGroupItem value={item.id} id={item.id} />
-                              <span className="text-sm font-medium text-gray-900">
-                                {item.label}
-                              </span>
-                            </div>
+                      <label className="flex items-center justify-between rounded-lg cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-medium text-gray-900">
+                            기념 티셔츠 (기본구성)
+                          </span>
+                        </div>
 
-                            <div className="text-right">
-                              <span className={`text-sm font-semibold`}>
-                                +{item.price.toLocaleString()}원
-                              </span>
-                            </div>
-                          </label>
-                        ))}
-                      </RadioGroup>
+                        <div className="text-right">
+                          <span className={`text-sm font-semibold`}>+0원</span>
+                        </div>
+                      </label>
                     </div>
+                  </div>
+                </div>
+              </div>
+            </FormSection>
+
+            {/* 참가자 정보 */}
+            <FormSection title="참가자 정보">
+              <div className="flex flex-col gap-4">
+                <div className="flex-1 space-y-2">
+                  <div className="flex">
+                    <span className="w-28 text-gray-600">이름</span>
+                    <span className="flex-1">김유저</span>
+                  </div>
+                  <div className="flex">
+                    <span className="w-28 text-gray-600">성별</span>
+                    <span className="flex-1">여</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="w-28 text-gray-600">생년월일</span>
+                    <span className="flex-1 font-semibold">1999년 1월 1일</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="w-28 text-gray-600">휴대폰번호</span>
+                    <span className="flex-1 font-semibold">010-1234-5678</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="w-28 text-gray-600">이메일</span>
+                    <span className="flex-1">user@test.com</span>
                   </div>
                 </div>
               </div>
@@ -183,16 +223,9 @@ export default function CheckoutPage() {
                       <p className="text-sm text-gray-500">배송요청사항</p>
                     </div>
                     <div className="flex-1">
-                      <Select>
-                        <SelectTrigger variant="default" selectSize="sm">
-                          <SelectValue placeholder="배송 요청사항을 선택해주세요" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="option1">요청사항1</SelectItem>
-                          <SelectItem value="option2">요청사항2</SelectItem>
-                          <SelectItem value="option3">요청사항3</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <span className="text-sm font-semibold">
+                        문 앞에 두고 가주세요
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -201,32 +234,18 @@ export default function CheckoutPage() {
 
             {/* 결제 수단 */}
             <FormSection title="결제 수단">
-              <div className="flex items-center">
-                <RadioGroup
-                  // value={selectedValue}
-                  // onValueChange={setSelectedValue}
-                  className="gap-3"
-                >
-                  {[
-                    { id: '1', label: '카카오페이' },
-                    { id: '2', label: '신용/체크카드' },
-                    { id: '3', label: '무통장입금' },
-                    { id: '4', label: '휴대폰결제' },
-                  ].map((item) => (
-                    <label
-                      key={item.id}
-                      htmlFor={item.id}
-                      className="flex items-center "
-                    >
-                      <RadioGroupItem
-                        className="mx-2"
-                        value={item.id}
-                        id={item.id}
-                      />
-                      <span className="">{item.label}</span>
-                    </label>
-                  ))}
-                </RadioGroup>
+              <div className="flex-1 space-y-3">
+                <div className="flex items-center">
+                  <span className="text-lg   font-bold">신용/체크카드</span>
+                </div>
+                <div className="flex">
+                  <span className="w-28 text-gray-600">카드사</span>
+                  <span className="flex-1 font-bold">신한</span>
+                </div>
+                <div className="flex">
+                  <span className="w-28 text-gray-600">할부여부</span>
+                  <span className="flex-1 font-bold">일시불</span>
+                </div>
               </div>
             </FormSection>
           </div>
@@ -266,53 +285,9 @@ export default function CheckoutPage() {
               </div>
 
               {/* 최종 결제 금액 */}
-              <div className="flex justify-between items-center mb-4">
+              <div className="flex justify-between items-center ">
                 <span className="font-bold">최종 결제 금액</span>
                 <span className="text-xl font-bold">51,000원</span>
-              </div>
-
-              <div className="h-[1px] bg-gray-200 my-6 w-full" />
-
-              {/* 결제 확인 및 버튼 섹션 */}
-              <div className="space-y-2 mb-4">
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-1">
-                    <Checkbox id="all" />
-                    <label htmlFor="all" className="text-sm font-bold">
-                      결제 내용을 모두 확인했으며, 아래 사항에 모두 동의합니다.
-                    </label>
-                  </div>
-
-                  <div className="flex items-center space-x-1">
-                    <Checkbox id="option1" />
-                    <label htmlFor="option1" className="text-sm">
-                      (필수) 결제 대행 서비스 이용약관
-                    </label>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <Checkbox id="option2" />
-                    <label htmlFor="option2" className="text-sm">
-                      (필수) 개인정보 처리 및 수집
-                    </label>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <Checkbox id="option3" />
-                    <label htmlFor="option3" className="text-sm ">
-                      (필수) 예매 취소 및 환불 정책 동의
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <Button
-                  rounded="full"
-                  onClick={() =>
-                    router.push(`/ticketing/${params.id}/completed`)
-                  }
-                >
-                  45,000원 결제하기
-                </Button>
               </div>
             </div>
           </div>

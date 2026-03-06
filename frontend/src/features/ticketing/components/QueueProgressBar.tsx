@@ -7,19 +7,13 @@ export const QueueProgressBar = ({ progress }: Props) => {
     <div className="w-full">
       <div className="h-4 w-full bg-gray-100 rounded-full overflow-hidden border border-gray-200">
         <div
-          className="h-full bg-black"
+          className="h-full bg-lime-400"
           style={{
             width: `${progress}%`,
             transition: 'width 0.1s linear',
           }}
         />
       </div>
-      {/* <div className="flex justify-between mt-2">
-        <span className="text-xs text-gray-400 font-medium">진행률</span>
-        <span className="text-xs text-black font-bold">
-          {progress.toFixed(1)}%
-        </span>
-      </div> */}
     </div>
   );
 };
