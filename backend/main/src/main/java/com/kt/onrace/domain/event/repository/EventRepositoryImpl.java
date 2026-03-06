@@ -144,22 +144,19 @@ public class EventRepositoryImpl implements EventRepositoryCustom {
 
 	private BooleanExpression keysetCondition(EventCursorData cursor) {
 		NumberExpression<Integer> statusOrder = statusOrderExpression();
+		BooleanExpression statusEq = statusOrder.eq(cursor.statusPriority());
+		BooleanExpression eventAtEq = event.eventAt.eq(cursor.eventAt());
+		BooleanExpression titleEq = event.title.eq(cursor.title());
 
 		return statusOrder.gt(cursor.statusPriority())
 			.or(
-				statusOrder.eq(cursor.statusPriority())
-					.and(event.eventAt.after(cursor.eventAt()))
+				statusEq.and(event.eventAt.after(cursor.eventAt()))
 			)
 			.or(
-				statusOrder.eq(cursor.statusPriority())
-					.and(event.eventAt.eq(cursor.eventAt()))
-					.and(event.title.gt(cursor.title()))
+				statusEq.and(eventAtEq).and(event.title.gt(cursor.title()))
 			)
 			.or(
-				statusOrder.eq(cursor.statusPriority())
-					.and(event.eventAt.eq(cursor.eventAt()))
-					.and(event.title.eq(cursor.title()))
-					.and(event.id.lt(cursor.id()))
+				statusEq.and(eventAtEq).and(titleEq).and(event.id.lt(cursor.id()))
 			);
 	}
 
