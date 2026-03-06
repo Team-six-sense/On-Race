@@ -12,9 +12,15 @@ import java.util.Optional;
 
 import org.springframework.stereotype.Repository;
 
+import com.kt.onrace.domain.event.dto.EventCursorData;
 import com.kt.onrace.domain.event.dto.EventSearchRequest;
 import com.kt.onrace.domain.event.entity.Event;
+import com.kt.onrace.domain.event.entity.EventStatus;
 import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.types.OrderSpecifier;
+import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.CaseBuilder;
+import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
@@ -46,8 +52,9 @@ public class EventRepositoryImpl implements EventRepositoryCustom {
 			builder.and(event.status.eq(request.status()));
 		}
 
-		if (request.cursor().cursorId() != null) {
-			builder.and(event.id.lt(request.cursor().cursorId()));
+		EventCursorData cursorData = request.decodeCursor();
+		if (cursorData != null) {
+			builder.and(keysetCondition(cursorData));
 		}
 
 		if (request.minDistance() != null || request.maxDistance() != null) {
@@ -82,11 +89,13 @@ public class EventRepositoryImpl implements EventRepositoryCustom {
 			builder.and(event.venue.contains(request.keyword()).or(event.title.contains(request.keyword())));
 		}
 
+		OrderSpecifier<?>[] orderSpecifiers = multiSortOrder();
+
 		List<Long> eventIds = queryFactory
 			.select(event.id)
 			.from(event)
 			.where(builder)
-			.orderBy(event.id.desc())
+			.orderBy(orderSpecifiers)
 			.limit(size + 1)
 			.fetch();
 
@@ -99,7 +108,7 @@ public class EventRepositoryImpl implements EventRepositoryCustom {
 			.from(event)
 			.leftJoin(event.courses, eventCourse).fetchJoin()
 			.where(event.id.in(eventIds))
-			.orderBy(event.id.desc())
+			.orderBy(orderSpecifiers)
 			.fetch();
 
 		// 코스와 이미지 모두 N인 관계로 카테시안 곱 발생 MultipleBagFetchException -> 쿼리 분리
@@ -110,12 +119,48 @@ public class EventRepositoryImpl implements EventRepositoryCustom {
 				.leftJoin(event.images, eventImage).fetchJoin()
 				.where(event.id.in(eventIds))
 				.fetch();
-				// 아래 부분 문제 이런식으로 where에 필터 적용 시 inner join 처럼 동작하여 영속성 컨텍스트에서 미초기화 상태로 남음
-				// WHERE 절에 THUMBNAIL 필터 → THUMBNAIL 없는 이벤트가 결과에서 제외 → images 컬렉션 미초기화 → DTO 매핑 시 lazy loading N+1
-				//.where(event.id.in(eventIds).and(eventImage.type.eq(EventImageType.THUMBNAIL)))
 		}
 
 		return events;
+	}
+
+	private OrderSpecifier<?>[] multiSortOrder() {
+		return new OrderSpecifier<?>[] {
+			statusOrderExpression().asc(),
+			event.eventAt.asc(),
+			event.title.asc(),
+			event.id.desc()
+		};
+	}
+
+	private NumberExpression<Integer> statusOrderExpression() {
+		return new CaseBuilder()
+			.when(event.status.eq(EventStatus.IN_PROGRESS)).then(EventStatus.IN_PROGRESS.getSortOrder())
+			.when(event.status.eq(EventStatus.READY)).then(EventStatus.READY.getSortOrder())
+			.when(event.status.eq(EventStatus.END)).then(EventStatus.END.getSortOrder())
+			.when(event.status.eq(EventStatus.DRAW_COMPLETED)).then(EventStatus.DRAW_COMPLETED.getSortOrder())
+			.otherwise(Integer.MAX_VALUE);
+	}
+
+	private BooleanExpression keysetCondition(EventCursorData cursor) {
+		NumberExpression<Integer> statusOrder = statusOrderExpression();
+
+		return statusOrder.gt(cursor.statusPriority())
+			.or(
+				statusOrder.eq(cursor.statusPriority())
+					.and(event.eventAt.after(cursor.eventAt()))
+			)
+			.or(
+				statusOrder.eq(cursor.statusPriority())
+					.and(event.eventAt.eq(cursor.eventAt()))
+					.and(event.title.gt(cursor.title()))
+			)
+			.or(
+				statusOrder.eq(cursor.statusPriority())
+					.and(event.eventAt.eq(cursor.eventAt()))
+					.and(event.title.eq(cursor.title()))
+					.and(event.id.lt(cursor.id()))
+			);
 	}
 
 	@Override
