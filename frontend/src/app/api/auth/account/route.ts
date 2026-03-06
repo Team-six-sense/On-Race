@@ -12,13 +12,11 @@ export async function DELETE(request: Request) {
     // 실제 외부 백엔드 서버로 요청 전달
     // const response = await backendClient.delete('/account');
 
-    const userId = request.headers.get('X-User-Id');
     const authHeader = request.headers.get('Authorization');
 
     // 2. 외부 백엔드로 요청 보낼 때 헤더 포함
     const response = await backendClient.delete('/account', {
       headers: {
-        'X-User-Id': userId, // 클라이언트가 보낸 ID 전달
         Authorization: authHeader, // 클라이언트가 보낸 Bearer 토큰 전달
       },
     });
