@@ -9,7 +9,7 @@ import {
 
 export const authMock: IAuthService = {
   // 회원/인증 API
-  signup: async () => wrapMockResponse(SIGNUP_RESPONSE),
+  signup: async (data) => wrapMockResponse(SIGNUP_RESPONSE),
   login: async () => wrapMockResponse(LOGIN_RESPONSE),
   logout: async () => wrapMockResponse(),
   deleteAccount: async () => wrapMockResponse(),
