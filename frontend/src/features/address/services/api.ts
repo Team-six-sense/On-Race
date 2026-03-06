@@ -18,22 +18,26 @@ export const addressApi: IAddressService = {
   },
   getAddressById: async (id: number) => {
     const response = await apiClient.get<ApiResponse<AddressResponse>>(
-      `/events/${id}`,
+      `/events`,
+      {
+        params: { id },
+      },
     );
     return response.data;
   },
   createAddress: async (data: AddressResponse) => {
     const response = await apiClient.post<ApiResponse<AddressResponse>>(
       '/address',
-      { data },
+      data,
     );
     return response.data;
   },
   updateAddress: async (id: number, data: AddressResponse) => {
     const response = await apiClient.put<ApiResponse<AddressResponse>>(
-      `/address/${id}`,
+      `/address`,
+      data,
       {
-        data,
+        params: { id },
       },
     );
     return response.data;
@@ -41,6 +45,9 @@ export const addressApi: IAddressService = {
   deleteAddress: async (id: number) => {
     const response = await apiClient.delete<ApiResponse<void>>(
       `/address/${id}`,
+      {
+        params: { id },
+      },
     );
     return response.data;
   },
