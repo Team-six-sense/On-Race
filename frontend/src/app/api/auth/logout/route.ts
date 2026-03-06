@@ -10,13 +10,11 @@ const backendClient = axios.create({
 export async function POST(request: Request) {
   // 클라이언트로부터 전달받은 쿼리 파라미터 추출
   try {
-    const userId = request.headers.get('X-User-Id');
     const authHeader = request.headers.get('Authorization');
 
     // 실제 외부 백엔드 서버로 요청 전달
     const response = await backendClient.post('/logout', {
       headers: {
-        'X-User-Id': userId, // 클라이언트가 보낸 ID 전달
         Authorization: authHeader, // 클라이언트가 보낸 Bearer 토큰 전달
       },
     });

@@ -14,14 +14,9 @@ apiClient.interceptors.request.use((config) => {
   // 로컬 스토리지나 상태 관리 라이브러리에서 토큰/ID 가져오기
   const token =
     typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  const userId =
-    typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
-  }
-  if (userId) {
-    config.headers['X-User-Id'] = userId;
   }
 
   return config;

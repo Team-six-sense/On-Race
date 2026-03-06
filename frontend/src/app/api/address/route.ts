@@ -18,7 +18,7 @@ function handleError(error: any, defaultMessage: string) {
   );
 
   const status = axiosError.response?.status || 500;
-  const message = axiosError.response?.data?.message || defaultMessage;
+  const message = defaultMessage;
 
   return NextResponse.json({ success: false, message }, { status });
 }
