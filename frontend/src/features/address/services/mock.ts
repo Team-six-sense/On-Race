@@ -5,10 +5,10 @@ import { AddressResponse } from '../types';
 
 export const addressMock: IAddressService = {
   getAddress: async () => wrapMockResponse(MOCK_ADDRESS_LIST),
-  getAddressById: async (id: number) => wrapMockResponse(MOCK_ADDRESS),
+  getAddressById: async (id: string) => wrapMockResponse(MOCK_ADDRESS),
   createAddress: async (data: AddressResponse) => wrapMockResponse(data),
-  updateAddress: async (id: number, data: AddressResponse) =>
+  updateAddress: async (id: string, data: AddressResponse) =>
     wrapMockResponse(data),
-  deleteAddress: async (id: number) => wrapMockResponse(),
-  updateDefaultAddress: async (id: number) => wrapMockResponse(),
+  deleteAddress: async (id: string) => wrapMockResponse(),
+  updateDefaultAddress: async (id: string) => wrapMockResponse(),
 };

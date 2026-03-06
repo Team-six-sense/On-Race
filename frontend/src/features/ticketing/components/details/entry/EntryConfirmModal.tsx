@@ -52,7 +52,7 @@ export function EntryConfirmModal({
   }
 
   const handleApply = () => {
-    router.push(`/ticketing/${params.id}/apply`);
+    router.push(`/ticketing/${params.id}/vqa`);
   };
 
   return (

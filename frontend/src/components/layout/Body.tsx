@@ -73,74 +73,6 @@ export default function Body() {
 
   return (
     <main className="py-4 flex flex-col ">
-      {/* --- 플랫폼 소개 (Platform Features) --- */}
-      <section className="py-20 bg-white overflow-hidden">
-        <div className="max-w-[1200px] mx-auto px-6">
-          {/* 상단 텍스트 영역 */}
-          <div className="mb-12">
-            <h2 className="text-4xl font-bold mb-4">
-              러닝을 경험하는 새로운 방식
-            </h2>
-          </div>
-
-          {/* 가로 스크롤 카드 영역 */}
-          <div
-            ref={scrollRef}
-            className="flex gap-6 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-4"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-          >
-            {platformContents.map((content) => (
-              <div
-                key={content.id}
-                className="relative min-w-[320px] h-[550px] rounded-lg overflow-hidden snap-start group shadow-xl shadow-gray-200/50"
-              >
-                {/* 배경 이미지 */}
-                <img
-                  src={content.img}
-                  alt={content.title}
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                />
-
-                {/* 이미지 하단 텍스트를 위한 그라데이션 오버레이 */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-
-                {/* 이미지 왼쪽 하단 텍스트 배치 */}
-                <div className="absolute bottom-10 left-8 text-white">
-                  <h3 className="text-3xl font-bold tracking-tight">
-                    {content.title}
-                  </h3>
-                  <p className="text-white/70 text-sm font-semibold mb-2">
-                    {content.subtitle}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* 하단 스크롤 버튼 */}
-          <div className="flex gap-4 mt-4">
-            <Button
-              variant="ghost"
-              rounded="sm"
-              size="fit"
-              onClick={() => handleScroll('left')}
-              className="flex items-center justify-centergroup"
-            >
-              <LuArrowLeft size={30} />
-            </Button>
-            <Button
-              variant="ghost"
-              rounded="sm"
-              size="fit"
-              onClick={() => handleScroll('right')}
-              className="flex items-center justify-centergroup"
-            >
-              <LuArrowRight size={30} />
-            </Button>
-          </div>
-        </div>
-      </section>
-
       {/* --- 이벤트 목록 (Event List) --- */}
       <section className="py-20 bg-white">
         <div className="max-w-[1200px] mx-auto px-6">
@@ -151,13 +83,6 @@ export default function Body() {
                 다가오는 러닝 이벤트
               </h2>
             </div>
-            <Button
-              variant="text"
-              size="fit"
-              onClick={() => router.push('/schedule')}
-            >
-              전체 보기
-            </Button>
           </div>
 
           {/* 이벤트 리스트 */}
@@ -228,6 +153,84 @@ export default function Body() {
                 </div>
               </div>
             )}
+
+            <div className="max-w-md mx-auto flex items-center justify-center">
+              <Button
+                variant="outline"
+                rounded="full"
+                className="border-gray-300 text-gray-500"
+                onClick={() => router.push('/schedule')}
+              >
+                전체 보기
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+      {/* --- 플랫폼 소개 (Platform Features) --- */}
+      <section className="py-20 bg-white overflow-hidden">
+        <div className="max-w-[1200px] mx-auto px-6">
+          {/* 상단 텍스트 영역 */}
+          <div className="mb-12">
+            <h2 className="text-4xl font-bold mb-4">
+              러닝을 경험하는 새로운 방식
+            </h2>
+          </div>
+
+          {/* 가로 스크롤 카드 영역 */}
+          <div
+            ref={scrollRef}
+            className="flex gap-6 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-4"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          >
+            {platformContents.map((content) => (
+              <div
+                key={content.id}
+                className="relative min-w-[320px] h-[550px] rounded-lg overflow-hidden snap-start group shadow-xl shadow-gray-200/50"
+              >
+                {/* 배경 이미지 */}
+                <img
+                  src={content.img}
+                  alt={content.title}
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                />
+
+                {/* 이미지 하단 텍스트를 위한 그라데이션 오버레이 */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+                {/* 이미지 왼쪽 하단 텍스트 배치 */}
+                <div className="absolute bottom-10 left-8 text-white">
+                  <h3 className="text-3xl font-bold tracking-tight">
+                    {content.title}
+                  </h3>
+                  <p className="text-white/70 text-sm font-semibold mb-2">
+                    {content.subtitle}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* 하단 스크롤 버튼 */}
+          <div className="flex gap-4 mt-4">
+            <Button
+              variant="ghost"
+              rounded="sm"
+              size="fit"
+              onClick={() => handleScroll('left')}
+              className="flex items-center justify-centergroup"
+            >
+              <LuArrowLeft size={30} />
+            </Button>
+            <Button
+              variant="ghost"
+              rounded="sm"
+              size="fit"
+              onClick={() => handleScroll('right')}
+              className="flex items-center justify-centergroup"
+            >
+              <LuArrowRight size={30} />
+            </Button>
           </div>
         </div>
       </section>

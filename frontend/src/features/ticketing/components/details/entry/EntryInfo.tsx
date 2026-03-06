@@ -31,7 +31,7 @@ export function EntryInfo({ event }: { event: MarathonEvent }) {
 
   return (
     <section>
-      <div className="space-y-3 mb-4 text-sm sm:text-base">
+      <div className="space-y-3 mb-4 text-sm">
         <div className="flex">
           <span className="w-28 font-semibold">장소</span>
           <span className="flex-1">

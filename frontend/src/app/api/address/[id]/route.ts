@@ -18,17 +18,17 @@ function handleError(error: any, defaultMessage: string) {
   );
 
   const status = axiosError.response?.status || 500;
-  const message = defaultMessage;
+  const message = axiosError.response?.data?.message || defaultMessage;
 
   return NextResponse.json({ success: false, message }, { status });
 }
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: number } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // const { searchParams } = new URL(request.url);
 
@@ -57,10 +57,10 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: number } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
 
     const response = await backendClient.put(`/address/${id}`, body);
@@ -73,10 +73,10 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: number } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // DELETE 요청 시 body가 필요한 경우 처리 (선택 사항)
     let body = {};
@@ -99,10 +99,10 @@ export async function DELETE(
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: number } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
 
     // 누락되었던 body 추가

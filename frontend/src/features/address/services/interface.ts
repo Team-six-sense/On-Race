@@ -4,12 +4,12 @@ import { AddressResponse, AddressListResponse } from '../types';
 export interface IAddressService {
   // 배송지 API
   getAddress(): Promise<ApiResponse<AddressListResponse>>;
-  getAddressById(id: number): Promise<ApiResponse<AddressResponse>>;
+  getAddressById(id: string): Promise<ApiResponse<AddressResponse>>;
   createAddress(data: AddressResponse): Promise<ApiResponse<AddressResponse>>;
   updateAddress(
-    id: number,
+    id: string,
     data: AddressResponse,
   ): Promise<ApiResponse<AddressResponse>>;
-  deleteAddress(id: number): Promise<ApiResponse<any>>;
-  updateDefaultAddress(id: number): Promise<ApiResponse<any>>;
+  deleteAddress(id: string): Promise<ApiResponse<any>>;
+  updateDefaultAddress(id: string): Promise<ApiResponse<any>>;
 }

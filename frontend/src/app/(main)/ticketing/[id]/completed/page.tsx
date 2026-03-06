@@ -1,37 +1,67 @@
 // app/login/success/page.tsx
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { HiCheckCircle } from 'react-icons/hi2';
 
 export default function LoginSuccess() {
+  const params = useParams();
   const router = useRouter();
 
   return (
     <div className="flex flex-col items-center justify-center bg-white p-4">
-      <div className="max-w-xl w-full  space-y-6 p-10 rounded-2xl border-3 border-gray-300 ">
-        <div>
-          <h2 className="text-2xl font-extrabold text-black">
-            결제가 완료되었습니다.
-          </h2>
+      <div className="text-green-600 py-6">
+        <HiCheckCircle size={60} />
+      </div>
+      <div className="text-2xl text-center p-4">
+        <span className="font-bold">김유저</span>
+        <span>
+          님의 결제가 <br />
+          정상적으로 완료되었습니다
+        </span>
+      </div>
+      <div className="max-w-md w-full  space-y-6 p-4 rounded-sm border-1 border-gray-300 mb-4">
+        <div className="flex justify-between items-center mb-4">
+          <span className="text-sm text-gray-500">주문번호</span>
+          <span className="text-sm font-semibold">ORD20260215001</span>
         </div>
+        <div className="flex justify-between items-center mb-4">
+          <span className="text-sm text-gray-500">상품명</span>
+          <span className="text-sm font-semibold">서울 마라톤 2026</span>
+        </div>
+        <div className="flex justify-between items-center mb-4">
+          <span className="text-sm text-gray-500">결제일자</span>
+          <span className="text-sm font-semibold">2026-02-15 14:30:25</span>
+        </div>
+        <div className="flex justify-between items-center mb-4">
+          <span className="text-sm text-gray-500">결제수단</span>
+          <span className="text-sm font-semibold">신한카드/일시불</span>
+        </div>
+        <div className="flex justify-between items-center mb-4">
+          <span className="text-sm text-gray-500">결제 금액</span>
+          <span className="text-sm font-semibold">51,000원</span>
+        </div>
+      </div>
 
-        <div className="bg-gray-50 rounded-none border-2 border-gray-300 p-4">
-          <p className="text-sm text-gray-500">이름: 온러닝</p>
-          <p className="text-sm text-gray-500">
-            이메일(아이디): example@email.com
-          </p>
-        </div>
+      <div className="max-w-md w-full flex gap-2 items-center justify-center">
+        <Button
+          variant="outline"
+          rounded="full"
+          size="lg"
+          onClick={() => router.push('/')}
+        >
+          메인 페이지로 이동
+        </Button>
 
-        <div className="space-y-3">
-          <Button
-            variant="outline"
-            rounded="none"
-            onClick={() => router.push('/')}
-          >
-            메인 페이지로 이동
-          </Button>
-        </div>
+        <Button
+          variant="primary1"
+          rounded="full"
+          size="lg"
+          onClick={() => router.push(`/ticketing/${params.id}/payment/details`)}
+        >
+          주문내역 보기
+        </Button>
       </div>
     </div>
   );
