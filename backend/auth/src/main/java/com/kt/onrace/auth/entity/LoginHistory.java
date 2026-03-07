@@ -35,7 +35,7 @@ public class LoginHistory extends BaseEntity {
 	@Column(nullable = false)
 	private boolean isSuccess;
 
-	@Column
+	@Column(length = 255)
 	private String failReason;
 
 	private LoginHistory(Long userId, String loginIp, String loginAgent, LoginMethod loginMethod,
