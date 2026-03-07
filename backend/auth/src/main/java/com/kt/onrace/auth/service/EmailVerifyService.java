@@ -71,7 +71,7 @@ public class EmailVerifyService {
 		try {
 			sendEmail(email, code);
 			emailSendRepository.save(EmailSend.success(email, EmailSendType.EMAIL_VERIFY));
-		} catch (Exception e) {
+		} catch (org.springframework.mail.MailException e) {
 			emailSendRepository.save(EmailSend.fail(email, EmailSendType.EMAIL_VERIFY, e.getMessage()));
 			throw e;
 		}

@@ -18,12 +18,14 @@ import org.redisson.api.RedissonClient;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import com.kt.onrace.auth.config.AuthProperties;
 import com.kt.onrace.auth.dto.LoginRequest;
 import com.kt.onrace.auth.dto.LoginResponse;
 import com.kt.onrace.auth.dto.TokenRefreshRequest;
 import com.kt.onrace.auth.dto.TokenRefreshResponse;
 import com.kt.onrace.auth.entity.User;
-import com.kt.onrace.auth.repository.TermsRepository;
+import com.kt.onrace.auth.repository.TermUserRepository;
+import com.kt.onrace.auth.repository.TermVersionRepository;
 import com.kt.onrace.auth.repository.UserRepository;
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
@@ -38,10 +40,16 @@ class AuthServiceLoginTest {
 	private AuthService authService;
 
 	@Mock
+	private AuthProperties authProperties;
+
+	@Mock
 	private UserRepository userRepository;
 
 	@Mock
-	private TermsRepository termsRepository;
+	private TermVersionRepository termVersionRepository;
+
+	@Mock
+	private TermUserRepository termUserRepository;
 
 	@Mock
 	private PasswordEncoder passwordEncoder;
@@ -54,6 +62,12 @@ class AuthServiceLoginTest {
 
 	@Mock
 	private TokenStoreService tokenStoreService;
+
+	@Mock
+	private EmailVerifyService emailVerifyService;
+
+	@Mock
+	private SmsVerifyService smsVerifyService;
 
 	@Mock
 	private LoginHistoryService loginHistoryService;
@@ -73,6 +87,13 @@ class AuthServiceLoginTest {
 	void setUp() {
 		testUser = User.createUser("test@test.com", "테스터", "encodedPw", "01012345678");
 		ReflectionTestUtils.setField(testUser, "id", 1L);
+
+		AuthProperties.LoginFail loginFail = new AuthProperties.LoginFail();
+		loginFail.setWarningThreshold(5);
+		loginFail.setCaptchaThreshold(10);
+		loginFail.setTtlMinutes(30);
+		given(authProperties.getLoginFail()).willReturn(loginFail);
+
 		given(redissonClient.getAtomicLong(anyString())).willReturn(rAtomicLong);
 		given(rAtomicLong.get()).willReturn(0L);
 	}

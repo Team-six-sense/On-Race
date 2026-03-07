@@ -61,6 +61,3 @@ auth:
     warning-threshold: ${AUTH_LOGIN_FAIL_WARNING_THRESHOLD:5}
     captcha-threshold: ${AUTH_LOGIN_FAIL_CAPTCHA_THRESHOLD:10}
     ttl-minutes: ${AUTH_LOGIN_FAIL_TTL_MINUTES:30}
-
-terms:
-  version: ${TERMS_REQUIRED_VERSION:1.0}
