@@ -21,7 +21,7 @@ public class LoginHistory extends BaseEntity {
 	@Column(length = 45)
 	private String loginIp;
 
-	@Column(length = 255)
+	@Column(length = 512)
 	private String loginAgent;
 
 	@Enumerated(EnumType.STRING)
@@ -35,7 +35,7 @@ public class LoginHistory extends BaseEntity {
 	@Column(nullable = false)
 	private boolean isSuccess;
 
-	@Column(length = 255)
+	@Column
 	private String failReason;
 
 	private LoginHistory(Long userId, String loginIp, String loginAgent, LoginMethod loginMethod,
