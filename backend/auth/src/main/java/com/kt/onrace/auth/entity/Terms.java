@@ -18,10 +18,10 @@ public class Terms extends BaseEntity {
 	private Long userId;
 
 	@Column(nullable = false)
-	private boolean isAgreed1;
+	private boolean serviceTermsAgreed;
 
 	@Column(nullable = false)
-	private boolean isAgreed2;
+	private boolean privacyPolicyAgreed ;
 
 	@Column(nullable = false)
 	private boolean isAgreed3;
@@ -32,18 +32,18 @@ public class Terms extends BaseEntity {
 	@Column(nullable = false, length = 10)
 	private String termVersion;
 
-	private Terms(Long userId, boolean isAgreed1, boolean isAgreed2, boolean isAgreed3, boolean isAgreed4,
+	private Terms(Long userId, boolean serviceTermsAgreed, boolean privacyPolicyAgreed, boolean isAgreed3, boolean isAgreed4,
 			String termVersion) {
 		this.userId = userId;
-		this.isAgreed1 = isAgreed1;
-		this.isAgreed2 = isAgreed2;
+		this.serviceTermsAgreed = serviceTermsAgreed;
+		this.privacyPolicyAgreed = privacyPolicyAgreed;
 		this.isAgreed3 = isAgreed3;
 		this.isAgreed4 = isAgreed4;
 		this.termVersion = termVersion;
 	}
 
-	public static Terms create(Long userId, boolean isAgreed1, boolean isAgreed2, boolean isAgreed3, boolean isAgreed4,
+	public static Terms create(Long userId, boolean serviceTermsAgreed, boolean privacyPolicyAgreed, boolean isAgreed3, boolean isAgreed4,
 			String termVersion) {
-		return new Terms(userId, isAgreed1, isAgreed2, isAgreed3, isAgreed4, termVersion);
+		return new Terms(userId, serviceTermsAgreed, privacyPolicyAgreed, isAgreed3, isAgreed4, termVersion);
 	}
 }

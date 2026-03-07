@@ -19,9 +19,9 @@ public record SignupRequest(
 
 		@NotBlank(message = "핸드폰 번호를 입력해 주세요.") @Pattern(regexp = "^01(?:0|1|[6-9])(?:\\d{3}|\\d{4})\\d{4}$", message = "올바른 핸드폰 번호 형식이 아닙니다. (- 제외)") String phoneNumber,
 
-		@AssertTrue(message = "서비스 이용약관에 동의해 주세요.") @NotNull boolean isAgreed1,
+		@AssertTrue(message = "서비스 이용약관에 동의해 주세요.") @NotNull boolean serviceTermsAgreed,
 
-		@AssertTrue(message = "개인정보 처리방침에 동의해 주세요.") @NotNull boolean isAgreed2,
+		@AssertTrue(message = "개인정보 처리방침에 동의해 주세요.") @NotNull boolean privacyPolicyAgreed ,
 
 		boolean isAgreed3,
 
