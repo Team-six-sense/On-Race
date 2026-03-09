@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.kt.onrace.auth.common.client.MainServiceClient;
+import com.kt.onrace.auth.dto.FindEmailRequest;
+import com.kt.onrace.auth.dto.FindEmailResponse;
 import com.kt.onrace.auth.dto.LoginRequest;
 import com.kt.onrace.auth.dto.LoginResponse;
 import com.kt.onrace.auth.dto.SignupRequest;
@@ -195,6 +197,28 @@ public class AuthService {
 				user.getId(), newRefreshToken, jwtProperties.getRefreshTokenExpiration());
 
 		return new TokenRefreshResponse(newAccessToken, newRefreshToken, jwtProperties.getAccessTokenExpiration());
+	}
+
+	@Transactional(readOnly = true)
+	public FindEmailResponse findEmail(FindEmailRequest request) {
+		if (!smsVerifyService.isVerified(request.phoneNumber())) {
+			throw new BusinessException(BusinessErrorCode.AUTH_PHONE_NOT_VERIFIED);
+		}
+
+		User user = userRepository.findByPhoneNumberAndIsDeletedFalse(request.phoneNumber())
+				.orElseThrow(() -> new BusinessException(BusinessErrorCode.AUTH_NOT_FOUND_USER));
+
+		smsVerifyService.deleteVerified(request.phoneNumber());
+
+		return new FindEmailResponse(maskEmail(user.getEmail()));
+	}
+
+	private String maskEmail(String email) {
+		int atIndex = email.indexOf('@');
+		if (atIndex <= 2) {
+			return "*".repeat(atIndex) + email.substring(atIndex);
+		}
+		return email.substring(0, 2) + "*".repeat(atIndex - 2) + email.substring(atIndex);
 	}
 
 	public void logout(Long userId, String accessToken) {

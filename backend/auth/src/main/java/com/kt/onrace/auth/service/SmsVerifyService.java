@@ -33,11 +33,21 @@ public class SmsVerifyService {
 	private final SolapiProperties properties;
 	private final UserRepository userRepository;
 
+	public void sendCodeForFind(String phoneNumber) {
+		if (!userRepository.existsByPhoneNumber(phoneNumber)) {
+			throw new BusinessException(BusinessErrorCode.AUTH_NOT_FOUND_USER);
+		}
+		sendSmsCode(phoneNumber);
+	}
+
 	public void sendCode(String phoneNumber) {
 		if (userRepository.existsByPhoneNumber(phoneNumber)) {
 			throw new BusinessException(BusinessErrorCode.AUTH_DUPLICATE_PHONE);
 		}
+		sendSmsCode(phoneNumber);
+	}
 
+	private void sendSmsCode(String phoneNumber) {
 		RAtomicLong sendAttemptCounter = redissonClient.getAtomicLong(redisKeyGenerator.smsSendAttemptKey(phoneNumber));
 		long currentSendAttempts = sendAttemptCounter.incrementAndGet();
 

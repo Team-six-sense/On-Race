@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import com.kt.onrace.auth.dto.FindEmailRequest;
+import com.kt.onrace.auth.dto.FindEmailResponse;
 import com.kt.onrace.auth.dto.LoginRequest;
 import com.kt.onrace.auth.dto.LoginResponse;
 import com.kt.onrace.auth.dto.SignupRequest;
@@ -66,6 +68,12 @@ public class AuthController extends SwaggerAssistance {
 
 		authService.logout(userId, authorization.substring(7));
 		return ApiResponse.success();
+	}
+
+	@Operation(summary = "아이디 찾기", description = "SMS 인증 완료 후 가입된 이메일 조회 (마스킹 처리)")
+	@PostMapping("/find-email")
+	public ApiResponse<FindEmailResponse> findEmail(@Valid @RequestBody FindEmailRequest request) {
+		return ApiResponse.success(authService.findEmail(request));
 	}
 
 	@Operation(summary = "회원탈퇴", description = "비밀번호 재확인 후 계정 삭제 처리 및 토큰 무효화")
