@@ -17,7 +17,7 @@ export function SocialLoginButtons() {
     <div className="py-5 flex justify-center gap-3 w-full max-w-sm">
       {/* 구글 로그인: White/Border */}
       <Button
-        size="icon"
+        size="iconSm"
         rounded="full"
         onClick={() => handleLogin('google')}
         className="gap-3 bg-white text-[#3c4043] border border-gray-300 hover:bg-gray-50"
@@ -27,7 +27,7 @@ export function SocialLoginButtons() {
 
       {/* 카카오 로그인: #FEE500 */}
       <Button
-        size="icon"
+        size="iconSm"
         rounded="full"
         onClick={() => handleLogin('kakao')}
         className="gap-3 bg-[#FEE500] text-[#191919] hover:bg-[#FADA0A]"
@@ -37,7 +37,7 @@ export function SocialLoginButtons() {
 
       {/* 네이버 로그인: #03C75A */}
       <Button
-        size="icon"
+        size="iconSm"
         rounded="full"
         onClick={() => handleLogin('naver')}
         className="gap-3 bg-[#03C75A] text-white hover:bg-[#02b350]"

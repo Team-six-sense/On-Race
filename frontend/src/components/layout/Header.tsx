@@ -123,7 +123,7 @@ export default function Header() {
                   로그인
                 </Link>
                 <Link
-                  href="/signup"
+                  href="/signup/agree"
                   className={cn(
                     'flex items-center transition-colors duration-500',
                     isHome ? 'hover:text-white' : 'hover:text-black',
