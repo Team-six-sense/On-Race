@@ -166,7 +166,7 @@ public class AuthService {
 		redissonClient.getAtomicLong(redisKeyGenerator.loginFailCountKey(email)).delete();
 	}
 
-	@Transactional(readOnly = true)
+	@Transactional
 	public TokenRefreshResponse refreshToken(TokenRefreshRequest request) {
 		String refreshToken = request.refreshToken();
 
@@ -189,8 +189,12 @@ public class AuthService {
 
 		String newAccessToken = jwtTokenProvider.generateAccessToken(
 				user.getId(), user.getEmail(), user.getRole().name());
+		String newRefreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
 
-		return new TokenRefreshResponse(newAccessToken, jwtProperties.getAccessTokenExpiration());
+		tokenStoreService.saveRefreshToken(
+				user.getId(), newRefreshToken, jwtProperties.getRefreshTokenExpiration());
+
+		return new TokenRefreshResponse(newAccessToken, newRefreshToken, jwtProperties.getAccessTokenExpiration());
 	}
 
 	public void logout(Long userId, String accessToken) {
