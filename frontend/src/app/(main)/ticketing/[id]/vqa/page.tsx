@@ -1,14 +1,12 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useQueue } from '@/features/ticketing/hooks';
 
 export default function VqaPage() {
   const params = useParams();
   const router = useRouter();
 
   const eventId = params.id as string;
-  const { resetQueue } = useQueue(eventId);
 
   return (
     <div className="flex items-center justify-center ">
@@ -21,7 +19,6 @@ export default function VqaPage() {
             <p
               className="text-gray-500 font-bold cursor-pointer"
               onClick={() => {
-                resetQueue();
                 router.push(`/ticketing/${eventId}/waitQueue`);
               }}
             >

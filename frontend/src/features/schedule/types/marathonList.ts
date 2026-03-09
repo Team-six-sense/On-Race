@@ -31,6 +31,7 @@ export interface MarathonEvent {
   status: 'UPCOMING' | 'OPEN' | 'CLOSED' | 'RESULT'; // API 명세에 따른 상태값들
   type: 'LOTTERY' | 'FIRST_COME'; // 응모 방식
   thumbnailImg: string;
+  images: string[];
   eventAt: string; // ISO 8601
   appStartAt: string; // ISO 8601
   appEndAt: string; // ISO 8601

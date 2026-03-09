@@ -74,7 +74,7 @@ export default function Body() {
   return (
     <main className="py-4 flex flex-col ">
       {/* --- 이벤트 목록 (Event List) --- */}
-      <section className="py-20 bg-white">
+      <section className="pt-20 bg-white">
         <div className="max-w-[1200px] mx-auto px-6">
           {/* 섹션 타이틀 */}
           <div className="mb-12 flex justify-between items-end">
@@ -167,6 +167,7 @@ export default function Body() {
           </div>
         </div>
       </section>
+
       {/* --- 플랫폼 소개 (Platform Features) --- */}
       <section className="py-20 bg-white overflow-hidden">
         <div className="max-w-[1200px] mx-auto px-6">

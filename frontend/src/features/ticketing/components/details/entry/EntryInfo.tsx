@@ -1,6 +1,7 @@
 'use client';
 
 import { MarathonEvent } from '@/features/schedule/types';
+import { getCategoryLabel } from '@/types/constants';
 import { useEffect, useState } from 'react';
 
 export function EntryInfo({ event }: { event: MarathonEvent }) {
@@ -33,13 +34,13 @@ export function EntryInfo({ event }: { event: MarathonEvent }) {
     <section>
       <div className="space-y-3 mb-4 text-sm">
         <div className="flex">
-          <span className="w-28 font-semibold">장소</span>
+          <span className="w-24 font-semibold">장소</span>
           <span className="flex-1">
             {event.venueAddress || '서울 광화문 광장'}
           </span>
         </div>
         <div className="flex">
-          <span className="w-28 font-semibold">개최일</span>
+          <span className="w-24 font-semibold">개최일</span>
           <span className="flex-1">
             {event.eventAt
               ? `${new Date(event.eventAt).toLocaleDateString('ko-KR')}`
@@ -47,12 +48,12 @@ export function EntryInfo({ event }: { event: MarathonEvent }) {
           </span>
         </div>
         <div className="flex">
-          <span className="w-28 font-semibold">참가비</span>
+          <span className="w-24 font-semibold">참가비</span>
           <span className="flex-1 font-bold">50,000원</span>
         </div>
 
         <div className="flex">
-          <span className="w-28 font-semibold">배송정보</span>
+          <span className="w-24 font-semibold">배송정보</span>
           <div className="flex-1">
             <p>
               본 상품은 일괄배송 상품으로 2026년 4월 1일부터 순차 배송됩니다.
@@ -61,7 +62,7 @@ export function EntryInfo({ event }: { event: MarathonEvent }) {
           </div>
         </div>
         <div className="flex">
-          <span className="w-28 font-semibold">모집 기간</span>
+          <span className="w-24 font-semibold">모집 기간</span>
           <span className="flex-1">
             {event.appStartAt
               ? `${new Date(event.appStartAt).toLocaleDateString('ko-KR')} ~ ${new Date(event.appEndAt).toLocaleDateString('ko-KR')}`
@@ -69,14 +70,14 @@ export function EntryInfo({ event }: { event: MarathonEvent }) {
           </span>
         </div>
         <div className="flex">
-          <span className="w-28 font-semibold">추첨 발표일</span>
+          <span className="w-24 font-semibold">추첨 발표일</span>
           <span className="flex-1">
             {event.appStartAt
               ? `${new Date(event.resultAt).toLocaleDateString('ko-KR')}`
               : '2024.04.01'}
           </span>
         </div>
-        {event.status !== 'UPCOMING' && (
+        {/* {event.status !== 'UPCOMING' && (
           <div className="flex">
             <span className="w-28 font-semibold">예상 당첨 확률</span>
             <div>
@@ -86,15 +87,18 @@ export function EntryInfo({ event }: { event: MarathonEvent }) {
               </p>
             </div>
           </div>
-        )}
+        )} */}
         <div className="flex-1">
           <div className="flex items-center justify-center border border-gray-200 rounded-sm p-4">
-            {/* 모집 현황 */}
+            {/* 카테고리 */}
             <div className="flex flex-col flex-1 items-center justify-center">
               <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">
-                모집 현황
+                카테고리
               </p>
-              <p className="text-lg font-bold">{recruitmentStatus()}</p>
+
+              <p className="text-lg font-bold">
+                {getCategoryLabel(event.category)}
+              </p>
             </div>
 
             {/* 중앙 구분선 */}
