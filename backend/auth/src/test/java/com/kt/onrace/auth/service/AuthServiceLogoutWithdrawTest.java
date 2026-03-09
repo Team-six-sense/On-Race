@@ -14,17 +14,22 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.redisson.api.RedissonClient;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.kt.onrace.auth.common.client.MainServiceClient;
+import com.kt.onrace.auth.config.AuthProperties;
 import com.kt.onrace.auth.dto.WithdrawRequest;
 import com.kt.onrace.auth.entity.User;
+import com.kt.onrace.auth.repository.TermUserRepository;
+import com.kt.onrace.auth.repository.TermVersionRepository;
 import com.kt.onrace.auth.repository.UserRepository;
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
 import com.kt.onrace.common.security.JwtProperties;
 import com.kt.onrace.common.security.JwtTokenProvider;
+import com.kt.onrace.common.util.RedisKeyGenerator;
 
 @ExtendWith(MockitoExtension.class)
 class AuthServiceLogoutWithdrawTest {
@@ -33,7 +38,16 @@ class AuthServiceLogoutWithdrawTest {
 	private AuthService authService;
 
 	@Mock
+	private AuthProperties authProperties;
+
+	@Mock
 	private UserRepository userRepository;
+
+	@Mock
+	private TermVersionRepository termVersionRepository;
+
+	@Mock
+	private TermUserRepository termUserRepository;
 
 	@Mock
 	private PasswordEncoder passwordEncoder;
@@ -49,6 +63,21 @@ class AuthServiceLogoutWithdrawTest {
 
 	@Mock
 	private MainServiceClient mainServiceClient;
+
+	@Mock
+	private EmailVerifyService emailVerifyService;
+
+	@Mock
+	private SmsVerifyService smsVerifyService;
+
+	@Mock
+	private LoginHistoryService loginHistoryService;
+
+	@Mock
+	private RedissonClient redissonClient;
+
+	@Mock
+	private RedisKeyGenerator redisKeyGenerator;
 
 	private User testUser;
 
