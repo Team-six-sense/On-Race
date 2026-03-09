@@ -96,6 +96,7 @@ public class EventSalesInfo extends BaseEntity {
 	private String ecommerceNo;
 
 	// 통신 판매 중개자 여부
+	@Column(nullable = false)
 	private boolean isEcommerceMediator;
 
 	// 고객센터 번호
