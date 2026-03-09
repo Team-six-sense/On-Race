@@ -7,10 +7,9 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum EntryStatus {
 	PRE_SAVED("사전정보저장"),
-	APPLIED("신청완료"),
-	QUEUED("대기중"),
-	CONFIRMED("확정"),
-	CANCELLED("취소");
+	APPLIED("신청완료"), // 응모는 응모 신청 후 applied, 신청은 결제 이후 applied
+	WON("당첨"), // 응모는 이 상태에서 결제 가능
+	LOST("미당첨");
 
 	private final String description;
 }

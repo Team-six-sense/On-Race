@@ -2,6 +2,7 @@ package com.kt.onrace.common.exception;
 
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -176,6 +177,20 @@ public class GlobalExceptionHandler {
 			errorCode.getMessage(),
 			request.getRequestURI(),
 			e.getParameterName()
+		);
+
+		return response(errorCode);
+	}
+
+	@ExceptionHandler(DataIntegrityViolationException.class)
+	protected ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(DataIntegrityViolationException e,
+		HttpServletRequest request) {
+		ErrorCode errorCode = BusinessErrorCode.COMMON_DUPLICATE_REQUEST;
+
+		log.warn("[DataIntegrityViolationException] code={}, message={}, path={}",
+			errorCode.getCode(),
+			errorCode.getMessage(),
+			request.getRequestURI()
 		);
 
 		return response(errorCode);

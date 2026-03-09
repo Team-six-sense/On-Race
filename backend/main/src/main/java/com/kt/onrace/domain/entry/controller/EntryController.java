@@ -12,8 +12,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.kt.onrace.common.logging.annotation.ApiLog;
 import com.kt.onrace.common.response.ApiResponse;
+import com.kt.onrace.domain.entry.dto.EntryApplyResponse;
 import com.kt.onrace.domain.entry.dto.EntryOverviewResponse;
-import com.kt.onrace.domain.entry.dto.EntryPreSaveRequest;
+import com.kt.onrace.domain.entry.dto.EntryCoursePaceRequest;
 import com.kt.onrace.domain.entry.dto.EntryPreSaveResponse;
 import com.kt.onrace.domain.entry.dto.EntryRateResponse;
 import com.kt.onrace.domain.entry.service.EntryService;
@@ -41,7 +42,7 @@ public class EntryController {
 	public ApiResponse<EntryPreSaveResponse> savePreSave(
 		@RequestHeader("X-User-Id") Long userId,
 		@PathVariable Long eventId,
-		@Valid @RequestBody EntryPreSaveRequest request
+		@Valid @RequestBody EntryCoursePaceRequest request
 	) {
 		return ApiResponse.success(entryService.savePreSave(userId, eventId, request));
 	}
@@ -61,5 +62,14 @@ public class EntryController {
 		@PathVariable Long eventId
 	) {
 		return ApiResponse.success(entryService.deletePreSave(userId, eventId));
+	}
+
+	@PostMapping("/apply")
+	public ApiResponse<EntryApplyResponse> apply(
+		@RequestHeader("X-User-Id") Long userId,
+		@PathVariable Long eventId,
+		@Valid @RequestBody EntryCoursePaceRequest request
+	) {
+		return ApiResponse.success(entryService.apply(userId, eventId, request));
 	}
 }
