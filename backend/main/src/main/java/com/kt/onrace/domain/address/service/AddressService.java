@@ -14,6 +14,7 @@ import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
 import com.kt.onrace.domain.address.dto.AddressDto;
 import com.kt.onrace.domain.address.entity.Address;
+import com.kt.onrace.domain.address.repository.AddressLabelProjection;
 import com.kt.onrace.domain.address.repository.AddressRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -44,9 +45,9 @@ public class AddressService {
 
 	@Transactional
 	public AddressDto.Response create(Long userId, AddressDto.SaveRequest request) {
-		List<Address> userAddresses = addressRepository.findByUserIdOrderByCreatedAtDesc(userId);
-		boolean hasAny = !userAddresses.isEmpty();
-		String resolvedLabel = resolveCreateLabel(userAddresses, request.label());
+		List<AddressLabelProjection> userAddressLabels = addressRepository.findLabelProjectionsByUserId(userId);
+		boolean hasAny = !userAddressLabels.isEmpty();
+		String resolvedLabel = resolveCreateLabel(userAddressLabels, request.label());
 
 		boolean shouldBeDefault = !hasAny || Boolean.TRUE.equals(request.isDefault());
 
@@ -73,8 +74,8 @@ public class AddressService {
 	public AddressDto.Response update(Long userId, Long addressId, AddressDto.SaveRequest request) {
 		Address address = addressRepository.findByIdAndUserId(addressId, userId)
 			.orElseThrow(() -> new BusinessException(BusinessErrorCode.ADDRESS_NOT_FOUND));
-		List<Address> userAddresses = addressRepository.findByUserIdOrderByCreatedAtDesc(userId);
-		String resolvedLabel = resolveUpdateLabel(address, userAddresses, request.label());
+		List<AddressLabelProjection> userAddressLabels = addressRepository.findLabelProjectionsByUserId(userId);
+		String resolvedLabel = resolveUpdateLabel(address, userAddressLabels, request.label());
 
 		Boolean wantDefault = request.isDefault();
 
@@ -150,32 +151,32 @@ public class AddressService {
 			.ifPresent(Address::markDefault);
 	}
 
-	private String resolveCreateLabel(List<Address> userAddresses, String requestedLabel) {
+	private String resolveCreateLabel(List<AddressLabelProjection> userAddressLabels, String requestedLabel) {
 		String normalizedLabel = normalizeLabel(requestedLabel);
 		if (normalizedLabel == null) {
-			return generateAutoLabel(userAddresses);
+			return generateAutoLabel(userAddressLabels);
 		}
 
-		validateDuplicateLabel(userAddresses, normalizedLabel, null);
+		validateDuplicateLabel(userAddressLabels, normalizedLabel, null);
 		return normalizedLabel;
 	}
 
-	private String resolveUpdateLabel(Address address, List<Address> userAddresses, String requestedLabel) {
+	private String resolveUpdateLabel(Address address, List<AddressLabelProjection> userAddressLabels, String requestedLabel) {
 		String normalizedLabel = normalizeLabel(requestedLabel);
 		if (normalizedLabel == null) {
 			return address.getLabel();
 		}
 
-		validateDuplicateLabel(userAddresses, normalizedLabel, address.getId());
+		validateDuplicateLabel(userAddressLabels, normalizedLabel, address.getId());
 		return normalizedLabel;
 	}
 
-	private void validateDuplicateLabel(List<Address> userAddresses, String label, Long excludedAddressId) {
-		String normalizedForComparison = normalizeLabelForComparison(label);
+	private void validateDuplicateLabel(List<AddressLabelProjection> userAddressLabels, String label, Long excludedAddressId) {
+		String normalizedForComparison = label.toLowerCase(Locale.ROOT);
 
-		boolean duplicated = userAddresses.stream()
+		boolean duplicated = userAddressLabels.stream()
 			.filter(address -> excludedAddressId == null || !address.getId().equals(excludedAddressId))
-			.map(Address::getLabel)
+			.map(AddressLabelProjection::getLabel)
 			.map(this::normalizeLabelForComparison)
 			.anyMatch(normalizedForComparison::equals);
 
@@ -184,10 +185,10 @@ public class AddressService {
 		}
 	}
 
-	private String generateAutoLabel(List<Address> userAddresses) {
+	private String generateAutoLabel(List<AddressLabelProjection> userAddressLabels) {
 		Set<Integer> usedNumbers = new HashSet<>();
 
-		for (Address address : userAddresses) {
+		for (AddressLabelProjection address : userAddressLabels) {
 			String label = normalizeLabel(address.getLabel());
 			if (label == null) {
 				continue;

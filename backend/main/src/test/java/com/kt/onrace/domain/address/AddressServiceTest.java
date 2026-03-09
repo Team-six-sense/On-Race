@@ -200,6 +200,28 @@ class AddressServiceTest {
 		assertThat(updated.label()).isEqualTo("집");
 	}
 
+	@Test
+	@DisplayName("수정 시 입력 라벨은 trim 후 저장된다")
+	void updateLabelStoresTrimmedValue() {
+		AddressDto.Response created = addressService.create(1L, createRequest("회사주소", "회사", false));
+
+		AddressDto.Response updated = addressService.update(1L, created.id(), createRequest("회사주소수정", " 사무실 ", null));
+
+		assertThat(updated.label()).isEqualTo("사무실");
+	}
+
+	@Test
+	@DisplayName("수정 시 다른 배송지와 중복되는 라벨은 허용되지 않는다")
+	void updateLabelRejectsDuplicateOfAnotherAddress() {
+		addressService.create(1L, createRequest("집주소", "집", false));
+		AddressDto.Response office = addressService.create(1L, createRequest("회사주소", "회사", false));
+
+		assertThatThrownBy(() -> addressService.update(1L, office.id(), createRequest("회사주소수정", " 집 ", null)))
+			.isInstanceOf(BusinessException.class)
+			.extracting(ex -> ((BusinessException)ex).getErrorCode())
+			.isEqualTo(BusinessErrorCode.ADDRESS_DUPLICATE_LABEL);
+	}
+
 	private AddressDto.SaveRequest createRequest(String receiverName, String label, Boolean isDefault) {
 		return new AddressDto.SaveRequest(
 			receiverName,
