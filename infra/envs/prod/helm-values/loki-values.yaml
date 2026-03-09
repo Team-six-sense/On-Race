@@ -1,0 +1,24 @@
+# loki-values.yaml
+loki:
+  auth_enabled: false
+  commonConfig:
+    replication_factor: 1
+  storage:
+    type: s3
+    s3:
+      region: ap-northeast-2
+      bucketnames: t6-on-race-loki-logs-202020842 # 생성한 S3 버킷명
+      s3forcepathstyle: true
+  
+  # IRSA 연결 (방금 확인한 ARN 붙여넣기)
+  serviceAccount:
+    create: true
+    name: loki
+    annotations:
+      eks.amazonaws.com/role-arn: "arn:aws:iam::274130523831:role/t6-on-race-prod-cluster-loki-irsa"
+
+promtail:
+  enabled: true
+  config:
+    clients:
+      - url: http://loki:3100/loki/api/v1/push  # 주소 수정: loki-gateway -> loki (3100포트 명시)
