@@ -2,8 +2,6 @@ package com.kt.onrace.domain.event.dto;
 
 import java.time.LocalDateTime;
 
-import com.kt.onrace.domain.event.entity.Event;
-import com.kt.onrace.domain.event.entity.EventAppType;
 import com.kt.onrace.domain.event.entity.EventSalesInfo;
 
 import lombok.Builder;
@@ -17,10 +15,12 @@ public record EventSalesInfoResponse (
 
 	@Builder
 	public record RefundPolicyInfo(
-		String refundPeriod,
-		String refundDeadline,
-		String cancellationFee,
+		Boolean isRefundable,
 		Boolean isTransferable,
+		LocalDateTime refundStartAt,
+		LocalDateTime refundEndAt,
+		LocalDateTime nonRefundableAt,
+		String cancellationFee,
 		String refundPolicy,
 		String weatherRefund
 	) {
@@ -30,10 +30,11 @@ public record EventSalesInfoResponse (
 	public record DeliveryInfo(
 		String deliveryTarget,
 		String deliveryMethod,
-		String deliverySchedule,
+		LocalDateTime deliveryStartAt,
+		LocalDateTime deliveryEndAt,
 		String deliveryFee,
 		String deliveryArea,
-		String addressChangePeriod,
+		LocalDateTime addressChangePeriod,
 		String deliveryCompensation
 	) {
 	}
@@ -51,10 +52,12 @@ public record EventSalesInfoResponse (
 
 	public static EventSalesInfoResponse from(EventSalesInfo salesInfo) {
 		RefundPolicyInfo refundPolicy = RefundPolicyInfo.builder()
-			.refundPeriod(salesInfo.getRefundPeriod())
-			.refundDeadline(salesInfo.getRefundDeadline())
+			.isRefundable(salesInfo.isRefundable())
+			.isTransferable(salesInfo.isTransferable())
+			.refundStartAt(salesInfo.getRefundStartAt())
+			.refundEndAt(salesInfo.getRefundEndAt())
+			.nonRefundableAt(salesInfo.getNonRefundableAt())
 			.cancellationFee(salesInfo.getCancellationFee())
-			.isTransferable(salesInfo.getIsTransferable())
 			.refundPolicy(salesInfo.getRefundPolicy())
 			.weatherRefund(salesInfo.getWeatherRefund())
 			.build();
@@ -62,7 +65,8 @@ public record EventSalesInfoResponse (
 		DeliveryInfo delivery = DeliveryInfo.builder()
 			.deliveryTarget(salesInfo.getDeliveryTarget())
 			.deliveryMethod(salesInfo.getDeliveryMethod())
-			.deliverySchedule(salesInfo.getDeliverySchedule())
+			.deliveryStartAt(salesInfo.getDeliveryStartAt())
+			.deliveryEndAt(salesInfo.getDeliveryEndAt())
 			.deliveryFee(salesInfo.getDeliveryFee())
 			.deliveryArea(salesInfo.getDeliveryArea())
 			.addressChangePeriod(salesInfo.getAddressChangePeriod())
@@ -73,7 +77,7 @@ public record EventSalesInfoResponse (
 			.sellerName(salesInfo.getSellerName())
 			.businessNo(salesInfo.getBusinessNo())
 			.ecommerceNo(salesInfo.getEcommerceNo())
-			.isEcommerceMediator(salesInfo.getIsEcommerceMediator())
+			.isEcommerceMediator(salesInfo.isEcommerceMediator())
 			.customerService(salesInfo.getCustomerService())
 			.sellerAddress(salesInfo.getSellerAddress())
 			.build();
