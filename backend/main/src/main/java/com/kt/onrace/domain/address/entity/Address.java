@@ -28,6 +28,9 @@ public class Address extends BaseEntity {
 	@Column(nullable = false, length = 50)
 	private String receiverName;
 
+	@Column(length = 20)
+	private String label;
+
 	@Column(nullable = false, length = 20)
 	private String phone;
 
@@ -47,10 +50,11 @@ public class Address extends BaseEntity {
 	private boolean isDefault;
 
 	@Builder
-	private Address(Long userId, String receiverName, String phone, String zipcode,
+	private Address(Long userId, String receiverName, String label, String phone, String zipcode,
 					String address1, String address2, String memo, Boolean isDefault) {
 		this.userId = userId;
 		this.receiverName = receiverName;
+		this.label = label;
 		this.phone = phone;
 		this.zipcode = zipcode;
 		this.address1 = address1;
@@ -59,9 +63,10 @@ public class Address extends BaseEntity {
 		this.isDefault = isDefault != null && isDefault;
 	}
 
-	public void update(String receiverName, String phone, String zipcode,
+	public void update(String receiverName, String label, String phone, String zipcode,
 					String address1, String address2, String memo) {
 		this.receiverName = receiverName;
+		this.label = label;
 		this.phone = phone;
 		this.zipcode = zipcode;
 		this.address1 = address1;

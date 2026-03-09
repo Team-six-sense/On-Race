@@ -1,6 +1,11 @@
 package com.kt.onrace.domain.address.service;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +22,9 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class AddressService {
+
+	private static final String AUTO_LABEL_PREFIX = "배송지";
+	private static final Pattern AUTO_LABEL_PATTERN = Pattern.compile("^배송지(\\d+)$");
 
 	private final AddressRepository addressRepository;
 
@@ -36,7 +44,9 @@ public class AddressService {
 
 	@Transactional
 	public AddressDto.Response create(Long userId, AddressDto.SaveRequest request) {
-		boolean hasAny = addressRepository.existsByUserId(userId);
+		List<Address> userAddresses = addressRepository.findByUserIdOrderByCreatedAtDesc(userId);
+		boolean hasAny = !userAddresses.isEmpty();
+		String resolvedLabel = resolveCreateLabel(userAddresses, request.label());
 
 		boolean shouldBeDefault = !hasAny || Boolean.TRUE.equals(request.isDefault());
 
@@ -47,6 +57,7 @@ public class AddressService {
 		Address address = Address.builder()
 			.userId(userId)
 			.receiverName(request.receiverName())
+			.label(resolvedLabel)
 			.phone(request.phone())
 			.zipcode(request.zipcode())
 			.address1(request.address1())
@@ -62,6 +73,8 @@ public class AddressService {
 	public AddressDto.Response update(Long userId, Long addressId, AddressDto.SaveRequest request) {
 		Address address = addressRepository.findByIdAndUserId(addressId, userId)
 			.orElseThrow(() -> new BusinessException(BusinessErrorCode.ADDRESS_NOT_FOUND));
+		List<Address> userAddresses = addressRepository.findByUserIdOrderByCreatedAtDesc(userId);
+		String resolvedLabel = resolveUpdateLabel(address, userAddresses, request.label());
 
 		Boolean wantDefault = request.isDefault();
 
@@ -75,6 +88,7 @@ public class AddressService {
 
 		address.update(
 			request.receiverName(),
+			resolvedLabel,
 			request.phone(),
 			request.zipcode(),
 			request.address1(),
@@ -134,5 +148,84 @@ public class AddressService {
 			.filter(address -> !address.getId().equals(excludedAddressId))
 			.findFirst()
 			.ifPresent(Address::markDefault);
+	}
+
+	private String resolveCreateLabel(List<Address> userAddresses, String requestedLabel) {
+		String normalizedLabel = normalizeLabel(requestedLabel);
+		if (normalizedLabel == null) {
+			return generateAutoLabel(userAddresses);
+		}
+
+		validateDuplicateLabel(userAddresses, normalizedLabel, null);
+		return normalizedLabel;
+	}
+
+	private String resolveUpdateLabel(Address address, List<Address> userAddresses, String requestedLabel) {
+		String normalizedLabel = normalizeLabel(requestedLabel);
+		if (normalizedLabel == null) {
+			return address.getLabel();
+		}
+
+		validateDuplicateLabel(userAddresses, normalizedLabel, address.getId());
+		return normalizedLabel;
+	}
+
+	private void validateDuplicateLabel(List<Address> userAddresses, String label, Long excludedAddressId) {
+		String normalizedForComparison = normalizeLabelForComparison(label);
+
+		boolean duplicated = userAddresses.stream()
+			.filter(address -> excludedAddressId == null || !address.getId().equals(excludedAddressId))
+			.map(Address::getLabel)
+			.map(this::normalizeLabelForComparison)
+			.anyMatch(normalizedForComparison::equals);
+
+		if (duplicated) {
+			throw new BusinessException(BusinessErrorCode.ADDRESS_DUPLICATE_LABEL);
+		}
+	}
+
+	private String generateAutoLabel(List<Address> userAddresses) {
+		Set<Integer> usedNumbers = new HashSet<>();
+
+		for (Address address : userAddresses) {
+			String label = normalizeLabel(address.getLabel());
+			if (label == null) {
+				continue;
+			}
+
+			Matcher matcher = AUTO_LABEL_PATTERN.matcher(label);
+			if (matcher.matches()) {
+				usedNumbers.add(Integer.parseInt(matcher.group(1)));
+			}
+		}
+
+		int nextNumber = 1;
+		while (usedNumbers.contains(nextNumber)) {
+			nextNumber++;
+		}
+
+		return AUTO_LABEL_PREFIX + nextNumber;
+	}
+
+	private String normalizeLabel(String label) {
+		if (label == null) {
+			return null;
+		}
+
+		String trimmedLabel = label.trim();
+		if (trimmedLabel.isEmpty()) {
+			return null;
+		}
+
+		return trimmedLabel;
+	}
+
+	private String normalizeLabelForComparison(String label) {
+		String normalizedLabel = normalizeLabel(label);
+		if (normalizedLabel == null) {
+			return "";
+		}
+
+		return normalizedLabel.toLowerCase(Locale.ROOT);
 	}
 }

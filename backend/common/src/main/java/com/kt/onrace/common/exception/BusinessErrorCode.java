@@ -60,6 +60,7 @@ public enum BusinessErrorCode implements ErrorCode {
 
 	// ADDRESS
 	ADDRESS_NOT_FOUND(HttpStatus.NOT_FOUND, "ADR_001", "배송지를 찾을 수 없습니다."),
+	ADDRESS_DUPLICATE_LABEL(HttpStatus.BAD_REQUEST, "ADR_002", "이미 사용 중인 주소 별칭입니다."),
 
 	// ENTRY
 	ENTRY_NOT_FOUND(HttpStatus.NOT_FOUND, "ENT_001", "신청 정보를 찾을 수 없습니다."),
