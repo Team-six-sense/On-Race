@@ -215,6 +215,11 @@ public class AuthService {
 
 	private String maskEmail(String email) {
 		int atIndex = email.indexOf('@');
+		if (atIndex < 1) {
+			// 유효하지 않은 이메일 형식은 마스킹할 수 없습니다.
+			// 오류 발생 및 데이터 노출을 피하기 위해 일반적인 마스킹 문자열을 반환합니다.
+			return "***@***.***";
+		}
 		if (atIndex <= 2) {
 			return "*".repeat(atIndex) + email.substring(atIndex);
 		}
