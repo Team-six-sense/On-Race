@@ -176,9 +176,7 @@ public class AddressService {
 
 		boolean duplicated = userAddressLabels.stream()
 			.filter(address -> excludedAddressId == null || !address.getId().equals(excludedAddressId))
-			.map(AddressLabelProjection::getLabel)
-			.map(this::normalizeLabelForComparison)
-			.anyMatch(normalizedForComparison::equals);
+			.anyMatch(address -> normalizedForComparison.equals(normalizeLabelForComparison(address.getLabel())));
 
 		if (duplicated) {
 			throw new BusinessException(BusinessErrorCode.ADDRESS_DUPLICATE_LABEL);
