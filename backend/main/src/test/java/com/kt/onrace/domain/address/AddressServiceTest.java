@@ -222,6 +222,16 @@ class AddressServiceTest {
 			.isEqualTo(BusinessErrorCode.ADDRESS_DUPLICATE_LABEL);
 	}
 
+	@Test
+	@DisplayName("수정 시 자기 자신의 라벨과 동일한 값은 허용된다")
+	void updateLabelAllowsSameLabelOfSameAddress() {
+		AddressDto.Response created = addressService.create(1L, createRequest("집주소", "HOME", false));
+
+		AddressDto.Response updated = addressService.update(1L, created.id(), createRequest("집주소수정", " home ", null));
+
+		assertThat(updated.label()).isEqualTo("home");
+	}
+
 	private AddressDto.SaveRequest createRequest(String receiverName, String label, Boolean isDefault) {
 		return new AddressDto.SaveRequest(
 			receiverName,

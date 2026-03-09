@@ -14,15 +14,37 @@ public interface AddressRepository extends JpaRepository<Address, Long> {
 
 	Optional<Address> findByIdAndUserId(Long id, Long userId);
 
+	boolean existsByUserId(Long userId);
+
 	Optional<Address> findFirstByUserIdAndIsDefaultTrue(Long userId);
 
 	List<Address> findByUserIdOrderByCreatedAtDesc(Long userId);
+
+	Optional<Address> findFirstByUserIdOrderByCreatedAtDesc(Long userId);
+
+	Optional<Address> findFirstByUserIdAndIdNotOrderByCreatedAtDesc(Long userId, Long id);
 
 	@Query("""
 		select a.id as id, a.label as label
 		from Address a
 		where a.userId = :userId
-		order by a.createdAt desc
 		""")
 	List<AddressLabelProjection> findLabelProjectionsByUserId(Long userId);
+
+	@Query("""
+		select case when count(a) > 0 then true else false end
+		from Address a
+		where a.userId = :userId
+			and lower(trim(a.label)) = :normalizedLabel
+		""")
+	boolean existsByUserIdAndNormalizedLabel(Long userId, String normalizedLabel);
+
+	@Query("""
+		select case when count(a) > 0 then true else false end
+		from Address a
+		where a.userId = :userId
+			and a.id <> :excludedAddressId
+			and lower(trim(a.label)) = :normalizedLabel
+		""")
+	boolean existsByUserIdAndNormalizedLabelExcludingId(Long userId, Long excludedAddressId, String normalizedLabel);
 }

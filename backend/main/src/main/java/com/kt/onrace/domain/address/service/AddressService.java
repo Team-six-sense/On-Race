@@ -45,9 +45,19 @@ public class AddressService {
 
 	@Transactional
 	public AddressDto.Response create(Long userId, AddressDto.SaveRequest request) {
-		List<AddressLabelProjection> userAddressLabels = addressRepository.findLabelProjectionsByUserId(userId);
-		boolean hasAny = !userAddressLabels.isEmpty();
-		String resolvedLabel = resolveCreateLabel(userAddressLabels, request.label());
+		String normalizedLabel = normalizeLabel(request.label());
+		boolean hasAny;
+		String resolvedLabel;
+
+		if (normalizedLabel == null) {
+			List<AddressLabelProjection> userAddressLabels = addressRepository.findLabelProjectionsByUserId(userId);
+			hasAny = !userAddressLabels.isEmpty();
+			resolvedLabel = generateAutoLabel(userAddressLabels);
+		} else {
+			hasAny = addressRepository.existsByUserId(userId);
+			validateDuplicateLabel(userId, normalizedLabel, null);
+			resolvedLabel = normalizedLabel;
+		}
 
 		boolean shouldBeDefault = !hasAny || Boolean.TRUE.equals(request.isDefault());
 
@@ -74,8 +84,7 @@ public class AddressService {
 	public AddressDto.Response update(Long userId, Long addressId, AddressDto.SaveRequest request) {
 		Address address = addressRepository.findByIdAndUserId(addressId, userId)
 			.orElseThrow(() -> new BusinessException(BusinessErrorCode.ADDRESS_NOT_FOUND));
-		List<AddressLabelProjection> userAddressLabels = addressRepository.findLabelProjectionsByUserId(userId);
-		String resolvedLabel = resolveUpdateLabel(address, userAddressLabels, request.label());
+		String resolvedLabel = resolveUpdateLabel(userId, address, request.label());
 
 		Boolean wantDefault = request.isDefault();
 
@@ -133,50 +142,30 @@ public class AddressService {
 	}
 
 	private void promoteDefaultIfNeeded(Long userId) {
-		List<Address> remaining = addressRepository.findByUserIdOrderByCreatedAtDesc(userId);
-		if (remaining.isEmpty()) {
-			return;
-		}
-		remaining.get(0).markDefault();
-	}
-
-	private void promoteDefaultIfNeededExcluding(Long userId, Long excludedAddressId) {
-		List<Address> remaining = addressRepository.findByUserIdOrderByCreatedAtDesc(userId);
-		if (remaining.isEmpty()) {
-			return;
-		}
-		remaining.stream()
-			.filter(address -> !address.getId().equals(excludedAddressId))
-			.findFirst()
+		addressRepository.findFirstByUserIdOrderByCreatedAtDesc(userId)
 			.ifPresent(Address::markDefault);
 	}
 
-	private String resolveCreateLabel(List<AddressLabelProjection> userAddressLabels, String requestedLabel) {
-		String normalizedLabel = normalizeLabel(requestedLabel);
-		if (normalizedLabel == null) {
-			return generateAutoLabel(userAddressLabels);
-		}
-
-		validateDuplicateLabel(userAddressLabels, normalizedLabel, null);
-		return normalizedLabel;
+	private void promoteDefaultIfNeededExcluding(Long userId, Long excludedAddressId) {
+		addressRepository.findFirstByUserIdAndIdNotOrderByCreatedAtDesc(userId, excludedAddressId)
+			.ifPresent(Address::markDefault);
 	}
 
-	private String resolveUpdateLabel(Address address, List<AddressLabelProjection> userAddressLabels, String requestedLabel) {
+	private String resolveUpdateLabel(Long userId, Address address, String requestedLabel) {
 		String normalizedLabel = normalizeLabel(requestedLabel);
 		if (normalizedLabel == null) {
 			return address.getLabel();
 		}
 
-		validateDuplicateLabel(userAddressLabels, normalizedLabel, address.getId());
+		validateDuplicateLabel(userId, normalizedLabel, address.getId());
 		return normalizedLabel;
 	}
 
-	private void validateDuplicateLabel(List<AddressLabelProjection> userAddressLabels, String label, Long excludedAddressId) {
+	private void validateDuplicateLabel(Long userId, String label, Long excludedAddressId) {
 		String normalizedForComparison = label.toLowerCase(Locale.ROOT);
-
-		boolean duplicated = userAddressLabels.stream()
-			.filter(address -> excludedAddressId == null || !address.getId().equals(excludedAddressId))
-			.anyMatch(address -> normalizedForComparison.equals(normalizeLabelForComparison(address.getLabel())));
+		boolean duplicated = excludedAddressId == null
+			? addressRepository.existsByUserIdAndNormalizedLabel(userId, normalizedForComparison)
+			: addressRepository.existsByUserIdAndNormalizedLabelExcludingId(userId, excludedAddressId, normalizedForComparison);
 
 		if (duplicated) {
 			throw new BusinessException(BusinessErrorCode.ADDRESS_DUPLICATE_LABEL);
@@ -217,14 +206,5 @@ public class AddressService {
 		}
 
 		return trimmedLabel;
-	}
-
-	private String normalizeLabelForComparison(String label) {
-		String normalizedLabel = normalizeLabel(label);
-		if (normalizedLabel == null) {
-			return "";
-		}
-
-		return normalizedLabel.toLowerCase(Locale.ROOT);
 	}
 }
