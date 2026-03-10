@@ -35,6 +35,8 @@ import com.kt.onrace.common.exception.BusinessException;
 import com.kt.onrace.auth.config.AuthProperties;
 import com.kt.onrace.common.security.JwtProperties;
 import com.kt.onrace.common.security.JwtTokenProvider;
+import com.kt.onrace.common.util.MaskingType;
+import com.kt.onrace.common.util.MaskingUtils;
 import com.kt.onrace.common.util.RedisKeyGenerator;
 
 import lombok.RequiredArgsConstructor;
@@ -205,20 +207,7 @@ public class AuthService {
 		User user = userRepository.findByPhoneNumberAndIsDeletedFalse(request.phoneNumber())
 				.orElseThrow(() -> new BusinessException(BusinessErrorCode.AUTH_NOT_FOUND_USER));
 
-		return new FindEmailResponse(maskEmail(user.getEmail()));
-	}
-
-	private String maskEmail(String email) {
-		int atIndex = email.indexOf('@');
-		if (atIndex < 1) {
-			// 유효하지 않은 이메일 형식은 마스킹할 수 없습니다.
-			// 오류 발생 및 데이터 노출을 피하기 위해 일반적인 마스킹 문자열을 반환합니다.
-			return "***@***.***";
-		}
-		if (atIndex <= 2) {
-			return "*".repeat(atIndex) + email.substring(atIndex);
-		}
-		return email.substring(0, 2) + "*".repeat(atIndex - 2) + email.substring(atIndex);
+		return new FindEmailResponse(MaskingUtils.mask(user.getEmail(), MaskingType.EMAIL));
 	}
 
 	public void logout(Long userId, String accessToken) {
