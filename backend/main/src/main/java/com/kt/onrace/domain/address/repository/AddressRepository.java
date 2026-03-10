@@ -30,8 +30,4 @@ public interface AddressRepository extends JpaRepository<Address, Long> {
 		where a.userId = :userId
 		""")
 	List<AddressLabelProjection> findLabelProjectionsByUserId(Long userId);
-
-	boolean existsByUserIdAndNormalizedLabel(Long userId, String normalizedLabel);
-	
-	boolean existsByUserIdAndNormalizedLabelAndIdNot(Long userId, String normalizedLabel, Long id);
 }

@@ -49,25 +49,10 @@ public class AddressService {
 	@Transactional
 	public AddressDto.Response create(Long userId, AddressDto.SaveRequest request) {
 		try {
-			Address address = Address.builder()
-				.userId(userId)
-				.receiverName(request.receiverName())
-				.phone(request.phone())
-				.zipcode(request.zipcode())
-				.address1(request.address1())
-				.address2(request.address2())
-				.memo(request.memo())
-				.build();
-
 			String label = request.label();
 			if (label == null || label.isBlank()) {
 				List<AddressLabelProjection> userAddressLabels = addressRepository.findLabelProjectionsByUserId(userId);
 				label = generateAutoLabel(userAddressLabels);
-			}
-			address.applyLabel(label);
-
-			if (addressRepository.existsByUserIdAndNormalizedLabel(userId, address.getNormalizedLabel())) {
-				throw new BusinessException(BusinessErrorCode.ADDRESS_DUPLICATE_LABEL);
 			}
 
 			boolean hasAnyAddress = addressRepository.existsByUserId(userId);
@@ -76,7 +61,18 @@ public class AddressService {
 			if (shouldBeDefault && hasAnyAddress) {
 				unsetDefault(userId);
 			}
-			address.updateIsDefault(shouldBeDefault);
+
+			Address address = Address.builder()
+				.userId(userId)
+				.receiverName(request.receiverName())
+				.label(label)
+				.phone(request.phone())
+				.zipcode(request.zipcode())
+				.address1(request.address1())
+				.address2(request.address2())
+				.memo(request.memo())
+				.isDefault(shouldBeDefault)
+				.build();
 
 			return AddressDto.Response.from(addressRepository.saveAndFlush(address));
 		} catch (DataIntegrityViolationException e) {
@@ -92,16 +88,12 @@ public class AddressService {
 			String label = request.label();
 			if (label != null && !label.isBlank()) {
 				address.applyLabel(label);
-				if (addressRepository.existsByUserIdAndNormalizedLabelAndIdNot(userId, address.getNormalizedLabel(), addressId)) {
-					throw new BusinessException(BusinessErrorCode.ADDRESS_DUPLICATE_LABEL);
-				}
 			}
 
 			handleDefaultStatus(userId, address, request.isDefault());
 
 			address.update(
 				request.receiverName(),
-				address.getLabel(),
 				request.phone(),
 				request.zipcode(),
 				request.address1(),

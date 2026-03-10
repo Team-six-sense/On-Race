@@ -3,7 +3,6 @@ package com.kt.onrace.domain.address;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 
 import java.sql.SQLException;
@@ -40,7 +39,6 @@ class AddressServiceExceptionTranslationTest {
 		AddressDto.SaveRequest request = createRequest("집");
 		DataIntegrityViolationException exception = duplicateLabelViolation("PUBLIC.UK_ADDRESS_USER_NORMALIZED_LABEL_INDEX_E");
 
-		given(addressRepository.existsByUserIdAndNormalizedLabel(anyLong(), anyString())).willReturn(false);
 		given(addressRepository.existsByUserId(USER_ID)).willReturn(false);
 		given(addressRepository.saveAndFlush(any(Address.class))).willThrow(exception);
 
@@ -56,7 +54,6 @@ class AddressServiceExceptionTranslationTest {
 		AddressDto.SaveRequest request = createRequest("집");
 		DataIntegrityViolationException exception = duplicateLabelViolation("uk_other_constraint");
 
-		given(addressRepository.existsByUserIdAndNormalizedLabel(anyLong(), anyString())).willReturn(false);
 		given(addressRepository.existsByUserId(USER_ID)).willReturn(false);
 		given(addressRepository.saveAndFlush(any(Address.class))).willThrow(exception);
 

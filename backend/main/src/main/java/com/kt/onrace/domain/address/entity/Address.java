@@ -72,10 +72,9 @@ public class Address extends BaseEntity {
 		this.isDefault = isDefault != null && isDefault;
 	}
 
-	public void update(String receiverName, String label, String phone, String zipcode,
+	public void update(String receiverName, String phone, String zipcode,
 					String address1, String address2, String memo) {
 		this.receiverName = receiverName;
-		applyLabel(label);
 		this.phone = phone;
 		this.zipcode = zipcode;
 		this.address1 = address1;
@@ -89,10 +88,6 @@ public class Address extends BaseEntity {
 
 	public void unmarkDefault() {
 		this.isDefault = false;
-	}
-
-	public void updateIsDefault(boolean isDefault) {
-		this.isDefault = isDefault;
 	}
 
 	public void applyLabel(String label) {
@@ -111,9 +106,5 @@ public class Address extends BaseEntity {
 
 		this.label = trimmed;
 		this.normalizedLabel = trimmed.toLowerCase(Locale.ROOT);
-	}
-
-	public String getNormalizedLabel() {
-		return this.normalizedLabel;
 	}
 }

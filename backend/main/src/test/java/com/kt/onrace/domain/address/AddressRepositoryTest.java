@@ -46,29 +46,6 @@ class AddressRepositoryTest {
 	}
 
 	@Test
-	@DisplayName("정규화된 라벨 존재 여부 조회는 trim 및 대소문자를 무시한다")
-	void existsByUserIdAndNormalizedLabelIgnoresTrimAndCase() {
-		addressRepository.save(createAddress(1L, " HOME "));
-
-		boolean exists = addressRepository.existsByUserIdAndNormalizedLabel(1L, "home");
-
-		assertThat(exists).isTrue();
-	}
-
-	@Test
-	@DisplayName("제외 ID 조건이 있는 정규화된 라벨 조회는 자기 자신을 제외하고 중복을 판별한다")
-	void existsByUserIdAndIdNotAndNormalizedLabelExcludesCurrentAddress() {
-		Address home = addressRepository.save(createAddress(1L, "HOME"));
-		addressRepository.save(createAddress(1L, "회사"));
-
-		boolean sameAddressOnly = addressRepository.existsByUserIdAndNormalizedLabelAndIdNot(1L, "home", home.getId());
-		boolean anotherAddress = addressRepository.existsByUserIdAndNormalizedLabelAndIdNot(1L, "home", -1L);
-
-		assertThat(sameAddressOnly).isFalse();
-		assertThat(anotherAddress).isTrue();
-	}
-
-	@Test
 	@DisplayName("정규화된 라벨 유니크 제약은 trim 및 대소문자 무시 기준으로 중복 저장을 막는다")
 	void uniqueConstraintBlocksDuplicateNormalizedLabel() {
 		addressRepository.saveAndFlush(createAddress(1L, "HOME"));
