@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.kt.onrace.auth.common.client.MainServiceClient;
+import com.kt.onrace.auth.dto.FindEmailRequest;
+import com.kt.onrace.auth.dto.FindEmailResponse;
 import com.kt.onrace.auth.dto.LoginRequest;
 import com.kt.onrace.auth.dto.LoginResponse;
 import com.kt.onrace.auth.dto.SignupRequest;
@@ -33,6 +35,8 @@ import com.kt.onrace.common.exception.BusinessException;
 import com.kt.onrace.auth.config.AuthProperties;
 import com.kt.onrace.common.security.JwtProperties;
 import com.kt.onrace.common.security.JwtTokenProvider;
+import com.kt.onrace.common.util.MaskingType;
+import com.kt.onrace.common.util.MaskingUtils;
 import com.kt.onrace.common.util.RedisKeyGenerator;
 
 import lombok.RequiredArgsConstructor;
@@ -59,11 +63,11 @@ public class AuthService {
 
 	@Transactional
 	public SignupResponse signup(SignupRequest request) {
-		if (!emailVerifyService.isVerified(request.email())) {
+		if (!emailVerifyService.consumeVerification(request.email())) {
 			throw new BusinessException(BusinessErrorCode.AUTH_EMAIL_NOT_VERIFIED);
 		}
 
-		if (!smsVerifyService.isVerified(request.phoneNumber())) {
+		if (!smsVerifyService.consumeVerification(request.phoneNumber())) {
 			throw new BusinessException(BusinessErrorCode.AUTH_PHONE_NOT_VERIFIED);
 		}
 
@@ -102,9 +106,6 @@ public class AuthService {
 		}
 
 		mainServiceClient.syncUserCreated(saved.getId());
-
-		emailVerifyService.deleteVerified(request.email());
-		smsVerifyService.deleteVerified(request.phoneNumber());
 
 		return new SignupResponse(saved.getId(), saved.getEmail(), saved.getCreatedAt());
 	}
@@ -195,6 +196,18 @@ public class AuthService {
 				user.getId(), newRefreshToken, jwtProperties.getRefreshTokenExpiration());
 
 		return new TokenRefreshResponse(newAccessToken, newRefreshToken, jwtProperties.getAccessTokenExpiration());
+	}
+
+	@Transactional
+	public FindEmailResponse findEmail(FindEmailRequest request) {
+		if (!smsVerifyService.consumeVerification(request.phoneNumber())) {
+			throw new BusinessException(BusinessErrorCode.AUTH_PHONE_NOT_VERIFIED);
+		}
+
+		User user = userRepository.findByPhoneNumberAndIsDeletedFalse(request.phoneNumber())
+				.orElseThrow(() -> new BusinessException(BusinessErrorCode.AUTH_NOT_FOUND_USER));
+
+		return new FindEmailResponse(MaskingUtils.mask(user.getEmail(), MaskingType.EMAIL));
 	}
 
 	public void logout(Long userId, String accessToken) {

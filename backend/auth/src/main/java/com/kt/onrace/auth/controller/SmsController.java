@@ -33,6 +33,13 @@ public class SmsController extends SwaggerAssistance {
 		return ApiResponse.success();
 	}
 
+	@Operation(summary = "아이디 찾기용 인증 코드 발송", description = "가입된 휴대폰 번호로 6자리 인증 코드를 SMS로 발송합니다. (유효시간 3분)")
+	@PostMapping("/send-for-find")
+	public ApiResponse<Void> sendCodeForFind(@Valid @RequestBody SmsSendRequest request) {
+		smsVerifyService.sendCodeForFind(request.phoneNumber());
+		return ApiResponse.success();
+	}
+
 	@Operation(summary = "인증 코드 검증", description = "수신한 인증 코드를 검증합니다. 성공 시 10분간 인증 상태가 유지됩니다.")
 	@PostMapping("/verify")
 	public ApiResponse<Void> verifyCode(@Valid @RequestBody SmsVerifyRequest request) {

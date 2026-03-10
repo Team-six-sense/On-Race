@@ -100,6 +100,17 @@ public class EmailVerifyService {
 		redissonClient.getBucket(redisKeyGenerator.emailVerifiedKey(email)).delete();
 	}
 
+	/**
+	 * 인증 상태를 원자적으로 확인하고 삭제합니다.
+	 * getAndDelete()를 사용해 확인과 삭제를 단일 연산으로 처리하여 race condition을 방지합니다.
+	 *
+	 * @return 인증 상태가 존재했으면 true, 아니면 false
+	 */
+	public boolean consumeVerification(String email) {
+		RBucket<String> verifiedBucket = redissonClient.getBucket(redisKeyGenerator.emailVerifiedKey(email));
+		return verifiedBucket.getAndDelete() != null;
+	}
+
 	private String generateCode() {
 		return String.format("%04d", SECURE_RANDOM.nextInt(10_000));
 	}

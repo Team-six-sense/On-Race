@@ -33,11 +33,26 @@ public class SmsVerifyService {
 	private final SolapiProperties properties;
 	private final UserRepository userRepository;
 
+	public void sendCodeForFind(String phoneNumber) {
+		boolean exists = userRepository.existsByPhoneNumber(phoneNumber);
+
+		if (exists) {
+			sendSmsCode(phoneNumber);
+		}
+		// 항상 동일한 성공 응답 반환
+	}
+
 	public void sendCode(String phoneNumber) {
-		if (userRepository.existsByPhoneNumber(phoneNumber)) {
-			throw new BusinessException(BusinessErrorCode.AUTH_DUPLICATE_PHONE);
+		boolean exists = userRepository.existsByPhoneNumber(phoneNumber);
+
+		if (!exists) {
+			sendSmsCode(phoneNumber);
 		}
 
+		// 항상 동일한 성공 응답 반환
+	}
+
+	private void sendSmsCode(String phoneNumber) {
 		RAtomicLong sendAttemptCounter = redissonClient.getAtomicLong(redisKeyGenerator.smsSendAttemptKey(phoneNumber));
 		long currentSendAttempts = sendAttemptCounter.incrementAndGet();
 
@@ -106,6 +121,17 @@ public class SmsVerifyService {
 
 	public void deleteVerified(String phoneNumber) {
 		redissonClient.getBucket(redisKeyGenerator.smsVerifiedKey(phoneNumber)).delete();
+	}
+
+	/**
+	 * 인증 상태를 원자적으로 확인하고 삭제합니다.
+	 * getAndDelete()를 사용해 확인과 삭제를 단일 연산으로 처리하여 race condition을 방지합니다.
+	 *
+	 * @return 인증 상태가 존재했으면 true, 아니면 false
+	 */
+	public boolean consumeVerification(String phoneNumber) {
+		RBucket<String> verifiedBucket = redissonClient.getBucket(redisKeyGenerator.smsVerifiedKey(phoneNumber));
+		return verifiedBucket.getAndDelete() != null;
 	}
 
 	private String generateCode() {
