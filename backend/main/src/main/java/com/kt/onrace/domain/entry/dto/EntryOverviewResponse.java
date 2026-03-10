@@ -39,7 +39,7 @@ public record EntryOverviewResponse(
 	public record CourseOptionDto(
 		Long id,
 		String name,
-		int distanceM,
+		int distanceMeter,
 		long price,
 		List<PaceOptionDto> paces
 	) {
@@ -48,7 +48,7 @@ public record EntryOverviewResponse(
 			return CourseOptionDto.builder()
 				.id(course.getId())
 				.name(course.getName())
-				.distanceM(course.getDistanceM())
+				.distanceMeter(course.getDistanceMeter())
 				.price(course.getPrice())
 				.paces(course.getEventPaces().stream()
 					.map(PaceOptionDto::from)

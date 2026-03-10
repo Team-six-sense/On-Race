@@ -33,15 +33,15 @@ public record EventDetailResponse(
 	List<CourseDto> courses,
 	List<PackageDto> packages,
 	List<ImageDto> thumbnailImg,
-	List<ImageDto> detailImg,
-	List<ImageDto> courseMapImg
+	List<ImageDto> detailImg
 ) {
 
 	@Builder
 	public record CourseDto(
 		Long id,
 		String name,
-		int distanceM,
+		String mapUrl,
+		int distanceMeter,
 		long price,
 		int courseCapacity,
 		List<PaceDto> paces
@@ -81,7 +81,8 @@ public record EventDetailResponse(
 			.map(course -> CourseDto.builder()
 				.id(course.getId())
 				.name(course.getName())
-				.distanceM(course.getDistanceM())
+				.mapUrl(course.getMapUrl())
+				.distanceMeter(course.getDistanceMeter())
 				.price(course.getPrice())
 				.courseCapacity(course.getEventPaces().stream()
 					.mapToInt(EventPace::getCapacity)
@@ -119,7 +120,6 @@ public record EventDetailResponse(
 
 		List<ImageDto> thumbnailImg = imagesByType.getOrDefault(EventImageType.THUMBNAIL, java.util.Collections.emptyList());
 		List<ImageDto> detailImg = imagesByType.getOrDefault(EventImageType.DETAIL, java.util.Collections.emptyList());
-		List<ImageDto> courseMapImg = imagesByType.getOrDefault(EventImageType.COURSE_MAP, java.util.Collections.emptyList());
 
 		return EventDetailResponse.builder()
 			.id(event.getId())
@@ -138,7 +138,6 @@ public record EventDetailResponse(
 			.packages(packages)
 			.thumbnailImg(thumbnailImg)
 			.detailImg(detailImg)
-			.courseMapImg(courseMapImg)
 			.build();
 	}
 }
