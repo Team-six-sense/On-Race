@@ -54,7 +54,7 @@ public record EventListResponse(
 				.build())
 			.toList();
 
-		ImageDto images = event.getImages().stream()
+		ImageDto thumbnailImg = event.getImages().stream()
 			.filter(image -> image.getType() == EventImageType.THUMBNAIL)
 			.sorted(Comparator.comparingInt(EventImage::getSort))
 			.map(image -> ImageDto.builder()
@@ -80,7 +80,7 @@ public record EventListResponse(
 			.region(event.getRegion())
 			.venue(event.getVenue())
 			.courses(courses)
-			.thumbnailImg(images)
+			.thumbnailImg(thumbnailImg)
 			.minPrice(minPrice)
 			.build();
 	}

@@ -34,17 +34,17 @@ public class EventController {
 	}
 
 	@GetMapping("/{eventId}")
-	public ApiResponse<EventInfoResponse> getEventInfo(
-		@PathVariable Long eventId
-	) {
-		return ApiResponse.success(eventService.getEventInfo(eventId));
-	}
-
-	@GetMapping("/{eventId}/detail")
 	public ApiResponse<EventDetailResponse> getEventDetail(
 		@PathVariable Long eventId
 	) {
 		return ApiResponse.success(eventService.getEventDetail(eventId));
+	}
+
+	@GetMapping("/{eventId}/info")
+	public ApiResponse<EventInfoResponse> getEventInfo(
+		@PathVariable Long eventId
+	) {
+		return ApiResponse.success(eventService.getEventInfo(eventId));
 	}
 
 	@GetMapping("/{eventId}/sales-info")
