@@ -199,7 +199,7 @@ public class AuthService {
 		return new TokenRefreshResponse(newAccessToken, newRefreshToken, jwtProperties.getAccessTokenExpiration());
 	}
 
-	@Transactional(readOnly = true)
+	@Transactional
 	public FindEmailResponse findEmail(FindEmailRequest request) {
 		if (!smsVerifyService.isVerified(request.phoneNumber())) {
 			throw new BusinessException(BusinessErrorCode.AUTH_PHONE_NOT_VERIFIED);
