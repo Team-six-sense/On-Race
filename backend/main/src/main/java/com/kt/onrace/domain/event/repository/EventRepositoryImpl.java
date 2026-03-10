@@ -7,6 +7,7 @@ import static com.kt.onrace.domain.event.entity.QEventPace.*;
 import static com.kt.onrace.domain.event.entity.QEventPackage.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Repository;
 import com.kt.onrace.domain.event.dto.EventCursorData;
 import com.kt.onrace.domain.event.dto.EventSearchRequest;
 import com.kt.onrace.domain.event.entity.Event;
+import com.kt.onrace.domain.event.entity.EventAppType;
 import com.kt.onrace.domain.event.entity.EventStatus;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.OrderSpecifier;
@@ -34,6 +36,8 @@ public class EventRepositoryImpl implements EventRepositoryCustom {
 
 	@Override
 	public List<Event> findVisibleEvents(EventSearchRequest request, int size) {
+		LocalDateTime now = LocalDateTime.now();
+
 		BooleanBuilder builder = new BooleanBuilder();
 
 		builder.and(event.isView.isTrue());
@@ -49,22 +53,22 @@ public class EventRepositoryImpl implements EventRepositoryCustom {
 		}
 
 		if (request.status() != null) {
-			builder.and(event.status.eq(request.status()));
+			builder.and(statusFilterCondition(request.status(), now));
 		}
 
 		EventCursorData cursorData = request.decodeCursor();
 		if (cursorData != null) {
-			builder.and(keysetCondition(cursorData));
+			builder.and(keysetCondition(cursorData, now));
 		}
 
 		if (request.minDistance() != null || request.maxDistance() != null) {
 			BooleanBuilder distanceCondition = new BooleanBuilder();
 
 			if (request.minDistance() != null) {
-				distanceCondition.and(eventCourse.distanceM.goe(request.minDistance()));
+				distanceCondition.and(eventCourse.distanceMeter.goe(request.minDistance()));
 			}
 			if (request.maxDistance() != null) {
-				distanceCondition.and(eventCourse.distanceM.loe(request.maxDistance()));
+				distanceCondition.and(eventCourse.distanceMeter.loe(request.maxDistance()));
 			}
 
 			builder.and(event.id.in(
@@ -89,7 +93,7 @@ public class EventRepositoryImpl implements EventRepositoryCustom {
 			builder.and(event.venue.contains(request.keyword()).or(event.title.contains(request.keyword())));
 		}
 
-		OrderSpecifier<?>[] orderSpecifiers = multiSortOrder();
+		OrderSpecifier<?>[] orderSpecifiers = multiSortOrder(now);
 
 		List<Long> eventIds = queryFactory
 			.select(event.id)
@@ -124,26 +128,53 @@ public class EventRepositoryImpl implements EventRepositoryCustom {
 		return events;
 	}
 
-	private OrderSpecifier<?>[] multiSortOrder() {
+	private OrderSpecifier<?>[] multiSortOrder(LocalDateTime now) {
 		return new OrderSpecifier<?>[] {
-			statusOrderExpression().asc(),
+			statusOrderExpression(now).asc(),
 			event.eventAt.asc(),
 			event.title.asc(),
 			event.id.desc()
 		};
 	}
 
-	private NumberExpression<Integer> statusOrderExpression() {
+	private NumberExpression<Integer> statusOrderExpression(LocalDateTime now) {
+		BooleanExpression inAppPeriod = event.appStartAt.loe(now)
+			.and(event.appEndAt.goe(now));
+
+		BooleanExpression notSoldOut = event.appType.ne(EventAppType.FIRST_COME)
+			.or(event.soldOut.isFalse());
+
+		BooleanExpression isClosingSoon = inAppPeriod
+			.and(event.appEndAt.loe(now.plusDays(2)))
+			.and(notSoldOut);
+
+		BooleanExpression isInProgress = inAppPeriod
+			.and(event.appEndAt.after(now.plusDays(2)))
+			.and(notSoldOut);
+
+		BooleanExpression isSoldOut = inAppPeriod
+			.and(event.appType.eq(EventAppType.FIRST_COME))
+			.and(event.soldOut.isTrue());
+
+		BooleanExpression isDrawCompleted = event.appEndAt.before(now)
+			.and(event.appType.eq(EventAppType.LOTTERY))
+			.and(event.lotteryAnnouncedAt.isNotNull())
+			.and(event.lotteryAnnouncedAt.loe(now));
+
+		BooleanExpression isEnd = event.appEndAt.before(now);
+
+		// CaseBuilder는 first-match이므로 순서가 중요
 		return new CaseBuilder()
-			.when(event.status.eq(EventStatus.IN_PROGRESS)).then(EventStatus.IN_PROGRESS.getSortOrder())
-			.when(event.status.eq(EventStatus.READY)).then(EventStatus.READY.getSortOrder())
-			.when(event.status.eq(EventStatus.END)).then(EventStatus.END.getSortOrder())
-			.when(event.status.eq(EventStatus.DRAW_COMPLETED)).then(EventStatus.DRAW_COMPLETED.getSortOrder())
-			.otherwise(Integer.MAX_VALUE);
+			.when(isClosingSoon).then(EventStatus.CLOSING_SOON.getSortOrder())
+			.when(isInProgress).then(EventStatus.IN_PROGRESS.getSortOrder())
+			.when(isSoldOut).then(EventStatus.END.getSortOrder())
+			.when(isDrawCompleted).then(EventStatus.DRAW_COMPLETED.getSortOrder())
+			.when(isEnd).then(EventStatus.END.getSortOrder())
+			.otherwise(EventStatus.READY.getSortOrder());
 	}
 
-	private BooleanExpression keysetCondition(EventCursorData cursor) {
-		NumberExpression<Integer> statusOrder = statusOrderExpression();
+	private BooleanExpression keysetCondition(EventCursorData cursor, LocalDateTime now) {
+		NumberExpression<Integer> statusOrder = statusOrderExpression(now);
 		BooleanExpression statusEq = statusOrder.eq(cursor.statusPriority());
 		BooleanExpression eventAtEq = event.eventAt.eq(cursor.eventAt());
 		BooleanExpression titleEq = event.title.eq(cursor.title());
@@ -158,6 +189,42 @@ public class EventRepositoryImpl implements EventRepositoryCustom {
 			.or(
 				statusEq.and(eventAtEq).and(titleEq).and(event.id.lt(cursor.id()))
 			);
+	}
+
+	private BooleanExpression statusFilterCondition(EventStatus status, LocalDateTime now) {
+		BooleanExpression notSoldOut = event.appType.ne(EventAppType.FIRST_COME)
+			.or(event.soldOut.isFalse());
+
+		return switch (status) {
+			case READY -> event.appStartAt.after(now);
+
+			case IN_PROGRESS -> event.appStartAt.loe(now)
+				.and(event.appEndAt.after(now.plusDays(2)))
+				.and(notSoldOut);
+
+			case CLOSING_SOON -> event.appStartAt.loe(now)
+				.and(event.appEndAt.goe(now))
+				.and(event.appEndAt.loe(now.plusDays(2)))
+				.and(notSoldOut);
+
+			case END -> event.appEndAt.before(now)
+				.and(
+					event.appType.ne(EventAppType.LOTTERY)
+						.or(event.lotteryAnnouncedAt.isNull())
+						.or(event.lotteryAnnouncedAt.after(now))
+				)
+				.or(
+					event.appStartAt.loe(now)
+						.and(event.appEndAt.goe(now))
+						.and(event.appType.eq(EventAppType.FIRST_COME))
+						.and(event.soldOut.isTrue())
+				);
+
+			case DRAW_COMPLETED -> event.appEndAt.before(now)
+				.and(event.appType.eq(EventAppType.LOTTERY))
+				.and(event.lotteryAnnouncedAt.isNotNull())
+				.and(event.lotteryAnnouncedAt.loe(now));
+		};
 	}
 
 	@Override

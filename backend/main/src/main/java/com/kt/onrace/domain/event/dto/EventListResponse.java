@@ -36,7 +36,7 @@ public record EventListResponse(
 	public record CourseDto(
 		Long id,
 		String name,
-		Integer distanceM,
+		Integer distanceMeter,
 		Long price
 	) {
 	}
@@ -55,7 +55,7 @@ public record EventListResponse(
 			.map(course -> CourseDto.builder()
 				.id(course.getId())
 				.name(course.getName())
-				.distanceM(course.getDistanceM())
+				.distanceMeter(course.getDistanceMeter())
 				.price(course.getPrice())
 				.build())
 			.toList();

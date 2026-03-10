@@ -11,6 +11,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -32,10 +33,6 @@ public class Event extends BaseEntity {
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false)
 	private EventAppType appType;
-
-	@Enumerated(EnumType.STRING)
-	@Column(nullable = false)
-	private EventStatus status;
 
 	@Column(nullable = false)
 	private LocalDateTime eventAt;
@@ -64,6 +61,9 @@ public class Event extends BaseEntity {
 	@Column(nullable = false)
 	private boolean isDeleted = false;
 
+	@Column(nullable = false)
+	private boolean soldOut = false;
+
 	@OneToMany(mappedBy = "event")
 	private List<EventCourse> courses = new ArrayList<>();
 
@@ -73,14 +73,18 @@ public class Event extends BaseEntity {
 	@OneToMany(mappedBy = "event")
 	private List<EventImage> images = new ArrayList<>();
 
+	@Transient // 이것은 컬럼이 아님을 뜻
+	public EventStatus getStatus() {
+		return EventStatus.resolveStatus(this.appType, this.appStartAt, this.appEndAt, this.lotteryAnnouncedAt, this.soldOut);
+	}
+
 	@Builder
-	public Event(String title, EventType type, EventAppType appType, EventStatus status, LocalDateTime eventAt,
+	public Event(String title, EventType type, EventAppType appType, LocalDateTime eventAt,
 		LocalDateTime appStartAt, LocalDateTime appEndAt, EventRegion region, String venue,
-		LocalDateTime lotteryAnnouncedAt, String notice, Boolean isView) {
+		LocalDateTime lotteryAnnouncedAt, String notice, Boolean isView, Boolean soldOut) {
 		this.title = title;
 		this.type = type;
 		this.appType = appType;
-		this.status = status;
 		this.eventAt = eventAt;
 		this.appStartAt = appStartAt;
 		this.appEndAt = appEndAt;
@@ -90,15 +94,15 @@ public class Event extends BaseEntity {
 		this.notice = notice;
 		this.isView = isView != null ? isView : false;
 		this.isDeleted = false;
+		this.soldOut = false;
 	}
 
-	public void update(String title, EventType type, EventAppType appType, EventStatus status, LocalDateTime eventAt,
+	public void update(String title, EventType type, EventAppType appType, LocalDateTime eventAt,
 		LocalDateTime appStartAt, LocalDateTime appEndAt, EventRegion region, String venue,
 		LocalDateTime lotteryAnnouncedAt, String notice, Boolean isView) {
 		this.title = title;
 		this.type = type;
 		this.appType = appType;
-		this.status = status;
 		this.eventAt = eventAt;
 		this.appStartAt = appStartAt;
 		this.appEndAt = appEndAt;

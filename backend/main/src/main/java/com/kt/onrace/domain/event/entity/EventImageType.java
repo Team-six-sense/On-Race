@@ -8,8 +8,7 @@ import lombok.RequiredArgsConstructor;
 public enum EventImageType {
 
 	THUMBNAIL("썸네일"),
-	DETAIL("상세 이미지"),
-	COURSE_MAP("코스맵");
+	DETAIL("상세 이미지");
 
 	private final String description;
 }

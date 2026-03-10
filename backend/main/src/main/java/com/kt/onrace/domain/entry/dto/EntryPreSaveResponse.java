@@ -18,7 +18,7 @@ public record EntryPreSaveResponse(
 	public record CourseDto(
 		Long id,
 		String name,
-		int distanceM,
+		int distanceMeter,
 		long price
 	) {
 
@@ -45,7 +45,7 @@ public record EntryPreSaveResponse(
 			.course(CourseDto.builder()
 				.id(course.getId())
 				.name(course.getName())
-				.distanceM(course.getDistanceM())
+				.distanceMeter(course.getDistanceMeter())
 				.price(course.getPrice())
 				.build())
 			.pace(PaceDto.builder()
