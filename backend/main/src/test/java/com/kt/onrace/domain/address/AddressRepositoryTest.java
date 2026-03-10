@@ -1,6 +1,7 @@
 package com.kt.onrace.domain.address;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.groups.Tuple.tuple;
 
 import java.util.List;
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ActiveProfiles;
 
 import com.kt.onrace.common.config.JpaAuditingConfig;
@@ -55,15 +57,24 @@ class AddressRepositoryTest {
 
 	@Test
 	@DisplayName("제외 ID 조건이 있는 정규화된 라벨 조회는 자기 자신을 제외하고 중복을 판별한다")
-	void existsByUserIdAndNormalizedLabelExcludingIdExcludesCurrentAddress() {
+	void existsByUserIdAndIdNotAndNormalizedLabelExcludesCurrentAddress() {
 		Address home = addressRepository.save(createAddress(1L, "HOME"));
 		addressRepository.save(createAddress(1L, "회사"));
 
-		boolean sameAddressOnly = addressRepository.existsByUserIdAndNormalizedLabelExcludingId(1L, home.getId(), "home");
-		boolean anotherAddress = addressRepository.existsByUserIdAndNormalizedLabelExcludingId(1L, -1L, "home");
+		boolean sameAddressOnly = addressRepository.existsByUserIdAndNormalizedLabelAndIdNot(1L, "home", home.getId());
+		boolean anotherAddress = addressRepository.existsByUserIdAndNormalizedLabelAndIdNot(1L, "home", -1L);
 
 		assertThat(sameAddressOnly).isFalse();
 		assertThat(anotherAddress).isTrue();
+	}
+
+	@Test
+	@DisplayName("정규화된 라벨 유니크 제약은 trim 및 대소문자 무시 기준으로 중복 저장을 막는다")
+	void uniqueConstraintBlocksDuplicateNormalizedLabel() {
+		addressRepository.saveAndFlush(createAddress(1L, "HOME"));
+
+		assertThatThrownBy(() -> addressRepository.saveAndFlush(createAddress(1L, " home ")))
+			.isInstanceOf(DataIntegrityViolationException.class);
 	}
 
 	private Address createAddress(Long userId, String label) {

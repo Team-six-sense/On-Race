@@ -8,6 +8,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +28,7 @@ public class AddressService {
 
 	private static final String AUTO_LABEL_PREFIX = "배송지";
 	private static final Pattern AUTO_LABEL_PATTERN = Pattern.compile("^배송지(\\d+)$");
+	private static final String NORMALIZED_LABEL_UNIQUE_CONSTRAINT = "uk_address_user_normalized_label";
 
 	private final AddressRepository addressRepository;
 
@@ -44,47 +46,72 @@ public class AddressService {
 
 	@Transactional
 	public AddressDto.Response create(Long userId, AddressDto.SaveRequest request) {
-		String resolvedLabel = resolveCreateLabel(userId, request.label());
-		boolean hasAnyAddress = addressRepository.existsByUserId(userId);
-		boolean shouldBeDefault = !hasAnyAddress || Boolean.TRUE.equals(request.isDefault());
+		try {
+			Address address = Address.builder()
+				.userId(userId)
+				.receiverName(request.receiverName())
+				.phone(request.phone())
+				.zipcode(request.zipcode())
+				.address1(request.address1())
+				.address2(request.address2())
+				.memo(request.memo())
+				.build();
 
-		if (shouldBeDefault && hasAnyAddress) {
-			unsetDefault(userId);
+			String label = request.label();
+			if (label == null || label.isBlank()) {
+				List<AddressLabelProjection> userAddressLabels = addressRepository.findLabelProjectionsByUserId(userId);
+				label = generateAutoLabel(userAddressLabels);
+			}
+			address.applyLabel(label);
+
+			if (addressRepository.existsByUserIdAndNormalizedLabel(userId, address.getNormalizedLabel())) {
+				throw new BusinessException(BusinessErrorCode.ADDRESS_DUPLICATE_LABEL);
+			}
+
+			boolean hasAnyAddress = addressRepository.existsByUserId(userId);
+			boolean shouldBeDefault = !hasAnyAddress || Boolean.TRUE.equals(request.isDefault());
+
+			if (shouldBeDefault && hasAnyAddress) {
+				unsetDefault(userId);
+			}
+			address.updateIsDefault(shouldBeDefault);
+
+			return AddressDto.Response.from(addressRepository.saveAndFlush(address));
+		} catch (DataIntegrityViolationException e) {
+			throw translateDuplicateLabelException(e);
 		}
-
-		Address address = Address.builder()
-			.userId(userId)
-			.receiverName(request.receiverName())
-			.label(resolvedLabel)
-			.phone(request.phone())
-			.zipcode(request.zipcode())
-			.address1(request.address1())
-			.address2(request.address2())
-			.memo(request.memo())
-			.isDefault(shouldBeDefault)
-			.build();
-
-		return AddressDto.Response.from(addressRepository.save(address));
 	}
 
 	@Transactional
 	public AddressDto.Response update(Long userId, Long addressId, AddressDto.SaveRequest request) {
-		Address address = findAddress(userId, addressId);
-		String resolvedLabel = resolveUpdateLabel(userId, address, request.label());
+		try {
+			Address address = findAddress(userId, addressId);
 
-		handleDefaultStatus(userId, address, request.isDefault());
+			String label = request.label();
+			if (label != null && !label.isBlank()) {
+				address.applyLabel(label);
+				if (addressRepository.existsByUserIdAndNormalizedLabelAndIdNot(userId, address.getNormalizedLabel(), addressId)) {
+					throw new BusinessException(BusinessErrorCode.ADDRESS_DUPLICATE_LABEL);
+				}
+			}
 
-		address.update(
-			request.receiverName(),
-			resolvedLabel,
-			request.phone(),
-			request.zipcode(),
-			request.address1(),
-			request.address2(),
-			request.memo()
-		);
+			handleDefaultStatus(userId, address, request.isDefault());
 
-		return AddressDto.Response.from(address);
+			address.update(
+				request.receiverName(),
+				address.getLabel(),
+				request.phone(),
+				request.zipcode(),
+				request.address1(),
+				request.address2(),
+				request.memo()
+			);
+			addressRepository.flush();
+
+			return AddressDto.Response.from(address);
+		} catch (DataIntegrityViolationException e) {
+			throw translateDuplicateLabelException(e);
+		}
 	}
 
 	@Transactional
@@ -144,49 +171,18 @@ public class AddressService {
 			.ifPresent(Address::markDefault);
 	}
 
-	private String resolveCreateLabel(Long userId, String requestedLabel) {
-		String normalizedLabel = normalizeLabel(requestedLabel);
-		if (normalizedLabel == null) {
-			List<AddressLabelProjection> userAddressLabels = addressRepository.findLabelProjectionsByUserId(userId);
-			return generateAutoLabel(userAddressLabels);
-		}
-
-		validateDuplicateLabel(userId, normalizedLabel, null);
-		return normalizedLabel;
-	}
-
-	private String resolveUpdateLabel(Long userId, Address address, String requestedLabel) {
-		String normalizedLabel = normalizeLabel(requestedLabel);
-		if (normalizedLabel == null) {
-			return address.getLabel();
-		}
-
-		validateDuplicateLabel(userId, normalizedLabel, address.getId());
-		return normalizedLabel;
-	}
-
-	private void validateDuplicateLabel(Long userId, String label, Long excludedAddressId) {
-		String normalizedForComparison = label.toLowerCase(Locale.ROOT);
-		boolean duplicated = excludedAddressId == null
-			? addressRepository.existsByUserIdAndNormalizedLabel(userId, normalizedForComparison)
-			: addressRepository.existsByUserIdAndNormalizedLabelExcludingId(userId, excludedAddressId, normalizedForComparison);
-
-		if (duplicated) {
-			throw new BusinessException(BusinessErrorCode.ADDRESS_DUPLICATE_LABEL);
-		}
-	}
-
 	private String generateAutoLabel(List<AddressLabelProjection> userAddressLabels) {
-		Set<Integer> usedNumbers = userAddressLabels.stream()
+		Set<Long> usedNumbers = userAddressLabels.stream()
 			.map(AddressLabelProjection::getLabel)
-			.map(this::normalizeLabel)
 			.filter(Objects::nonNull)
+			.map(String::trim)
+			.filter(label -> !label.isEmpty())
 			.map(AUTO_LABEL_PATTERN::matcher)
 			.filter(Matcher::matches)
-			.map(matcher -> Integer.parseInt(matcher.group(1)))
+			.map(matcher -> Long.parseLong(matcher.group(1)))
 			.collect(Collectors.toSet());
 
-		int nextNumber = 1;
+		long nextNumber = 1L;
 		while (usedNumbers.contains(nextNumber)) {
 			nextNumber++;
 		}
@@ -194,11 +190,27 @@ public class AddressService {
 		return AUTO_LABEL_PREFIX + nextNumber;
 	}
 
-	private String normalizeLabel(String label) {
-		if (label == null || label.isBlank()) {
-			return null;
+	private BusinessException translateDuplicateLabelException(DataIntegrityViolationException e) {
+		if (isDuplicateLabelViolation(e)) {
+			return new BusinessException(BusinessErrorCode.ADDRESS_DUPLICATE_LABEL);
 		}
 
-		return label.trim();
+		throw e;
+	}
+
+	private boolean isDuplicateLabelViolation(DataIntegrityViolationException e) {
+		Throwable current = e;
+		while (current != null) {
+			String message = current.getMessage();
+			if (message != null) {
+				String loweredMessage = message.toLowerCase(Locale.ROOT);
+				if (loweredMessage.contains(NORMALIZED_LABEL_UNIQUE_CONSTRAINT)
+					|| loweredMessage.contains("normalized_label")) {
+					return true;
+				}
+			}
+			current = current.getCause();
+		}
+		return false;
 	}
 }

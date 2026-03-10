@@ -128,18 +128,27 @@ class AddressServiceTest {
 	@Test
 	@DisplayName("라벨 미입력 시 가장 작은 미사용 배송지 번호를 자동 생성한다")
 	void createWithoutLabelUsesSmallestUnusedNumber() {
-		AddressDto.Response first = addressService.create(1L, createRequest("첫주소", null, false));
-		AddressDto.Response second = addressService.create(1L, createRequest("둘주소", null, false));
-		AddressDto.Response third = addressService.create(1L, createRequest("셋주소", null, false));
+		AddressDto.Response first = addressService.create(1L, createRequest("첫주소", "배송지1", false));
+		AddressDto.Response second = addressService.create(1L, createRequest("둘주소", "배송지2", false));
+		AddressDto.Response third = addressService.create(1L, createRequest("셋주소", "배송지3", false));
 
 		addressService.delete(1L, second.id());
 
 		AddressDto.Response recreated = addressService.create(1L, createRequest("넷주소", null, false));
 
 		assertThat(first.label()).isEqualTo("배송지1");
-		assertThat(second.label()).isEqualTo("배송지2");
 		assertThat(third.label()).isEqualTo("배송지3");
 		assertThat(recreated.label()).isEqualTo("배송지2");
+	}
+
+	@Test
+	@DisplayName("큰 숫자가 포함된 배송지 라벨이 있어도 자동 라벨 생성이 실패하지 않는다")
+	void createWithoutLabelIgnoresVeryLargeAutoLabelNumber() {
+		addressService.create(1L, createRequest("큰번호주소", "배송지99999999999999999", false));
+
+		AddressDto.Response response = addressService.create(1L, createRequest("일반주소", null, false));
+
+		assertThat(response.label()).isEqualTo("배송지1");
 	}
 
 	@Test

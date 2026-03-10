@@ -1,10 +1,13 @@
 package com.kt.onrace.domain.address.entity;
 
+import java.util.Locale;
+
 import com.kt.onrace.common.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -15,6 +18,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(
 	name = "address",
+	uniqueConstraints = {
+		@UniqueConstraint(name = "uk_address_user_normalized_label", columnNames = {"user_id", "normalized_label"})
+	},
 	indexes = {
 		@Index(name = "idx_address_user", columnList = "user_id"),
 		@Index(name = "idx_address_user_default", columnList = "user_id,is_default")
@@ -30,6 +36,9 @@ public class Address extends BaseEntity {
 
 	@Column(length = 20)
 	private String label;
+
+	@Column(name = "normalized_label", length = 20)
+	private String normalizedLabel;
 
 	@Column(nullable = false, length = 20)
 	private String phone;
@@ -54,7 +63,7 @@ public class Address extends BaseEntity {
 					String address1, String address2, String memo, Boolean isDefault) {
 		this.userId = userId;
 		this.receiverName = receiverName;
-		this.label = label;
+		applyLabel(label);
 		this.phone = phone;
 		this.zipcode = zipcode;
 		this.address1 = address1;
@@ -66,7 +75,7 @@ public class Address extends BaseEntity {
 	public void update(String receiverName, String label, String phone, String zipcode,
 					String address1, String address2, String memo) {
 		this.receiverName = receiverName;
-		this.label = label;
+		applyLabel(label);
 		this.phone = phone;
 		this.zipcode = zipcode;
 		this.address1 = address1;
@@ -80,5 +89,31 @@ public class Address extends BaseEntity {
 
 	public void unmarkDefault() {
 		this.isDefault = false;
+	}
+
+	public void updateIsDefault(boolean isDefault) {
+		this.isDefault = isDefault;
+	}
+
+	public void applyLabel(String label) {
+		if (label == null) {
+			this.label = null;
+			this.normalizedLabel = null;
+			return;
+		}
+
+		String trimmed = label.trim();
+		if (trimmed.isEmpty()) {
+			this.label = null;
+			this.normalizedLabel = null;
+			return;
+		}
+
+		this.label = trimmed;
+		this.normalizedLabel = trimmed.toLowerCase(Locale.ROOT);
+	}
+
+	public String getNormalizedLabel() {
+		return this.normalizedLabel;
 	}
 }
