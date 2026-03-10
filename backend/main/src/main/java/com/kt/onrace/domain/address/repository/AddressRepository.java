@@ -32,7 +32,7 @@ public interface AddressRepository extends JpaRepository<Address, Long> {
 	List<AddressLabelProjection> findLabelProjectionsByUserId(Long userId);
 
 	@Query("""
-		select case when count(a) > 0 then true else false end
+		select count(a) > 0
 		from Address a
 		where a.userId = :userId
 			and lower(trim(a.label)) = :normalizedLabel
@@ -40,7 +40,7 @@ public interface AddressRepository extends JpaRepository<Address, Long> {
 	boolean existsByUserIdAndNormalizedLabel(Long userId, String normalizedLabel);
 
 	@Query("""
-		select case when count(a) > 0 then true else false end
+		select count(a) > 0
 		from Address a
 		where a.userId = :userId
 			and a.id <> :excludedAddressId

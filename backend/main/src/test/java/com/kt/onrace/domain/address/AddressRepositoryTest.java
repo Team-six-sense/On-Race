@@ -43,6 +43,29 @@ class AddressRepositoryTest {
 			);
 	}
 
+	@Test
+	@DisplayName("정규화된 라벨 존재 여부 조회는 trim 및 대소문자를 무시한다")
+	void existsByUserIdAndNormalizedLabelIgnoresTrimAndCase() {
+		addressRepository.save(createAddress(1L, " HOME "));
+
+		boolean exists = addressRepository.existsByUserIdAndNormalizedLabel(1L, "home");
+
+		assertThat(exists).isTrue();
+	}
+
+	@Test
+	@DisplayName("제외 ID 조건이 있는 정규화된 라벨 조회는 자기 자신을 제외하고 중복을 판별한다")
+	void existsByUserIdAndNormalizedLabelExcludingIdExcludesCurrentAddress() {
+		Address home = addressRepository.save(createAddress(1L, "HOME"));
+		addressRepository.save(createAddress(1L, "회사"));
+
+		boolean sameAddressOnly = addressRepository.existsByUserIdAndNormalizedLabelExcludingId(1L, home.getId(), "home");
+		boolean anotherAddress = addressRepository.existsByUserIdAndNormalizedLabelExcludingId(1L, -1L, "home");
+
+		assertThat(sameAddressOnly).isFalse();
+		assertThat(anotherAddress).isTrue();
+	}
+
 	private Address createAddress(Long userId, String label) {
 		return Address.builder()
 			.userId(userId)

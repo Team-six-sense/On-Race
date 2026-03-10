@@ -29,7 +29,7 @@ import com.kt.onrace.domain.address.service.AddressService;
 @DataJpaTest
 @Import({AddressService.class, JpaAuditingConfig.class, QueryDslConfig.class})
 @ActiveProfiles("test")
-class AddressApiIntegrationTest {
+class AddressApiTest {
 
 	private MockMvc mockMvc;
 

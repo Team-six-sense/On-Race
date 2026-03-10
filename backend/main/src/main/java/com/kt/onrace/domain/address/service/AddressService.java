@@ -1,21 +1,24 @@
 package com.kt.onrace.domain.address.service;
 
+import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
 import com.kt.onrace.domain.address.dto.AddressDto;
 import com.kt.onrace.domain.address.entity.Address;
 import com.kt.onrace.domain.address.repository.AddressLabelProjection;
 import com.kt.onrace.domain.address.repository.AddressRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -143,13 +146,13 @@ public class AddressService {
 
 	private String resolveCreateLabel(Long userId, String requestedLabel) {
 		String normalizedLabel = normalizeLabel(requestedLabel);
-		if (normalizedLabel != null) {
-			validateDuplicateLabel(userId, normalizedLabel, null);
-			return normalizedLabel;
-		} else {
+		if (normalizedLabel == null) {
 			List<AddressLabelProjection> userAddressLabels = addressRepository.findLabelProjectionsByUserId(userId);
 			return generateAutoLabel(userAddressLabels);
 		}
+
+		validateDuplicateLabel(userId, normalizedLabel, null);
+		return normalizedLabel;
 	}
 
 	private String resolveUpdateLabel(Long userId, Address address, String requestedLabel) {
@@ -174,17 +177,14 @@ public class AddressService {
 	}
 
 	private String generateAutoLabel(List<AddressLabelProjection> userAddressLabels) {
-		Set<Integer> usedNumbers = new HashSet<>();
-		userAddressLabels.stream()
+		Set<Integer> usedNumbers = userAddressLabels.stream()
 			.map(AddressLabelProjection::getLabel)
 			.map(this::normalizeLabel)
-			.filter(java.util.Objects::nonNull)
-			.forEach(label -> {
-				Matcher matcher = AUTO_LABEL_PATTERN.matcher(label);
-				if (matcher.matches()) {
-					usedNumbers.add(Integer.parseInt(matcher.group(1)));
-				}
-			});
+			.filter(Objects::nonNull)
+			.map(AUTO_LABEL_PATTERN::matcher)
+			.filter(Matcher::matches)
+			.map(matcher -> Integer.parseInt(matcher.group(1)))
+			.collect(Collectors.toSet());
 
 		int nextNumber = 1;
 		while (usedNumbers.contains(nextNumber)) {
@@ -195,10 +195,10 @@ public class AddressService {
 	}
 
 	private String normalizeLabel(String label) {
-		if (label == null) {
+		if (label == null || label.isBlank()) {
 			return null;
 		}
-		String trimmed = label.trim();
-		return trimmed.isEmpty() ? null : trimmed;
+
+		return label.trim();
 	}
 }
