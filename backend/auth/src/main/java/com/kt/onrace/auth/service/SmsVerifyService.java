@@ -34,17 +34,22 @@ public class SmsVerifyService {
 	private final UserRepository userRepository;
 
 	public void sendCodeForFind(String phoneNumber) {
-		if (!userRepository.existsByPhoneNumber(phoneNumber)) {
-			throw new BusinessException(BusinessErrorCode.AUTH_NOT_FOUND_USER);
+		boolean exists = userRepository.existsByPhoneNumber(phoneNumber);
+
+		if (exists) {
+			sendSmsCode(phoneNumber);
 		}
-		sendSmsCode(phoneNumber);
+		// 항상 동일한 성공 응답 반환
 	}
 
 	public void sendCode(String phoneNumber) {
-		if (userRepository.existsByPhoneNumber(phoneNumber)) {
-			throw new BusinessException(BusinessErrorCode.AUTH_DUPLICATE_PHONE);
+		boolean exists = userRepository.existsByPhoneNumber(phoneNumber);
+
+		if (!exists) {
+			sendSmsCode(phoneNumber);
 		}
-		sendSmsCode(phoneNumber);
+
+		// 항상 동일한 성공 응답 반환
 	}
 
 	private void sendSmsCode(String phoneNumber) {
