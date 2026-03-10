@@ -18,9 +18,15 @@ public interface EventRepositoryCustom {
 		return findEventWithCoursesAndPaces(id).orElseThrow(() -> new BusinessException(errorCode));
 	}
 
+	default Event findVisibleEventOrThrow(Long id, ErrorCode errorCode) {
+		return findVisibleEvent(id).orElseThrow(() -> new BusinessException(errorCode));
+	}
+
 	List<Event> findVisibleEvents(EventSearchRequest request, int size);
 
 	Optional<Event> findVisibleEventDetail(Long id);
 
 	Optional<Event> findEventWithCoursesAndPaces(Long id);
+
+	Optional<Event> findVisibleEvent(Long id);
 }
