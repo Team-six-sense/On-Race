@@ -61,11 +61,11 @@ public class AuthService {
 
 	@Transactional
 	public SignupResponse signup(SignupRequest request) {
-		if (!emailVerifyService.isVerified(request.email())) {
+		if (!emailVerifyService.consumeVerification(request.email())) {
 			throw new BusinessException(BusinessErrorCode.AUTH_EMAIL_NOT_VERIFIED);
 		}
 
-		if (!smsVerifyService.isVerified(request.phoneNumber())) {
+		if (!smsVerifyService.consumeVerification(request.phoneNumber())) {
 			throw new BusinessException(BusinessErrorCode.AUTH_PHONE_NOT_VERIFIED);
 		}
 
@@ -104,9 +104,6 @@ public class AuthService {
 		}
 
 		mainServiceClient.syncUserCreated(saved.getId());
-
-		emailVerifyService.deleteVerified(request.email());
-		smsVerifyService.deleteVerified(request.phoneNumber());
 
 		return new SignupResponse(saved.getId(), saved.getEmail(), saved.getCreatedAt());
 	}
@@ -201,14 +198,12 @@ public class AuthService {
 
 	@Transactional
 	public FindEmailResponse findEmail(FindEmailRequest request) {
-		if (!smsVerifyService.isVerified(request.phoneNumber())) {
+		if (!smsVerifyService.consumeVerification(request.phoneNumber())) {
 			throw new BusinessException(BusinessErrorCode.AUTH_PHONE_NOT_VERIFIED);
 		}
 
 		User user = userRepository.findByPhoneNumberAndIsDeletedFalse(request.phoneNumber())
 				.orElseThrow(() -> new BusinessException(BusinessErrorCode.AUTH_NOT_FOUND_USER));
-
-		smsVerifyService.deleteVerified(request.phoneNumber());
 
 		return new FindEmailResponse(maskEmail(user.getEmail()));
 	}
