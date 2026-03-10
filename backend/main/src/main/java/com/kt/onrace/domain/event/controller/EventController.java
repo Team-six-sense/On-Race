@@ -9,6 +9,7 @@ import com.kt.onrace.common.logging.annotation.ApiLog;
 import com.kt.onrace.common.response.ApiResponse;
 import com.kt.onrace.common.response.CursorResponse;
 import com.kt.onrace.domain.event.dto.EventDetailResponse;
+import com.kt.onrace.domain.event.dto.EventInfoResponse;
 import com.kt.onrace.domain.event.dto.EventListResponse;
 import com.kt.onrace.domain.event.dto.EventSearchRequest;
 import com.kt.onrace.domain.event.dto.EventSalesInfoResponse;
@@ -33,6 +34,13 @@ public class EventController {
 	}
 
 	@GetMapping("/{eventId}")
+	public ApiResponse<EventInfoResponse> getEventInfo(
+		@PathVariable Long eventId
+	) {
+		return ApiResponse.success(eventService.getEventInfo(eventId));
+	}
+
+	@GetMapping("/{eventId}/detail")
 	public ApiResponse<EventDetailResponse> getEventDetail(
 		@PathVariable Long eventId
 	) {

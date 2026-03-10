@@ -8,6 +8,7 @@ import com.kt.onrace.common.logging.annotation.ServiceLog;
 import com.kt.onrace.common.response.CursorResponse;
 import com.kt.onrace.domain.event.dto.EventCursorData;
 import com.kt.onrace.domain.event.dto.EventDetailResponse;
+import com.kt.onrace.domain.event.dto.EventInfoResponse;
 import com.kt.onrace.domain.event.dto.EventListResponse;
 import com.kt.onrace.domain.event.dto.EventSalesInfoResponse;
 import com.kt.onrace.domain.event.dto.EventSearchRequest;
@@ -18,6 +19,7 @@ import com.kt.onrace.domain.event.repository.EventSalesInfoRepository;
 
 import lombok.RequiredArgsConstructor;
 
+@ServiceLog
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -26,7 +28,6 @@ public class EventService {
 	private final EventRepository eventRepository;
 	private final EventSalesInfoRepository eventSalesInfoRepository;
 
-	@ServiceLog
 	public CursorResponse<EventListResponse> getEvents(EventSearchRequest request) {
 		int fetchSize = request.getValidSize();
 
@@ -38,14 +39,18 @@ public class EventService {
 		);
 	}
 
-	@ServiceLog
+	public EventInfoResponse getEventInfo(Long eventId) {
+		Event event = eventRepository.findVisibleEventOrThrow(eventId, BusinessErrorCode.EVENT_NOT_FOUND);
+
+		return EventInfoResponse.from(event);
+	}
+
 	public EventDetailResponse getEventDetail(Long eventId) {
 		Event event = eventRepository.findVisibleEventDetailOrThrow(eventId, BusinessErrorCode.EVENT_NOT_FOUND);
 
 		return EventDetailResponse.from(event);
 	}
 
-	@ServiceLog
 	public EventSalesInfoResponse getEventSalesInfo(Long eventId) {
 		Event event = eventRepository.findVisibleEventDetailOrThrow(eventId, BusinessErrorCode.EVENT_NOT_FOUND);
 
