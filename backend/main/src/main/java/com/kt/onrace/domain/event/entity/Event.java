@@ -94,12 +94,12 @@ public class Event extends BaseEntity {
 		this.notice = notice;
 		this.isView = isView != null ? isView : false;
 		this.isDeleted = false;
-		this.soldOut = false;
+		this.soldOut = soldOut != null ? soldOut : false;
 	}
 
 	public void update(String title, EventType type, EventAppType appType, LocalDateTime eventAt,
 		LocalDateTime appStartAt, LocalDateTime appEndAt, EventRegion region, String venue,
-		LocalDateTime lotteryAnnouncedAt, String notice, Boolean isView) {
+		LocalDateTime lotteryAnnouncedAt, String notice, Boolean isView, Boolean soldOut) {
 		this.title = title;
 		this.type = type;
 		this.appType = appType;
@@ -111,6 +111,7 @@ public class Event extends BaseEntity {
 		this.lotteryAnnouncedAt = lotteryAnnouncedAt;
 		this.notice = notice;
 		this.isView = isView != null ? isView : this.isView;
+		this.soldOut = soldOut != null ? soldOut : this.soldOut;
 	}
 
 	public void delete() {
