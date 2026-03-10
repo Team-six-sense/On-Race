@@ -39,7 +39,7 @@ class AddressServiceExceptionTranslationTest {
 		AddressDto.SaveRequest request = createRequest("집");
 		DataIntegrityViolationException exception = duplicateLabelViolation("PUBLIC.UK_ADDRESS_USER_NORMALIZED_LABEL_INDEX_E");
 
-		given(addressRepository.existsByUserId(USER_ID)).willReturn(false);
+		given(addressRepository.countByUserId(USER_ID)).willReturn(0L);
 		given(addressRepository.saveAndFlush(any(Address.class))).willThrow(exception);
 
 		assertThatThrownBy(() -> addressService.create(USER_ID, request))
@@ -54,7 +54,7 @@ class AddressServiceExceptionTranslationTest {
 		AddressDto.SaveRequest request = createRequest("집");
 		DataIntegrityViolationException exception = duplicateLabelViolation("uk_other_constraint");
 
-		given(addressRepository.existsByUserId(USER_ID)).willReturn(false);
+		given(addressRepository.countByUserId(USER_ID)).willReturn(0L);
 		given(addressRepository.saveAndFlush(any(Address.class))).willThrow(exception);
 
 		assertThatThrownBy(() -> addressService.create(USER_ID, request))

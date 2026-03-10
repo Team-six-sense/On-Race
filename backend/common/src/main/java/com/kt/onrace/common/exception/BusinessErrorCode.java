@@ -61,6 +61,8 @@ public enum BusinessErrorCode implements ErrorCode {
 	// ADDRESS
 	ADDRESS_NOT_FOUND(HttpStatus.NOT_FOUND, "ADR_001", "배송지를 찾을 수 없습니다."),
 	ADDRESS_DUPLICATE_LABEL(HttpStatus.BAD_REQUEST, "ADR_002", "이미 사용 중인 주소 별칭입니다."),
+	ADDRESS_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "ADR_003", "배송지는 최대 10개까지 등록할 수 있습니다."),
+	ADDRESS_INVALID_PHONE(HttpStatus.BAD_REQUEST, "ADR_004", "전화번호는 하이픈을 제외하고 10자리 또는 11자리여야 합니다."),
 
 	// ENTRY
 	ENTRY_NOT_FOUND(HttpStatus.NOT_FOUND, "ENT_001", "신청 정보를 찾을 수 없습니다."),

@@ -152,6 +152,19 @@ class AddressServiceTest {
 	}
 
 	@Test
+	@DisplayName("사용자당 배송지는 최대 10개까지만 등록할 수 있다")
+	void createRejectsWhenAddressCountExceedsLimit() {
+		for (int i = 1; i <= 10; i++) {
+			addressService.create(1L, createRequest("주소" + i, "라벨" + i, false));
+		}
+
+		assertThatThrownBy(() -> addressService.create(1L, createRequest("초과주소", "초과라벨", false)))
+			.isInstanceOf(BusinessException.class)
+			.extracting(ex -> ((BusinessException) ex).getErrorCode())
+			.isEqualTo(BusinessErrorCode.ADDRESS_LIMIT_EXCEEDED);
+	}
+
+	@Test
 	@DisplayName("입력 라벨은 trim 후 저장된다")
 	void createLabelStoresTrimmedValue() {
 		AddressDto.Response response = addressService.create(1L, createRequest("회사주소", " 회사 ", false));
@@ -187,6 +200,34 @@ class AddressServiceTest {
 			.isInstanceOf(BusinessException.class)
 			.extracting(ex -> ((BusinessException)ex).getErrorCode())
 			.isEqualTo(BusinessErrorCode.ADDRESS_DUPLICATE_LABEL);
+	}
+
+	@Test
+	@DisplayName("생성 시 전화번호의 하이픈은 제거되어 저장된다")
+	void createNormalizesPhoneByRemovingHyphen() {
+		AddressDto.Response response = addressService.create(1L, createRequest("집주소", "집", false, "010-1111-2222"));
+
+		assertThat(response.phone()).isEqualTo("01011112222");
+	}
+
+	@Test
+	@DisplayName("수정 시 전화번호의 하이픈은 제거되어 저장된다")
+	void updateNormalizesPhoneByRemovingHyphen() {
+		AddressDto.Response created = addressService.create(1L, createRequest("집주소", "집", false, "01011112222"));
+
+		AddressDto.Response updated = addressService.update(1L, created.id(),
+			createRequest("집주소수정", "집", null, "010-9999-8888"));
+
+		assertThat(updated.phone()).isEqualTo("01099998888");
+	}
+
+	@Test
+	@DisplayName("전화번호가 10자리 또는 11자리가 아니면 등록할 수 없다")
+	void createRejectsPhoneWithInvalidLength() {
+		assertThatThrownBy(() -> addressService.create(1L, createRequest("집주소", "집", false, "010123456789")))
+			.isInstanceOf(BusinessException.class)
+			.extracting(ex -> ((BusinessException) ex).getErrorCode())
+			.isEqualTo(BusinessErrorCode.ADDRESS_INVALID_PHONE);
 	}
 
 	@Test
@@ -242,10 +283,14 @@ class AddressServiceTest {
 	}
 
 	private AddressDto.SaveRequest createRequest(String receiverName, String label, Boolean isDefault) {
+		return createRequest(receiverName, label, isDefault, "010-1111-2222");
+	}
+
+	private AddressDto.SaveRequest createRequest(String receiverName, String label, Boolean isDefault, String phone) {
 		return new AddressDto.SaveRequest(
 			receiverName,
 			label,
-			"010-1111-2222",
+			phone,
 			"12345",
 			"서울",
 			"101동",

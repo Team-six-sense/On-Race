@@ -11,6 +11,7 @@ public class AddressDto {
 		@Size(max = 20, message = "주소 별칭은 20자를 초과할 수 없습니다.")
 		@Pattern(regexp = "^[가-힣a-zA-Z0-9 ]*$", message = "주소 별칭에는 한글, 영문, 숫자, 공백만 사용할 수 있습니다.")
 		String label,
+		@Pattern(regexp = "^[0-9-]+$", message = "전화번호는 숫자와 하이픈만 입력할 수 있습니다.")
 		@NotBlank String phone,
 		@NotBlank String zipcode,
 		@NotBlank String address1,

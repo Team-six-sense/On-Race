@@ -14,7 +14,7 @@ public interface AddressRepository extends JpaRepository<Address, Long> {
 
 	Optional<Address> findByIdAndUserId(Long id, Long userId);
 
-	boolean existsByUserId(Long userId);
+	long countByUserId(Long userId);
 
 	Optional<Address> findFirstByUserIdAndIsDefaultTrue(Long userId);
 

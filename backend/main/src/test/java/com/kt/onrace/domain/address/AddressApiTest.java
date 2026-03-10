@@ -59,6 +59,7 @@ class AddressApiTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data.label").value("배송지1"))
+			.andExpect(jsonPath("$.data.phone").value("01011112222"))
 			.andExpect(jsonPath("$.data.isDefault").value(true));
 
 		mockMvc.perform(get("/addresses")
@@ -67,6 +68,7 @@ class AddressApiTest {
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data[0].receiverName").value("홍길동"))
 			.andExpect(jsonPath("$.data[0].label").value("배송지1"))
+			.andExpect(jsonPath("$.data[0].phone").value("01011112222"))
 			.andExpect(jsonPath("$.data[0].isDefault").value(true));
 	}
 
@@ -113,11 +115,49 @@ class AddressApiTest {
 			.andExpect(jsonPath("$.data.label").value("집"));
 	}
 
+	@Test
+	@DisplayName("전화번호 길이가 10자리 또는 11자리가 아니면 등록을 거부한다")
+	void createRejectsInvalidPhoneLength() throws Exception {
+		mockMvc.perform(post("/addresses")
+				.header("X-User-Id", 1L)
+				.contentType(APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(createRequest("홍길동", "집", false, "010123456789"))))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.code").value("ADR_004"))
+			.andExpect(jsonPath("$.message").value("전화번호는 하이픈을 제외하고 10자리 또는 11자리여야 합니다."));
+	}
+
+	@Test
+	@DisplayName("사용자당 배송지가 10개를 초과하면 등록을 거부한다")
+	void createRejectsWhenAddressLimitExceeded() throws Exception {
+		for (int i = 1; i <= 10; i++) {
+			mockMvc.perform(post("/addresses")
+					.header("X-User-Id", 1L)
+					.contentType(APPLICATION_JSON)
+					.content(objectMapper.writeValueAsString(createRequest("홍길동" + i, "라벨" + i, false))))
+				.andExpect(status().isOk());
+		}
+
+		mockMvc.perform(post("/addresses")
+				.header("X-User-Id", 1L)
+				.contentType(APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(createRequest("홍길동11", "라벨11", false))))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.code").value("ADR_003"))
+			.andExpect(jsonPath("$.message").value("배송지는 최대 10개까지 등록할 수 있습니다."));
+	}
+
 	private AddressDto.SaveRequest createRequest(String receiverName, String label, Boolean isDefault) {
+		return createRequest(receiverName, label, isDefault, "010-1111-2222");
+	}
+
+	private AddressDto.SaveRequest createRequest(String receiverName, String label, Boolean isDefault, String phone) {
 		return new AddressDto.SaveRequest(
 			receiverName,
 			label,
-			"010-1111-2222",
+			phone,
 			"12345",
 			"서울",
 			"101동",

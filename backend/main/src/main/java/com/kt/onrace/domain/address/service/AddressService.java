@@ -30,7 +30,9 @@ public class AddressService {
 
 	private static final String AUTO_LABEL_PREFIX = "배송지";
 	private static final Pattern AUTO_LABEL_PATTERN = Pattern.compile("^배송지(\\d+)$");
+	private static final Pattern PHONE_PATTERN = Pattern.compile("^\\d{10,11}$");
 	private static final String NORMALIZED_LABEL_UNIQUE_CONSTRAINT = "uk_address_user_normalized_label";
+	private static final int MAX_ADDRESS_COUNT = 10;
 
 	private final AddressRepository addressRepository;
 
@@ -49,13 +51,19 @@ public class AddressService {
 	@Transactional
 	public AddressDto.Response create(Long userId, AddressDto.SaveRequest request) {
 		try {
+			long addressCount = addressRepository.countByUserId(userId);
+			if (addressCount >= MAX_ADDRESS_COUNT) {
+				throw new BusinessException(BusinessErrorCode.ADDRESS_LIMIT_EXCEEDED);
+			}
+
 			String label = request.label();
 			if (label == null || label.isBlank()) {
 				List<AddressLabelProjection> userAddressLabels = addressRepository.findLabelProjectionsByUserId(userId);
 				label = generateAutoLabel(userAddressLabels);
 			}
 
-			boolean hasAnyAddress = addressRepository.existsByUserId(userId);
+			String phone = normalizePhone(request.phone());
+			boolean hasAnyAddress = addressCount > 0;
 			boolean shouldBeDefault = !hasAnyAddress || Boolean.TRUE.equals(request.isDefault());
 
 			if (shouldBeDefault && hasAnyAddress) {
@@ -66,7 +74,7 @@ public class AddressService {
 				.userId(userId)
 				.receiverName(request.receiverName())
 				.label(label)
-				.phone(request.phone())
+				.phone(phone)
 				.zipcode(request.zipcode())
 				.address1(request.address1())
 				.address2(request.address2())
@@ -84,6 +92,7 @@ public class AddressService {
 	public AddressDto.Response update(Long userId, Long addressId, AddressDto.SaveRequest request) {
 		try {
 			Address address = findAddress(userId, addressId);
+			String phone = normalizePhone(request.phone());
 
 			String label = request.label();
 			if (label != null && !label.isBlank()) {
@@ -94,7 +103,7 @@ public class AddressService {
 
 			address.update(
 				request.receiverName(),
-				request.phone(),
+				phone,
 				request.zipcode(),
 				request.address1(),
 				request.address2(),
@@ -190,6 +199,19 @@ public class AddressService {
 		}
 
 		throw e;
+	}
+
+	private String normalizePhone(String phone) {
+		if (phone == null) {
+			throw new BusinessException(BusinessErrorCode.ADDRESS_INVALID_PHONE);
+		}
+
+		String normalizedPhone = phone.trim().replace("-", "");
+		if (!PHONE_PATTERN.matcher(normalizedPhone).matches()) {
+			throw new BusinessException(BusinessErrorCode.ADDRESS_INVALID_PHONE);
+		}
+
+		return normalizedPhone;
 	}
 
 	private boolean isDuplicateLabelViolation(Throwable throwable) {

@@ -51,11 +51,37 @@ class AddressDtoValidationTest {
 			.contains("주소 별칭에는 한글, 영문, 숫자, 공백만 사용할 수 있습니다.");
 	}
 
+	@Test
+	@DisplayName("전화번호는 숫자와 하이픈만 포함하면 검증을 통과한다")
+	void saveRequestAcceptsPhoneWithDigitsAndHyphen() {
+		Set<ConstraintViolation<AddressDto.SaveRequest>> violations = validator.validate(
+			createRequest("집", "010-1111-2222")
+		);
+
+		assertThat(violations).isEmpty();
+	}
+
+	@Test
+	@DisplayName("전화번호에 숫자와 하이픈 외 문자가 포함되면 검증에 실패한다")
+	void saveRequestRejectsPhoneWithInvalidCharacters() {
+		Set<ConstraintViolation<AddressDto.SaveRequest>> violations = validator.validate(
+			createRequest("집", "010-1111-222A")
+		);
+
+		assertThat(violations)
+			.extracting(ConstraintViolation::getMessage)
+			.contains("전화번호는 숫자와 하이픈만 입력할 수 있습니다.");
+	}
+
 	private AddressDto.SaveRequest createRequest(String label) {
+		return createRequest(label, "010-1111-2222");
+	}
+
+	private AddressDto.SaveRequest createRequest(String label, String phone) {
 		return new AddressDto.SaveRequest(
 			"홍길동",
 			label,
-			"010-1111-2222",
+			phone,
 			"12345",
 			"서울",
 			"101동",
