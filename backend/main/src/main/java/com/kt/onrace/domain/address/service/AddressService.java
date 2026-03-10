@@ -19,6 +19,8 @@ import com.kt.onrace.domain.address.entity.Address;
 import com.kt.onrace.domain.address.repository.AddressLabelProjection;
 import com.kt.onrace.domain.address.repository.AddressRepository;
 
+import org.hibernate.exception.ConstraintViolationException;
+
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -198,14 +200,13 @@ public class AddressService {
 		throw e;
 	}
 
-	private boolean isDuplicateLabelViolation(DataIntegrityViolationException e) {
-		Throwable current = e;
+	private boolean isDuplicateLabelViolation(Throwable throwable) {
+		Throwable current = throwable;
 		while (current != null) {
-			String message = current.getMessage();
-			if (message != null) {
-				String loweredMessage = message.toLowerCase(Locale.ROOT);
-				if (loweredMessage.contains(NORMALIZED_LABEL_UNIQUE_CONSTRAINT)
-					|| loweredMessage.contains("normalized_label")) {
+			if (current instanceof ConstraintViolationException constraintViolationException) {
+				String constraintName = constraintViolationException.getConstraintName();
+				if (constraintName != null
+					&& constraintName.toLowerCase(Locale.ROOT).contains(NORMALIZED_LABEL_UNIQUE_CONSTRAINT)) {
 					return true;
 				}
 			}
