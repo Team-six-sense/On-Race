@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import React from 'react';
+import { LuX } from 'react-icons/lu';
 
 interface UserData {
   name: string;
@@ -34,46 +35,40 @@ export const UserConfirmModal = ({
       <div className="absolute inset-0 bg-black/50 transition-opacity" />
 
       {/* 모달 본체 */}
-      <div className="relative w-full max-w-md transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all animate-in fade-in zoom-in duration-300">
+      <div className="relative w-full max-w-lg px-8 py-6 transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all animate-in fade-in zoom-in duration-300">
         {/* 헤더 부분: 제목과 X 버튼 */}
-        <div className="relative flex items-center justify-between border-b border-gray-100 px-6 py-4">
-          <h3 className="text-lg font-bold text-gray-900">사용자 정보 확인</h3>
-
-          {/* X 닫기 버튼 */}
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
-            aria-label="닫기"
-          >
-            <svg
-              className="h-6 w-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
+        <div className="relative flex flex-col items-start justify-between">
+          <div className="flex w-full items-center justify-between">
+            <div className="flex-1 text-2xl font-bold text-gray-900">
+              참가자 정보 확인
+            </div>
+            <div>
+              <Button variant="ghost" size="iconSm" onClick={onClose}>
+                <LuX />
+              </Button>
+            </div>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">
+              신청 전 참가자 정보를 확인해주세요. 하기 내용은 마이페이지에서
+              수정이 가능합니다.
+            </p>
+          </div>
         </div>
 
         {/* 본문: 사용자 정보 */}
-        <div className="px-6 py-6 space-y-4">
+        <div className="px-8 py-6 space-y-4">
           <div className="grid grid-cols-3 gap-2">
             <InfoLabel>이름</InfoLabel>
             <InfoValue>{data.name}</InfoValue>
 
-            <InfoLabel>생년월일</InfoLabel>
-            <InfoValue>{data.birthDate}</InfoValue>
-
             <InfoLabel>성별</InfoLabel>
             <InfoValue>{data.gender}</InfoValue>
 
-            <InfoLabel>연락처</InfoLabel>
+            <InfoLabel>생년월일</InfoLabel>
+            <InfoValue>{data.birthDate}</InfoValue>
+
+            <InfoLabel>휴대폰번호</InfoLabel>
             <InfoValue>{data.phone}</InfoValue>
 
             <InfoLabel>이메일</InfoLabel>
@@ -82,16 +77,8 @@ export const UserConfirmModal = ({
         </div>
 
         {/* 하단 버튼 */}
-        <div
-          className={cn(
-            'flex gap-2 px-6 py-4',
-            template === 0 ? 'flex-row' : 'flex-col',
-          )}
-        >
-          <Button variant="outline" onClick={onClose}>
-            정보 수정
-          </Button>
-          <Button variant="primary1" onClick={onConfirm}>
+        <div className="flex">
+          <Button variant="primary1" rounded="full" onClick={onConfirm}>
             확인
           </Button>
         </div>

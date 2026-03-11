@@ -1,114 +1,124 @@
 'use client';
 
-import { useRef, useCallback, useState } from 'react';
+import { useRef, useCallback, useState, useEffect } from 'react';
 
 export interface MouseLog {
   x: number;
   y: number;
-  target: string;
   timestamp: number;
-  isTrusted: boolean;
-  distance: number;
-  // --- 이벤트 타입별 카운트 추가 ---
-  moveCount: number;
-  downCount: number;
-  upCount: number;
-  lastEventType: string;
-  // ---------------------------
-  avgVelocity: number;
+  eventType: string;
 }
+
+const THROTTLE_MS = 30;
+const CLEANUP_THRESHOLD = 50; // 50개 쌓일 때마다 청소
+const RETENTION_MS = 70 * 1000; // 70초 유지
 
 export const useDetailedTracker = () => {
   const [isRecording, setIsRecording] = useState(false);
+  // UI 표시용 로그 (필요 없다면 제거하여 성능을 대폭 향상시킬 수 있습니다)
   const [logs, setLogs] = useState<MouseLog[]>([]);
 
   const logBuffer = useRef<MouseLog[]>([]);
-  const currentPos = useRef({ x: 0, y: 0, target: 'none', isTrusted: true });
-  const accumDistance = useRef(0);
-  const lastEventType = useRef('');
+  const minDistanceRef = useRef(10);
+  const lastLoggedPoint = useRef<{ x: number; y: number; time: number } | null>(
+    null,
+  );
 
-  // 인터벌 내 이벤트 발생 횟수 추적
-  const counts = useRef({ move: 0, down: 0, up: 0 });
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const lastTimestamp = useRef(performance.now());
+  // 70초 지난 오래된 데이터를 삭제하는 함수
+  const cleanupOldLogs = useCallback(() => {
+    const now = Date.now();
+    const cutoff = now - RETENTION_MS;
 
-  const handlePointerEvent = useCallback((e: PointerEvent) => {
-    const target = e.target as HTMLElement;
+    // 효율적인 삭제를 위해 첫 번째로 유지해야 할 인덱스를 찾음
+    const firstValidIndex = logBuffer.current.findIndex(
+      (l) => l.timestamp >= cutoff,
+    );
 
-    // 타입별 카운팅
-    if (e.type === 'pointermove') {
-      counts.current.move++;
-      accumDistance.current += Math.sqrt(
-        Math.pow(e.movementX, 2) + Math.pow(e.movementY, 2),
-      );
-    } else if (e.type === 'pointerdown') {
-      counts.current.down++;
-    } else if (e.type === 'pointerup') {
-      counts.current.up++;
+    if (firstValidIndex > 0) {
+      logBuffer.current.splice(0, firstValidIndex);
     }
-
-    lastEventType.current = e.type;
-
-    // 상태 업데이트
-    currentPos.current = {
-      x: e.pageX,
-      y: e.pageY,
-      target: `${target.tagName.toLowerCase()}${target.id ? `#${target.id}` : ''}`,
-      isTrusted: e.isTrusted,
-    };
   }, []);
 
+  const handlePointerEvent = useCallback(
+    (e: PointerEvent) => {
+      const now = Date.now(); // performance.now()보다 Unix Timestamp 계산에 더 직관적
+      const x = e.pageX;
+      const y = e.pageY;
+
+      // 1. 필터링 로직 (Throttle & Distance)
+      if (e.type === 'pointermove' && lastLoggedPoint.current) {
+        const dx = x - lastLoggedPoint.current.x;
+        const dy = y - lastLoggedPoint.current.y;
+        const distFromLast = Math.sqrt(dx * dx + dy * dy);
+        const timeFromLast = now - lastLoggedPoint.current.time;
+
+        if (
+          timeFromLast < THROTTLE_MS &&
+          distFromLast < minDistanceRef.current
+        ) {
+          return;
+        }
+      }
+
+      const newLog: MouseLog = {
+        x,
+        y,
+        timestamp: now,
+        eventType: e.type,
+      };
+
+      // 2. 데이터 저장
+      logBuffer.current.push(newLog);
+
+      // 3. 주기적 청소 (70초 경과 데이터 삭제)
+      if (logBuffer.current.length % CLEANUP_THRESHOLD === 0) {
+        cleanupOldLogs();
+      }
+
+      // 4. 상태 업데이트 (UI에 로그를 실시간으로 보여줄 필요가 없다면 이 줄을 주석 처리하세요)
+      setLogs([...logBuffer.current]);
+
+      lastLoggedPoint.current = { x, y, time: now };
+    },
+    [cleanupOldLogs],
+  );
+
   const startTracking = useCallback(
-    (intervalMs: number = 100) => {
+    (minDistance: number) => {
+      minDistanceRef.current = minDistance;
       setIsRecording(true);
-      logBuffer.current = [];
       setLogs([]);
-      counts.current = { move: 0, down: 0, up: 0 };
-      accumDistance.current = 0;
-      lastTimestamp.current = performance.now();
+      logBuffer.current = [];
+      lastLoggedPoint.current = null;
 
       window.addEventListener('pointermove', handlePointerEvent);
       window.addEventListener('pointerdown', handlePointerEvent);
       window.addEventListener('pointerup', handlePointerEvent);
-
-      timerRef.current = setInterval(() => {
-        const now = performance.now();
-        const timeOrigin = performance.timeOrigin;
-        const currentUnixTimestamp = Math.floor(timeOrigin + now);
-
-        const dt = now - lastTimestamp.current;
-
-        const newLog: MouseLog = {
-          ...currentPos.current,
-          timestamp: currentUnixTimestamp,
-          distance: Number(accumDistance.current.toFixed(2)),
-          moveCount: counts.current.move,
-          downCount: counts.current.down,
-          upCount: counts.current.up,
-          lastEventType: lastEventType.current,
-          avgVelocity: Number((accumDistance.current / dt).toFixed(4)),
-        };
-
-        logBuffer.current.push(newLog);
-        setLogs([...logBuffer.current]);
-
-        // 다음 인터벌을 위한 리셋
-        accumDistance.current = 0;
-        counts.current = { move: 0, down: 0, up: 0 };
-        lastTimestamp.current = now;
-      }, intervalMs);
     },
     [handlePointerEvent],
   );
 
   const stopTracking = useCallback(() => {
     setIsRecording(false);
-    if (timerRef.current) clearInterval(timerRef.current);
     window.removeEventListener('pointermove', handlePointerEvent);
     window.removeEventListener('pointerdown', handlePointerEvent);
     window.removeEventListener('pointerup', handlePointerEvent);
     return logBuffer.current;
   }, [handlePointerEvent]);
 
-  return { isRecording, logs, startTracking, stopTracking };
+  // 컴포넌트 언마운트 시 이벤트 리스너 제거 (메모리 누수 방지)
+  useEffect(() => {
+    return () => {
+      window.removeEventListener('pointermove', handlePointerEvent);
+      window.removeEventListener('pointerdown', handlePointerEvent);
+      window.removeEventListener('pointerup', handlePointerEvent);
+    };
+  }, [handlePointerEvent]);
+
+  const getFinalData = useCallback(() => {
+    const cutoff = Date.now() - 60000; // 정확히 최근 60초 데이터만 추출
+    return logBuffer.current.filter((log) => log.timestamp >= cutoff);
+  }, []);
+
+  return { isRecording, logs, startTracking, stopTracking, getFinalData };
 };
