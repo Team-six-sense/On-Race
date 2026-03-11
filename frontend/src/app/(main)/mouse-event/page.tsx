@@ -38,7 +38,7 @@ export default function MarathonDetailPage() {
     setIsUserModalOpen(false);
     setIsAgreeModalOpen(false);
     stopTracking();
-    // handleDownload();
+    handleDownload();
   };
 
   const handleDownload = () => {
