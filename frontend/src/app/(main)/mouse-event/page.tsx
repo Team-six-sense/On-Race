@@ -5,15 +5,12 @@ import { Button } from '@/components/ui/button';
 
 import {
   AgreeConfirmModal,
-  EventConfirmModal,
-  OptionConfirmModal,
   UserConfirmModal,
 } from '@/features/ticketing/components/details/entry';
 import { useDetailedTracker } from '@/features/ticketing/hooks/useDetailedTracker';
 import { Input } from '@/components/ui/input';
 
 export default function MarathonDetailPage() {
-  const [template, setTemplate] = useState(0);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [isAgreeModalOpen, setIsAgreeModalOpen] = useState(false);
 
@@ -23,7 +20,6 @@ export default function MarathonDetailPage() {
     useDetailedTracker();
 
   const handleStart = () => {
-    setTemplate(Math.floor(Math.random() * 2));
     setIsUserModalOpen(true);
 
     startTracking(minDistance);
@@ -189,7 +185,6 @@ export default function MarathonDetailPage() {
               setIsAgreeModalOpen(true);
             }}
             data={userData}
-            template={template}
           />
           <AgreeConfirmModal
             isOpen={isAgreeModalOpen}

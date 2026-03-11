@@ -67,7 +67,7 @@ export default function MarathonSchedulePage() {
           {CATEGORIES.map((category) => (
             <Button
               key={category.id}
-              variant="outline"
+              variant={searchCategory === category.id ? 'primary1' : 'outline'}
               size="fit"
               rounded="full"
               onClick={() => {
@@ -76,7 +76,7 @@ export default function MarathonSchedulePage() {
               className={`
             ${
               searchCategory === category.id
-                ? 'border-2! border-black' // 선택되었을 때 스타일
+                ? '' // 선택되었을 때 스타일
                 : 'border-gray-400' // 비선택 스타일
             }
             border

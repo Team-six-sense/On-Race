@@ -16,7 +16,6 @@ interface ModalProps {
   onClose: () => void;
   onConfirm: () => void;
   data: UserData;
-  template: number;
 }
 
 export const UserConfirmModal = ({
@@ -24,7 +23,6 @@ export const UserConfirmModal = ({
   onClose,
   onConfirm,
   data,
-  template,
 }: ModalProps) => {
   if (!isOpen) return null;
 

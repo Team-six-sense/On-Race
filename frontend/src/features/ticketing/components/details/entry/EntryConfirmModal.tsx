@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { UserConfirmModal } from './UserConfirmModal';
-import { EventConfirmModal } from './EventConfirmModal';
-import { OptionConfirmModal } from './OptionConfirmModal';
+import { AgreeConfirmModal } from './AgreeConfirmModal';
 
 export function EntryConfirmModal({
   isUserModalOpen,
@@ -18,9 +17,7 @@ export function EntryConfirmModal({
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
-  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
-  const [isOptionModalOpen, setIsOptionModalOpen] = useState(false);
-  const [template, setTemplate] = useState(0);
+  const [isAgreeModalOpen, setIsAgreeModalOpen] = useState(false);
 
   const userData = {
     name: '홍길동',
@@ -28,17 +25,6 @@ export function EntryConfirmModal({
     gender: '남성',
     phone: '010-1234-5678',
     email: 'hong @example.com',
-  };
-
-  const eventData = {
-    name: '한강 벚꽃 러닝 페스티벌',
-    eventDate: '2026.04.12 (토) 오전 9:00',
-    location: '서울 여의도 한강공원 입구',
-  };
-
-  const optionData = {
-    course: '10km',
-    pace: '6\'30\"\/km',
   };
 
   // 컴포넌트가 마운트된 후에만 렌더링을 허용
@@ -62,30 +48,17 @@ export function EntryConfirmModal({
         onClose={() => setIsUserModalOpen(false)}
         onConfirm={() => {
           setIsUserModalOpen(false);
-          setIsEventModalOpen(true);
+          setIsAgreeModalOpen(true);
         }}
         data={userData}
-        template={template}
       />
-      <EventConfirmModal
-        isOpen={isEventModalOpen}
-        onClose={() => setIsEventModalOpen(false)}
+      <AgreeConfirmModal
+        isOpen={isAgreeModalOpen}
+        onClose={() => setIsAgreeModalOpen(false)}
         onConfirm={() => {
-          setIsEventModalOpen(false);
-          setIsOptionModalOpen(true);
-        }}
-        data={eventData}
-        template={template}
-      />
-      <OptionConfirmModal
-        isOpen={isOptionModalOpen}
-        onClose={() => setIsOptionModalOpen(false)}
-        onConfirm={() => {
-          setIsOptionModalOpen(false);
+          setIsAgreeModalOpen(false);
           handleApply();
         }}
-        data={optionData}
-        template={template}
       />
     </section>
   );
