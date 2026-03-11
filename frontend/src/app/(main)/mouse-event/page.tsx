@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 
 import {
+  AgreeConfirmModal,
   EventConfirmModal,
   OptionConfirmModal,
   UserConfirmModal,
@@ -14,36 +15,104 @@ import { Input } from '@/components/ui/input';
 export default function MarathonDetailPage() {
   const [template, setTemplate] = useState(0);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
-  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
-  const [isOptionModalOpen, setIsOptionModalOpen] = useState(false);
+  const [isAgreeModalOpen, setIsAgreeModalOpen] = useState(false);
 
-  const [intervalInput, setIntervalInput] = useState(100);
-  const { isRecording, logs, startTracking, stopTracking } =
+  const [minDistance, setMinDistance] = useState(10);
+
+  const { isRecording, logs, startTracking, stopTracking, getFinalData } =
     useDetailedTracker();
 
   const handleStart = () => {
     setTemplate(Math.floor(Math.random() * 2));
     setIsUserModalOpen(true);
 
-    startTracking(intervalInput);
+    startTracking(minDistance);
   };
   const handleStop = () => {
     setIsUserModalOpen(false);
-    setIsEventModalOpen(false);
-    setIsOptionModalOpen(false);
+    setIsAgreeModalOpen(false);
     stopTracking();
   };
 
-  const handleDownload = () => {
-    // 수집 중일 때는 중지 후 다운로드하거나, 지금까지의 데이터를 다운로드
-    const currentLogs = isRecording ? [...logs] : logs;
+  const handleStopAndDownload = () => {
+    setIsUserModalOpen(false);
+    setIsAgreeModalOpen(false);
+    stopTracking();
+    handleDownload();
+  };
 
-    const jsonString = JSON.stringify(currentLogs, null, 2);
+  const handleDownload = () => {
+    // getFinalData를 호출하여 최근 60초치 데이터만 가져옵니다.
+    // 이 함수는 ref(logBuffer)를 직접 참조하므로 상태(logs)보다 최신 데이터를 보장합니다.
+    const dataToDownload = getFinalData();
+
+    // 데이터가 없을 경우 처리
+    if (dataToDownload.length === 0) {
+      alert('다운로드할 데이터가 없습니다. (최근 60초 이내 기록 없음)');
+      return;
+    }
+
+    // JSON 변환
+    const jsonString = JSON.stringify(dataToDownload, null, 2);
     const blob = new Blob([jsonString], { type: 'application/json' });
+
+    // 다운로드 링크 생성 및 실행
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `mouse_data_${new Date().getTime()}.json`;
+
+    // 파일명에 현재 시간을 포함 (ISO 형식 등을 사용하면 더 읽기 좋습니다)
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    link.download = `mouse_data_last_60s_${timestamp}.json`;
+
+    document.body.appendChild(link);
+    link.click();
+
+    // 정리 (Cleanup)
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadBinary = () => {
+    const currentLogs = isRecording ? [...logs] : logs;
+    if (currentLogs.length === 0) return;
+
+    /**
+     * [바이너리 구조 설계]
+     * 1개 로그당 바이트 계산:
+     * - x: 4 bytes (Int32)
+     * - y: 4 bytes (Int32)
+     * - timestamp: 8 bytes (Float64 - 밀리초 단위 정밀도 유지)
+     * - eventType: 1 byte (Uint8 - 0: move, 1: down, 2: up)
+     * 총 합계: 17 bytes per log
+     */
+    const RECORD_SIZE = 17;
+    const buffer = new ArrayBuffer(currentLogs.length * RECORD_SIZE);
+    const view = new DataView(buffer);
+
+    // 이벤트 타입 매핑
+    const typeMap: Record<string, number> = {
+      pointermove: 0,
+      pointerdown: 1,
+      pointerup: 2,
+    };
+
+    currentLogs.forEach((log, index) => {
+      const offset = index * RECORD_SIZE;
+
+      view.setInt32(offset, Math.floor(log.x), true); // x 저장
+      view.setInt32(offset + 4, Math.floor(log.y), true); // y 저장
+      view.setFloat64(offset + 8, log.timestamp, true); // timestamp 저장
+      view.setUint8(offset + 16, typeMap[log.eventType] ?? 255); // eventType 저장
+    });
+
+    // Blob 생성 (application/octet-stream은 일반적인 이진 파일 형식)
+    const blob = new Blob([buffer], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `mouse_data_${new Date().getTime()}.bin`; // 확장자를 .bin으로 변경
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -70,16 +139,18 @@ export default function MarathonDetailPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-6xl mx-auto min-h-screen py-10">
       <div className="flex items-center justify-bewteen">
         <div className="flex-1 text-2xl mb-4 text-bold">
           마우스 데이터 모니터링
         </div>
-        <div className="flex text-2xl mb-4 text-bold gap-2">
+        <div className="flex text-2xl mb-4 text-bold gap-2 items-center">
+          <p className="text-sm">MIN_DISTANCE(px)</p>
           <Input
-            value={intervalInput}
-            onChange={(e) => setIntervalInput(Number(e.target.value))}
+            value={minDistance}
+            onChange={(e) => setMinDistance(Number(e.target.value))}
           />
+
           <Button
             variant="outline"
             size="fit"
@@ -88,7 +159,8 @@ export default function MarathonDetailPage() {
           >
             수집
           </Button>
-          <Button
+
+          {/* <Button
             variant="outline"
             size="fit"
             rounded="lg"
@@ -97,6 +169,15 @@ export default function MarathonDetailPage() {
           >
             JSON 다운로드
           </Button>
+          <Button
+            variant="outline"
+            size="fit"
+            rounded="lg"
+            onClick={handleDownloadBinary}
+            disabled={logs.length === 0}
+          >
+            바이너리 다운로드
+          </Button> */}
         </div>
 
         <div>
@@ -105,27 +186,15 @@ export default function MarathonDetailPage() {
             onClose={handleStop}
             onConfirm={() => {
               setIsUserModalOpen(false);
-              setIsEventModalOpen(true);
+              setIsAgreeModalOpen(true);
             }}
             data={userData}
             template={template}
           />
-          <EventConfirmModal
-            isOpen={isEventModalOpen}
+          <AgreeConfirmModal
+            isOpen={isAgreeModalOpen}
             onClose={handleStop}
-            onConfirm={() => {
-              setIsEventModalOpen(false);
-              setIsOptionModalOpen(true);
-            }}
-            data={eventData}
-            template={template}
-          />
-          <OptionConfirmModal
-            isOpen={isOptionModalOpen}
-            onClose={handleStop}
-            onConfirm={handleStop}
-            data={optionData}
-            template={template}
+            onConfirm={handleStopAndDownload}
           />
         </div>
       </div>
@@ -134,18 +203,6 @@ export default function MarathonDetailPage() {
         {/* 요약 카드 */}
         <div className="lg:col-span-1 space-y-4">
           <SummaryCard title="총 데이터 포인트" value={logs.length} unit="개" />
-          <SummaryCard
-            title="총 클릭(Down)"
-            value={logs.reduce((s, l) => s + l.downCount, 0)}
-            unit="회"
-            color="text-rose-600"
-          />
-          <SummaryCard
-            title="총 이동 거리"
-            value={logs.reduce((s, l) => s + l.distance, 0).toFixed(0)}
-            unit="px"
-            color="text-blue-600"
-          />
         </div>
 
         {/* 상세 로그 테이블 */}
@@ -163,12 +220,9 @@ export default function MarathonDetailPage() {
               <thead className="bg-slate-50 text-slate-500 text-[11px] uppercase sticky top-0 border-b">
                 <tr>
                   <th className="p-4">Time</th>
-                  <th className="p-4">Position(x, y)</th>
-                  <th className="p-4 text-center">Move</th>
-                  <th className="p-4 text-center">Down</th>
-                  <th className="p-4 text-center">Up</th>
-                  <th className="p-4">Distance</th>
-                  <th className="p-4">Last Event</th>
+                  <th className="p-4">Position x</th>
+                  <th className="p-4">Position y</th>
+                  <th className="p-4">Event</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -185,49 +239,18 @@ export default function MarathonDetailPage() {
                         {(log.timestamp % 100000).toFixed(0)}
                       </td>
                       <td className="p-4 font-bold text-slate-700 text-sm">
-                        {log.x}, {log.y}
+                        {log.x}
+                      </td>
+                      <td className="p-4 font-bold text-slate-700 text-sm">
+                        {log.y}
                       </td>
 
                       {/* 타입별 카운팅 표시 */}
-                      <td className="p-4 text-center">
-                        <span
-                          className={`text-xs font-bold ${log.moveCount > 0 ? 'text-blue-500' : 'text-slate-200'}`}
-                        >
-                          {log.moveCount}
-                        </span>
-                      </td>
-                      <td className="p-4 text-center">
-                        <span
-                          className={`px-2 py-1 rounded text-xs font-bold ${log.downCount > 0 ? 'bg-rose-100 text-rose-600' : 'text-slate-200'}`}
-                        >
-                          {log.downCount}
-                        </span>
-                      </td>
-                      <td className="p-4 text-center">
-                        <span
-                          className={`px-2 py-1 rounded text-xs font-bold ${log.upCount > 0 ? 'bg-amber-100 text-amber-600' : 'text-slate-200'}`}
-                        >
-                          {log.upCount}
-                        </span>
-                      </td>
-
-                      <td className="p-4">
-                        <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                          <div
-                            className="bg-blue-400 h-full"
-                            style={{ width: `${Math.min(log.distance, 100)}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-[10px] text-slate-400">
-                          {log.distance}px
-                        </span>
-                      </td>
-
                       <td className="p-4 text-xs">
                         <span
-                          className={`px-2 py-0.5 rounded-full font-medium ${getEventBadgeColor(log.lastEventType)}`}
+                          className={`px-2 py-0.5 rounded-full font-medium ${getEventBadgeColor(log.eventType)}`}
                         >
-                          {log.lastEventType || 'none'}
+                          {log.eventType || 'none'}
                         </span>
                       </td>
                     </tr>
@@ -248,7 +271,7 @@ function SummaryCard({ title, value, unit, color = 'text-slate-800' }: any) {
         {title}
       </div>
       <div className={`text-2xl font-black ${color}`}>
-        {value}{' '}
+        {value}
         <span className="text-sm font-normal text-slate-400">{unit}</span>
       </div>
     </div>
