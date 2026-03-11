@@ -66,16 +66,6 @@ export default function MarathonDetailPage() {
           <LuArrowLeft size={20} />
           목록으로
         </Button>
-        <div>
-          <Button
-            variant="ghost"
-            size="fit"
-            className="mr-5"
-            onClick={() => router.push(`/ticketing/${params.id}/wireframe`)}
-          >
-            와이어프레임
-          </Button>
-        </div>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8">

@@ -47,6 +47,12 @@ export function EventProductInfo() {
           {/* 구분선 */}
           <div className="my-3 h-[1px] bg-gray-300"></div>
 
+          {/* 공지사항 섹션 */}
+          <EventNotice />
+
+          {/* 구분선 */}
+          <div className="my-3 h-[1px] bg-gray-300"></div>
+
           {/* 기본정보 섹션 */}
           <EventBaseInfo />
 
@@ -55,12 +61,6 @@ export function EventProductInfo() {
 
           {/* 참가/구성 정보 섹션 */}
           <EventParticipationInfo />
-
-          {/* 구분선 */}
-          <div className="my-3 h-[1px] bg-gray-300"></div>
-
-          {/* 공지사항 섹션 */}
-          <EventNotice />
         </div>
 
         {!isExpanded && (
