@@ -6,11 +6,15 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    helm = {  # 반드시 required_providers 안쪽에 위치해야 함
+      source  = "hashicorp/helm"
+      version = "~> 2.12"
+    }
   }
 
   # 인프라 팀 식별자 t6 적용
   backend "s3" {
-    bucket       = "t6-on-race-terraform-state-prod" # 수정됨
+    bucket       = "t6-on-race-terraform-state-prod"
     key          = "prod/terraform.tfstate"
     region       = "ap-northeast-2"
     encrypt      = true

@@ -45,6 +45,9 @@ module "data" {
   
   automatic_failover_enabled = true
   num_cache_clusters         = 2
+
+  # EKS 모듈에서 생성된 노드 보안 그룹 ID를 Redis 모듈로 전달
+  eks_node_security_group_id = module.eks.node_security_group_id
 }
 
 # 4. SQS 대기열 모듈 호출 
@@ -82,10 +85,176 @@ resource "aws_eks_addon" "ebs_csi" {
 
 resource "aws_iam_role_policy_attachment" "node_ebs_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
-  
-  # 수동 확인했던 노드 역할 이름을 기입합니다. 
-  # 만약 EKS 모듈에서 노드 역할명을 출력한다면 module.eks.node_iam_role_name 등으로 대체 가능합니다.
-  role       = "t6-on-race-eks-node-role"
-
+  role       = module.eks.node_iam_role_name # EKS 모듈 출력값으로 대체
   depends_on = [module.eks]
+}
+
+# 7. Helm 프로바이더 설정 (EKS 클러스터 인증 연동)
+/*data "aws_eks_cluster" "cluster" {
+  name = module.eks.cluster_name
+}*/
+
+# Kubernetes 프로바이더: StorageClass 등 K8s 리소스 제어용
+provider "kubernetes" {
+  host                   = module.eks.cluster_endpoint
+  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
+    command     = "aws"
+  }
+}
+
+provider "helm" {
+  kubernetes {
+    host                   = module.eks.cluster_endpoint
+    cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+    
+    exec {
+      api_version = "client.authentication.k8s.io/v1beta1"
+      args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
+      command     = "aws"
+    }
+  }
+}
+
+# 8. Loki(로키) Helm 배포 (S3/IRSA 연동)
+resource "helm_release" "loki" {
+  name             = "loki"
+  repository       = "https://grafana.github.io/helm-charts"
+  chart            = "loki"
+  # version          = "6.6.2"
+  namespace        = "loki"
+  create_namespace = true
+
+  # 앞서 작성한 values.yaml 경로 참조
+  values = [
+    file("${path.module}/helm-values/loki-values.yaml")
+  ]
+
+  # EKS 노드가 준비된 후 배포되도록 설정
+  depends_on = [module.eks, module.loki] 
+}
+
+# 9. Grafana(그라파나) Helm 배포 (EBS PVC 연동)
+resource "helm_release" "grafana" {
+  name             = "grafana"
+  repository       = "https://grafana.github.io/helm-charts"
+  chart            = "grafana"
+  namespace        = "monitoring"
+  create_namespace = true
+
+  values = [
+    file("${path.module}/helm-values/grafana-values.yaml")
+  ]
+
+  # EBS CSI 드라이버와 Loki가 준비된 후 배포
+  depends_on = [aws_eks_addon.ebs_csi, helm_release.loki]
+}
+
+# 10. Karpenter IAM 및 기초 인프라 모듈 호출
+module "karpenter" {
+  source = "../../modules/karpenter"
+
+  project_name      = var.project_name
+  cluster_name      = module.eks.cluster_name
+  oidc_provider_arn = module.eks.oidc_provider_arn
+}
+
+# 11. Karpenter Helm 배포
+resource "helm_release" "karpenter" {
+  namespace        = "karpenter"
+  create_namespace = true
+  name             = "karpenter"
+  repository       = "oci://public.ecr.aws/karpenter"
+  chart            = "karpenter"
+  version          = "1.0.1" # EKS 1.30 환경에 맞춘 최신 안정화 버전
+
+  set {
+    name  = "settings.clusterName"
+    value = module.eks.cluster_name
+  }
+
+  set {
+    name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+    value = module.karpenter.controller_role_arn
+  }
+
+  # IAM 권한(module.karpenter)이 먼저 생성된 후 Helm이 배포되도록 순서 보장
+  depends_on = [module.eks, module.karpenter]
+}
+
+# 12. gp3 StorageClass를 기본값으로 생성
+resource "kubernetes_storage_class_v1" "gp3_default" {
+  metadata {
+    name = "gp3"
+    annotations = {
+      # 이 옵션이 핵심입니다. 모든 PVC가 기본적으로 이 규격을 쓰게 합니다.
+      "storageclass.kubernetes.io/is-default-class" = "true"
+    }
+  }
+
+  storage_provisioner    = "ebs.csi.aws.com" # 최신 EBS CSI 드라이버 사용
+  reclaim_policy         = "Delete"
+  volume_binding_mode    = "WaitForFirstConsumer"
+  allow_volume_expansion = true
+
+  parameters = {
+    type = "gp3"
+  }
+
+  # EKS와 EBS CSI 드라이버가 먼저 준비되어야 합니다.
+  depends_on = [module.eks, aws_eks_addon.ebs_csi]
+}
+
+# 13. Promtail(로그 수집기) Helm 배포
+resource "helm_release" "promtail" {
+  name       = "promtail"
+  repository = "https://grafana.github.io/helm-charts"
+  chart      = "promtail"
+  namespace  = "loki" # Loki와 같은 네임스페이스에 두는 것이 관리하기 편합니다.
+
+  set {
+    name  = "config.clients[0].url"
+    # Loki 서비스의 DNS 주소를 정확히 지정합니다.
+    value = "http://loki.loki.svc.cluster.local:3100/loki/api/v1/push"
+  }
+
+  # Loki가 먼저 떠 있어야 로그를 받을 수 있습니다.
+  depends_on = [helm_release.loki]
+}
+
+# 13.5 애플리케이션 전용 네임스페이스 사전 생성
+resource "kubernetes_namespace" "app" {
+  metadata {
+    # 예: on-race-prod 형태의 네임스페이스 생성
+    name = "${var.project_name}-${var.environment}"
+  }
+  
+  # EKS 클러스터가 뜬 이후에 생성되어야 함
+  depends_on = [module.eks]
+}
+
+# 14. 애플리케이션 파드용 Stunnel(Redis 프록시) ConfigMap
+resource "kubernetes_config_map" "redis_stunnel_conf" {
+  metadata {
+    name      = "redis-stunnel-conf"
+    namespace = kubernetes_namespace.app.metadata[0].name # 하드코딩된 "default"를 지우고, 위에서 만든 네임스페이스를 동적 참조
+  }
+
+  data = {
+    "stunnel.conf" = <<-EOF
+      foreground = yes
+      pid = /tmp/stunnel.pid
+      delay_dns = yes
+
+      [redis-tls]
+      client = yes
+      accept = 127.0.0.1:6379
+      connect = ${module.data.redis_endpoint}:6379
+    EOF
+  }
+
+  depends_on = [module.eks, module.data]
 }
