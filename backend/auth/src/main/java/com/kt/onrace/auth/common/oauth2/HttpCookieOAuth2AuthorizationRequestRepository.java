@@ -1,18 +1,20 @@
 package com.kt.onrace.auth.common.oauth2;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.util.Base64;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Base64;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.security.oauth2.client.web.AuthorizationRequestRepository;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 import org.springframework.stereotype.Component;
@@ -27,6 +29,7 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
 
 	private static final String COOKIE_NAME = "oauth2_auth_request";
 	private static final int COOKIE_EXPIRE_SECONDS = 180;
+	private static final ObjectMapper objectMapper = new ObjectMapper();
 
 	@Override
 	public OAuth2AuthorizationRequest loadAuthorizationRequest(HttpServletRequest request) {
@@ -86,22 +89,41 @@ public class HttpCookieOAuth2AuthorizationRequestRepository
 	}
 
 	private String serialize(OAuth2AuthorizationRequest request) {
-		try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
-				ObjectOutputStream oos = new ObjectOutputStream(bos)) {
-			oos.writeObject(request);
-			return Base64.getUrlEncoder().encodeToString(bos.toByteArray());
-		} catch (IOException e) {
+		try {
+			Map<String, Object> map = new LinkedHashMap<>();
+			map.put("authorizationUri", request.getAuthorizationUri());
+			map.put("clientId", request.getClientId());
+			map.put("redirectUri", request.getRedirectUri());
+			map.put("scopes", request.getScopes());
+			map.put("state", request.getState());
+			map.put("additionalParameters", request.getAdditionalParameters());
+			map.put("attributes", request.getAttributes());
+			map.put("authorizationGrantType", request.getGrantType().getValue());
+
+			String json = objectMapper.writeValueAsString(map);
+			return Base64.getUrlEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
+		} catch (Exception e) {
 			throw new IllegalStateException("OAuth2AuthorizationRequest 직렬화 실패", e);
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	private OAuth2AuthorizationRequest deserialize(Cookie cookie) {
 		try {
 			byte[] bytes = Base64.getUrlDecoder().decode(cookie.getValue());
-			try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(bytes))) {
-				return (OAuth2AuthorizationRequest) ois.readObject();
-			}
-		} catch (IOException | ClassNotFoundException e) {
+			String json = new String(bytes, StandardCharsets.UTF_8);
+			Map<String, Object> map = objectMapper.readValue(json, new TypeReference<>() {});
+
+			return OAuth2AuthorizationRequest.authorizationCode()
+					.authorizationUri((String) map.get("authorizationUri"))
+					.clientId((String) map.get("clientId"))
+					.redirectUri((String) map.get("redirectUri"))
+					.scopes(new HashSet<>((List<String>) map.get("scopes")))
+					.state((String) map.get("state"))
+					.additionalParameters((Map<String, Object>) map.get("additionalParameters"))
+					.attributes((Map<String, Object>) map.get("attributes"))
+					.build();
+		} catch (Exception e) {
 			return null;
 		}
 	}
