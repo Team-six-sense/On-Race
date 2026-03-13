@@ -124,7 +124,7 @@ resource "helm_release" "loki" {
   name             = "loki"
   repository       = "https://grafana.github.io/helm-charts"
   chart            = "loki"
-  # version          = "6.6.2"
+  version          = "6.6.2"
   namespace        = "loki"
   create_namespace = true
 
@@ -142,6 +142,7 @@ resource "helm_release" "grafana" {
   name             = "grafana"
   repository       = "https://grafana.github.io/helm-charts"
   chart            = "grafana"
+  version = "8.5.1"
   namespace        = "monitoring"
   create_namespace = true
 
@@ -213,6 +214,7 @@ resource "helm_release" "promtail" {
   name       = "promtail"
   repository = "https://grafana.github.io/helm-charts"
   chart      = "promtail"
+  version = "6.16.6"
   namespace  = "loki" # Loki와 같은 네임스페이스에 두는 것이 관리하기 편합니다.
 
   set {
@@ -226,7 +228,7 @@ resource "helm_release" "promtail" {
 }
 
 # 13.5 애플리케이션 전용 네임스페이스 사전 생성
-resource "kubernetes_namespace" "app" {
+resource "kubernetes_namespace_v1" "app" {
   metadata {
     # 예: on-race-prod 형태의 네임스페이스 생성
     name = "${var.project_name}-${var.environment}"
@@ -237,14 +239,14 @@ resource "kubernetes_namespace" "app" {
 }
 
 # 14. 애플리케이션 파드용 Stunnel(Redis 프록시) ConfigMap
-resource "kubernetes_config_map" "redis_stunnel_conf" {
+resource "kubernetes_config_map_v1" "redis_stunnel_conf" {
   metadata {
     name      = "redis-stunnel-conf"
-    namespace = kubernetes_namespace.app.metadata[0].name # 하드코딩된 "default"를 지우고, 위에서 만든 네임스페이스를 동적 참조
+    namespace = kubernetes_namespace_v1.app.metadata[0].name # 하드코딩된 "default"를 지우고, 위에서 만든 네임스페이스를 동적 참조
   }
 
   data = {
-    "stunnel.conf" = <<-EOF
+    "stunnel.conf" = replace(<<-EOF
       foreground = yes
       pid = /tmp/stunnel.pid
       delay_dns = yes
@@ -254,7 +256,141 @@ resource "kubernetes_config_map" "redis_stunnel_conf" {
       accept = 127.0.0.1:6379
       connect = ${module.data.redis_endpoint}:6379
     EOF
+    , "\r", "")
   }
 
   depends_on = [module.eks, module.data]
+}
+
+
+# 15. KEDA(Kubernetes Event-driven Autoscaling) Helm 배포
+# 지능형 스케일링을 위한 컨트롤러와 CRD를 설치합니다.
+resource "helm_release" "keda" {
+  name             = "keda"
+  repository       = "https://kedacore.github.io/charts"
+  chart            = "keda"
+  namespace        = "keda"
+  version = "2.14.0"
+  create_namespace = true
+
+  # EKS 클러스터가 준비된 후 설치 진행
+  depends_on = [module.eks]
+}
+
+
+# 16. KEDA ScaledObject: Prometheus 메트릭 기반 지능형 스케일링
+# 2초 TTL의 Redis 데이터를 직접 보지 않고, Prometheus에 쌓인 초당 트래픽(rate)을 감시합니다.
+resource "kubernetes_manifest" "on_race_tps_scaler" {
+  manifest = {
+    apiVersion = "keda.sh/v1alpha1"
+    kind       = "ScaledObject"
+    metadata = {
+      name      = "on-race-api-scaler"
+      namespace = kubernetes_namespace_v1.app.metadata[0].name
+    }
+    spec = {
+      scaleTargetRef = {
+        name = "on-race-api" # 애플리케이션 Deployment 이름과 일치 필수
+      }
+      minReplicaCount = 2
+      maxReplicaCount = 100 # 티켓팅 폭주 시 최대 확장 한도
+      
+      advanced = {
+        restoreToOriginalReplicaCount = true
+        horizontalPodAutoscalerConfig = {
+          behavior = {
+            scaleDown = {
+              stabilizationWindowSeconds = 300 # 트래픽 감소 후 5분간 파드 유지 (재폭주 대비)
+              policies = [{ type = "Percent", value = 10, periodSeconds = 60 }]
+            }
+          }
+        }
+      }
+
+      triggers = [
+        {
+          type = "prometheus"
+          metadata = {
+            # 모니터링 네임스페이스에 설치된 프로메테우스 서버 주소 참조
+            serverAddress = "http://t6-on-race-prometheus-server.monitoring.svc.cluster.local:80"
+            metricName    = "onrace_tps_requests_total"
+            threshold     = "50" # 파드 1개당 감당할 초당 허용 TPS 기준값
+            
+            # 모든 그룹의 초당 평균 유입량(rate)을 계산하여 스케일링 여부 판단
+            query = replace(<<-EOT
+              sum(rate(onrace_tps_requests_total{result="allowed"}[1m]))
+            EOT
+            , "\r", "")
+          }
+        }
+      ]
+    }
+  }
+
+  # [중요] KEDA Helm 차트가 설치되어 API(CRD)가 인식된 후에만 생성을 시도합니다.
+  depends_on = [helm_release.keda, kubernetes_namespace_v1.app]
+}
+
+
+# 17. Prometheus Helm 배포 (KEDA 메트릭 공급용)
+resource "helm_release" "prometheus" {
+  name             = "t6-on-race-prometheus"
+  repository       = "https://prometheus-community.github.io/helm-charts"
+  chart            = "prometheus"
+  version          = "25.21.0" # EKS 1.30 호환 안정 버전
+  namespace        = "monitoring"
+  create_namespace = true
+
+  # KEDA가 찾고 있는 서비스 이름(prometheus-server)을 유지하기 위한 기본 설정
+
+  set {
+    name  = "server.persistentVolume.enabled"
+    value = "false" # 테스트 환경이므로 우선 저장소 비활성화 (필요시 true로 변경)
+  }
+
+  set {
+    name  = "alertmanager.enabled"
+    value = "false" # 불필요한 리소스 방지
+  }
+
+  # EKS 클러스터가 준비된 후 설치
+  depends_on = [module.eks]
+}
+
+# 18. KEDA 테스트용 샘플 Deployment
+resource "kubernetes_deployment_v1" "on_race_api" {
+  metadata {
+    name      = "on-race-api" # ScaledObject의 scaleTargetRef와 일치 필수
+    namespace = kubernetes_namespace_v1.app.metadata[0].name
+  }
+
+  spec {
+    replicas = 2 # 초기 파드 개수
+    selector {
+      match_labels = {
+        app = "on-race-api"
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          app = "on-race-api"
+        }
+      }
+
+      spec {
+        container {
+          name  = "api"
+          image = "nginx" # 테스트용이므로 가벼운 nginx 사용
+          
+          port {
+            container_port = 80
+          }
+        }
+      }
+    }
+  }
+
+  depends_on = [kubernetes_namespace_v1.app]
 }

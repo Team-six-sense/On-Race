@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: on-race-api
+  namespace: t6-on-race-prod
+  labels:
+    app: on-race-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels: # match_labels에서 수정됨
+      app: on-race-api
+  template:
+    metadata:
+      labels:
+        app: on-race-api
+    spec:
+      containers:
+        # 1. 메인 애플리케이션 컨테이너 (테스트용 이미지 적용)
+        - name: app-container
+          image: nginxdemos/hello:latest # 외부 접속 확인용 표준 테스트 이미지
+          ports:
+            - containerPort: 80 # 이 이미지는 기본 80포트를 사용합니다.
+          env:
+            - name: REDIS_HOST
+              value: "127.0.0.1"
+            - name: REDIS_PORT
+              value: "6379"
+
+        # 2. 보안용 Stunnel 사이드카 컨테이너
+        - name: stunnel-sidecar
+          image: dweomer/stunnel:latest
+          # 아래 두 줄을 추가하여 이미지가 기본 entrypoint 대신 stunnel 명령어를 직접 실행하게 합니다.
+          command: ["stunnel"]
+          args: ["/etc/stunnel/stunnel.conf"]
+          volumeMounts:
+            - name: stunnel-config
+              mountPath: /etc/stunnel
+          ports:
+            - containerPort: 6379
+
+      volumes:
+        - name: stunnel-config
+          configMap:
+            name: redis-stunnel-conf

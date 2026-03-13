@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: on-race-api
+  namespace: on-race-prod # 테라폼에서 생성한 네임스페이스와 일치 필수
+spec:
+  replicas: 3
+  template:
+    spec:
+      containers:
+        # [Container 1] 백엔드 애플리케이션
+        - name: app
+          image: your-repo/on-race-api:latest
+          env:
+            - name: REDIS_URL
+              value: "redis://localhost:6379" # SSL 끄고 평문으로 접속
+
+        # [Container 2] Stunnel 사이드카 프록시 (인프라 전담)
+        - name: redis-proxy
+          image: dweomer/stunnel:latest
+          ports:
+            - containerPort: 6379
+          volumeMounts:
+            - name: stunnel-conf
+              mountPath: /etc/stunnel/stunnel.conf
+              subPath: stunnel.conf
+
+      volumes:
+        - name: stunnel-conf
+          configMap:
+            name: redis-stunnel-conf # 테라폼이 생성한 ConfigMap 참조
