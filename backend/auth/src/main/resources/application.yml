@@ -61,3 +61,7 @@ auth:
     warning-threshold: ${AUTH_LOGIN_FAIL_WARNING_THRESHOLD:5}
     captcha-threshold: ${AUTH_LOGIN_FAIL_CAPTCHA_THRESHOLD:10}
     ttl-minutes: ${AUTH_LOGIN_FAIL_TTL_MINUTES:30}
+
+gateway:
+  internal:
+    secret: ${GATEWAY_INTERNAL_SECRET:onrace-super-secret-key}
