@@ -75,6 +75,28 @@ class AddressServiceTest {
 	}
 
 	@Test
+	@DisplayName("기본배송지 조회는 기본배송지를 반환한다")
+	void getDefaultReturnsDefaultAddress() {
+		AddressDto.Response first = addressService.create(1L, createRequest("기본주소", false));
+		addressService.create(1L, createRequest("둘주소", false));
+
+		AddressDto.DefaultResponse response = addressService.getDefault(1L);
+
+		assertThat(response.hasAddress()).isTrue();
+		assertThat(response.address()).isNotNull();
+		assertThat(response.address().id()).isEqualTo(first.id());
+	}
+
+	@Test
+	@DisplayName("기본배송지 조회는 주소가 없으면 빈 상태를 반환한다")
+	void getDefaultReturnsEmptyWhenNoAddress() {
+		AddressDto.DefaultResponse response = addressService.getDefault(1L);
+
+		assertThat(response.hasAddress()).isFalse();
+		assertThat(response.address()).isNull();
+	}
+
+	@Test
 	@DisplayName("기본배송지 삭제 시 남은 주소 중 최신 주소가 기본배송지로 승격된다")
 	void deleteDefaultPromotesLatest() {
 		AddressDto.Response first = addressService.create(1L, createRequest("기본주소", false));

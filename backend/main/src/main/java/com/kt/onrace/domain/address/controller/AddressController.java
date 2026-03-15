@@ -34,6 +34,13 @@ public class AddressController {
 		return ApiResponse.success(addressService.list(userId));
 	}
 
+	@GetMapping("/default")
+	public ApiResponse<AddressDto.DefaultResponse> getDefault(
+		@RequestHeader("X-User-Id") Long userId
+	) {
+		return ApiResponse.success(addressService.getDefault(userId));
+	}
+
 	@GetMapping("/{id}")
 	public ApiResponse<AddressDto.Response> get(
 		@RequestHeader("X-User-Id") Long userId,

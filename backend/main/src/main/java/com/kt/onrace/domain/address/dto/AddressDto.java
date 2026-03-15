@@ -38,4 +38,17 @@ public class AddressDto {
 			);
 		}
 	}
+
+	public record DefaultResponse(
+		boolean hasAddress,
+		Response address
+	) {
+		public static DefaultResponse empty() {
+			return new DefaultResponse(false, null);
+		}
+
+		public static DefaultResponse from(com.kt.onrace.domain.address.entity.Address address) {
+			return new DefaultResponse(true, Response.from(address));
+		}
+	}
 }

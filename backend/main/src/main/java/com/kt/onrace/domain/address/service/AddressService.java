@@ -1,6 +1,7 @@
 package com.kt.onrace.domain.address.service;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +26,20 @@ public class AddressService {
 			.stream()
 			.map(AddressDto.Response::from)
 			.toList();
+	}
+
+	public AddressDto.DefaultResponse getDefault(Long userId) {
+		Optional<Address> defaultAddress = addressRepository.findFirstByUserIdAndIsDefaultTrue(userId);
+
+		if (defaultAddress.isPresent()) {
+			return AddressDto.DefaultResponse.from(defaultAddress.get());
+		}
+
+		return addressRepository.findByUserIdOrderByCreatedAtDesc(userId)
+			.stream()
+			.findFirst()
+			.map(AddressDto.DefaultResponse::from)
+			.orElseGet(AddressDto.DefaultResponse::empty);
 	}
 
 	public AddressDto.Response get(Long userId, Long addressId) {
