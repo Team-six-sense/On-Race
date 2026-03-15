@@ -33,8 +33,13 @@ public class SecurityConfig {
 	private final HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository;
 
 	private static final String[] GET_PERMIT_ALL = { "/api/health/**", "/swagger-ui.html", "/swagger-ui/**",
-			"/v3/api-docs/**", "/actuator/**", "/api/main/**" };
-	private static final String[] POST_PERMIT_ALL = {};
+			"/v3/api-docs/**", "/actuator/**", "/api/main/**", "/password/reset-verify" };
+	private static final String[] POST_PERMIT_ALL = {
+			"/signup", "/login", "/token/refresh", "/find-email",
+			"/sms/send", "/sms/send-for-find", "/sms/verify",
+			"/email/send-code", "/email/verify-code",
+			"/password/reset-request", "/password/reset"
+	};
 	private static final String[] PUT_PERMIT_ALL = { "/api/v1/public/**" };
 	private static final String[] PATCH_PERMIT_ALL = { "/api/v1/public/**" };
 	private static final String[] DELETE_PERMIT_ALL = { "/api/v1/public/**" };
