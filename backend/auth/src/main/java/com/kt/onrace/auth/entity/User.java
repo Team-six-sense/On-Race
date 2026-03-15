@@ -10,10 +10,11 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.AccessLevel;
 
 @Getter
 @Entity
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User extends BaseEntity {
 
 	@Column(nullable = false, length = 100)
@@ -22,14 +23,24 @@ public class User extends BaseEntity {
 	@Column(nullable = false, length = 50)
 	private String name;
 
-	@Column(nullable = false, length = 20)
+	// OAuth 사용자는 전화번호 없이 가입 가능
+	@Column(length = 20)
 	private String phoneNumber;
 
 	@Column(length = 20)
 	private String mobile;
 
-	@Column(nullable = false, length = 255)
+	// OAuth 사용자는 비밀번호 없음
+	@Column(length = 255)
 	private String password;
+
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false)
+	private AuthProvider authProvider;
+
+	// OAuth 제공자의 고유 사용자 ID
+	@Column(length = 100)
+	private String providerId;
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false)
@@ -43,12 +54,26 @@ public class User extends BaseEntity {
 		this.name = name;
 		this.password = password;
 		this.phoneNumber = phoneNumber;
+		this.authProvider = AuthProvider.LOCAL;
+		this.role = USER;
+		this.isDeleted = false;
+	}
+
+	private User(String email, String name, AuthProvider authProvider, String providerId) {
+		this.email = email;
+		this.name = name;
+		this.authProvider = authProvider;
+		this.providerId = providerId;
 		this.role = USER;
 		this.isDeleted = false;
 	}
 
 	public static User createUser(String email, String name, String password, String phoneNumber) {
 		return new User(email, name, password, phoneNumber);
+	}
+
+	public static User createOAuthUser(String email, String name, AuthProvider authProvider, String providerId) {
+		return new User(email, name, authProvider, providerId);
 	}
 
 	public void markDeleted() {
