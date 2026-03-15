@@ -1,5 +1,7 @@
 package com.kt.onrace.domain.order.service;
 
+import java.util.Comparator;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -8,8 +10,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
+import com.kt.onrace.domain.address.entity.Address;
+import com.kt.onrace.domain.address.repository.AddressRepository;
 import com.kt.onrace.domain.event.entity.Event;
 import com.kt.onrace.domain.event.entity.EventCourse;
+import com.kt.onrace.domain.event.entity.EventImage;
+import com.kt.onrace.domain.event.entity.EventImageType;
 import com.kt.onrace.domain.event.entity.EventPace;
 import com.kt.onrace.domain.event.entity.EventPackage;
 import com.kt.onrace.domain.event.repository.EventCourseRepository;
@@ -35,6 +41,7 @@ public class OrderService {
 	private final EventCourseRepository eventCourseRepository;
 	private final EventPaceRepository eventPaceRepository;
 	private final EventPackageRepository eventPackageRepository;
+	private final AddressRepository addressRepository;
 	private final OrderRepository orderRepository;
 
 	@Transactional(readOnly = true)
@@ -62,8 +69,19 @@ public class OrderService {
 			itemTotalAmount, shippingFee, discountAmount, finalAmount);
 
 		String prepareToken = UUID.randomUUID().toString();
+		CheckoutPrepareResponseDto.ShippingAddressInfo shippingAddress = resolveShippingAddress(userId, request.addressId());
+		String thumbnailUrl = extractThumbnailUrl(event);
 
-		return CheckoutPrepareResponseDto.of(prepareToken, event, course, pace, packages, paymentDetail);
+		return CheckoutPrepareResponseDto.of(
+			prepareToken,
+			event,
+			course,
+			pace,
+			packages,
+			paymentDetail,
+			thumbnailUrl,
+			shippingAddress
+		);
 	}
 
 	@Transactional
@@ -76,7 +94,8 @@ public class OrderService {
 		EventPace pace = eventPaceRepository.findByIdAndEventCourseIdOrThrow(
 			request.eventPaceId(), request.eventCourseId(), BusinessErrorCode.COMMON_INVALID_FORMAT);
 
-		List<EventPackage> selectedPackages = eventPackageRepository.findAllById(request.selectedPackageIds());
+		List<EventPackage> selectedPackages = resolveSelectedPackages(request.eventId(), request.selectedPackageIds());
+		ShippingAddressSnapshot shippingAddress = resolveShippingAddressSnapshot(userId, request);
 
 		Long itemTotalAmount = course.getPrice() + selectedPackages.stream().mapToLong(EventPackage::getPrice).sum();
 		// 임시 배송비, 배송지에 따라 달라질 수 있음
@@ -103,12 +122,12 @@ public class OrderService {
 			.shippingFee(shippingFee)
 			.discountAmount(discountAmount)
 			.finalAmount(calculatedFinalAmount)
-			.recipientName(request.recipientName())
-			.recipientPhone(request.recipientPhone())
-			.zipCode(request.zipCode())
-			.address(request.address())
-			.detailAddress(request.detailAddress())
-			.deliveryMemo(request.deliveryMemo())
+			.recipientName(shippingAddress.receiverName())
+			.recipientPhone(shippingAddress.phone())
+			.zipCode(shippingAddress.zipcode())
+			.address(shippingAddress.address1())
+			.detailAddress(shippingAddress.address2())
+			.deliveryMemo(shippingAddress.memo())
 			.build();
 
 		for (EventPackage pkg : selectedPackages) {
@@ -128,6 +147,100 @@ public class OrderService {
 		}
 
 		return new CheckoutResponseDto(order.getOrderNumber(), orderName, order.getFinalAmount());
+	}
+
+	private List<EventPackage> resolveSelectedPackages(Long eventId, List<Long> selectedPackageIds) {
+		if (selectedPackageIds == null || selectedPackageIds.isEmpty()) {
+			return Collections.emptyList();
+		}
+
+		List<EventPackage> selectedPackages = eventPackageRepository.findAllById(selectedPackageIds);
+		boolean hasInvalidPackage = selectedPackages.size() != selectedPackageIds.size()
+			|| selectedPackages.stream().anyMatch(pkg -> !pkg.getEvent().getId().equals(eventId));
+
+		if (hasInvalidPackage) {
+			throw new BusinessException(BusinessErrorCode.COMMON_INVALID_FORMAT);
+		}
+
+		return selectedPackages;
+	}
+
+	private CheckoutPrepareResponseDto.ShippingAddressInfo resolveShippingAddress(Long userId, Long addressId) {
+		return findAddressForCheckout(userId, addressId)
+			.map(address -> new CheckoutPrepareResponseDto.ShippingAddressInfo(
+				true,
+				address.getId(),
+				address.getReceiverName(),
+				address.getPhone(),
+				address.getZipcode(),
+				address.getAddress1(),
+				address.getAddress2(),
+				address.getMemo(),
+				address.isDefault()
+			))
+			.orElseGet(CheckoutPrepareResponseDto.ShippingAddressInfo::empty);
+	}
+
+	private ShippingAddressSnapshot resolveShippingAddressSnapshot(Long userId, CheckoutRequestDto request) {
+		if (request.addressId() != null) {
+			Address address = addressRepository.findByIdAndUserId(request.addressId(), userId)
+				.orElseThrow(() -> new BusinessException(BusinessErrorCode.ADDRESS_NOT_FOUND));
+
+			return new ShippingAddressSnapshot(
+				address.getReceiverName(),
+				address.getPhone(),
+				address.getZipcode(),
+				address.getAddress1(),
+				address.getAddress2(),
+				request.deliveryMemo() != null ? request.deliveryMemo() : address.getMemo()
+			);
+		}
+
+		if (isBlank(request.recipientName()) || isBlank(request.recipientPhone()) || isBlank(request.zipCode())
+			|| isBlank(request.address())) {
+			throw new BusinessException(BusinessErrorCode.COMMON_INVALID_FORMAT);
+		}
+
+		return new ShippingAddressSnapshot(
+			request.recipientName(),
+			request.recipientPhone(),
+			request.zipCode(),
+			request.address(),
+			request.detailAddress(),
+			request.deliveryMemo()
+		);
+	}
+
+	private java.util.Optional<Address> findAddressForCheckout(Long userId, Long addressId) {
+		if (addressId != null) {
+			return addressRepository.findByIdAndUserId(addressId, userId);
+		}
+
+		return addressRepository.findFirstByUserIdAndIsDefaultTrue(userId)
+			.or(() -> addressRepository.findByUserIdOrderByCreatedAtDesc(userId).stream().findFirst());
+	}
+
+	private String extractThumbnailUrl(Event event) {
+		return event.getImages().stream()
+			.filter(image -> image.getType() == EventImageType.THUMBNAIL)
+			.sorted(Comparator.comparingInt(EventImage::getSort))
+			.map(EventImage::getUrl)
+			.findFirst()
+			.orElse(null);
+	}
+
+	private boolean isBlank(String value) {
+		return value == null || value.isBlank();
+	}
+
+	private record ShippingAddressSnapshot(
+		String receiverName,
+		String phone,
+		String zipcode,
+		String address1,
+		String address2,
+		String memo
+	) {
 	}
 
 }
