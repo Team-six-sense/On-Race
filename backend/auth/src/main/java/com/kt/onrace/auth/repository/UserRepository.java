@@ -4,6 +4,7 @@ import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import com.kt.onrace.auth.entity.AuthProvider;
 import com.kt.onrace.auth.entity.User;
 
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -15,5 +16,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 	Optional<User> findByEmailAndIsDeletedFalse(String email);
 
 	Optional<User> findByPhoneNumberAndIsDeletedFalse(String phoneNumber);
+
+	Optional<User> findByProviderIdAndAuthProvider(String providerId, AuthProvider authProvider);
 
 }

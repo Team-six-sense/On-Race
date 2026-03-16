@@ -87,13 +87,15 @@ class AuthServiceLoginTest {
 	void setUp() {
 		testUser = User.createUser("test@test.com", "테스터", "encodedPw", "01012345678");
 		ReflectionTestUtils.setField(testUser, "id", 1L);
+	}
 
+	private void setupLoginFailCounter() {
 		AuthProperties.LoginFail loginFail = new AuthProperties.LoginFail();
 		loginFail.setWarningThreshold(5);
 		loginFail.setCaptchaThreshold(10);
 		loginFail.setTtlMinutes(30);
 		given(authProperties.getLoginFail()).willReturn(loginFail);
-
+		given(redisKeyGenerator.loginFailCountKey(anyString())).willReturn("login:fail:test-key");
 		given(redissonClient.getAtomicLong(anyString())).willReturn(rAtomicLong);
 		given(rAtomicLong.get()).willReturn(0L);
 	}
@@ -104,6 +106,7 @@ class AuthServiceLoginTest {
 	@DisplayName("로그인 성공: 올바른 자격증명으로 Access/Refresh Token 반환")
 	void login_success() {
 		// given
+		setupLoginFailCounter();
 		LoginRequest request = new LoginRequest("test@test.com", "password123!");
 
 		given(userRepository.findByEmailAndIsDeletedFalse("test@test.com")).willReturn(Optional.of(testUser));
@@ -129,6 +132,7 @@ class AuthServiceLoginTest {
 	@DisplayName("로그인 실패: 존재하지 않는 loginId")
 	void login_userNotFound() {
 		// given
+		setupLoginFailCounter();
 		LoginRequest request = new LoginRequest("unknown@test.com", "password123!");
 
 		given(userRepository.findByEmailAndIsDeletedFalse("unknown@test.com")).willReturn(Optional.empty());
@@ -145,6 +149,7 @@ class AuthServiceLoginTest {
 	@DisplayName("로그인 실패: 비밀번호 불일치")
 	void login_passwordMismatch() {
 		// given
+		setupLoginFailCounter();
 		LoginRequest request = new LoginRequest("test@test.com", "wrongPassword!");
 
 		given(userRepository.findByEmailAndIsDeletedFalse("test@test.com")).willReturn(Optional.of(testUser));

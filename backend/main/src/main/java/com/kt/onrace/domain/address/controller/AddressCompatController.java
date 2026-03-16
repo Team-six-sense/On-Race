@@ -20,10 +20,14 @@ import com.kt.onrace.domain.address.service.AddressService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * 프론트 호환을 위한 singular address endpoint.
+ * canonical endpoint는 /addresses 를 유지하고, 기존 /address 요청도 같은 서비스로 처리한다.
+ */
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/addresses")
-public class AddressController {
+@RequestMapping("/address")
+public class AddressCompatController {
 
 	private final AddressService addressService;
 
@@ -75,7 +79,7 @@ public class AddressController {
 		return ApiResponse.success();
 	}
 
-	@PatchMapping("/{id}/default")
+	@PatchMapping("/{id}")
 	public ApiResponse<Void> setDefault(
 		@RequestHeader("X-User-Id") Long userId,
 		@PathVariable Long id
