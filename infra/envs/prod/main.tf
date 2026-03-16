@@ -150,6 +150,12 @@ resource "helm_release" "grafana" {
     file("${path.module}/helm-values/grafana-values.yaml")
   ]
 
+  # AWS LoadBalancer를 생성합니다.
+  set {
+    name  = "service.type"
+    value = "LoadBalancer"
+  }
+
   # EBS CSI 드라이버와 Loki가 준비된 후 배포
   depends_on = [aws_eks_addon.ebs_csi, helm_release.loki]
 }
@@ -279,7 +285,6 @@ resource "helm_release" "keda" {
 
 
 # 16. KEDA ScaledObject: Prometheus 메트릭 기반 지능형 스케일링
-# 2초 TTL의 Redis 데이터를 직접 보지 않고, Prometheus에 쌓인 초당 트래픽(rate)을 감시합니다.
 resource "kubernetes_manifest" "on_race_tps_scaler" {
   manifest = {
     apiVersion = "keda.sh/v1alpha1"
@@ -290,17 +295,17 @@ resource "kubernetes_manifest" "on_race_tps_scaler" {
     }
     spec = {
       scaleTargetRef = {
-        name = "on-race-api" # 애플리케이션 Deployment 이름과 일치 필수
+        name = "on-race-api"
       }
       minReplicaCount = 2
-      maxReplicaCount = 100 # 티켓팅 폭주 시 최대 확장 한도
+      maxReplicaCount = 100
       
       advanced = {
         restoreToOriginalReplicaCount = true
         horizontalPodAutoscalerConfig = {
           behavior = {
             scaleDown = {
-              stabilizationWindowSeconds = 300 # 트래픽 감소 후 5분간 파드 유지 (재폭주 대비)
+              stabilizationWindowSeconds = 300
               policies = [{ type = "Percent", value = 10, periodSeconds = 60 }]
             }
           }
@@ -308,27 +313,40 @@ resource "kubernetes_manifest" "on_race_tps_scaler" {
       }
 
       triggers = [
+        # [A] 실제 운영용: Prometheus TPS 기반
         {
           type = "prometheus"
           metadata = {
-            # 모니터링 네임스페이스에 설치된 프로메테우스 서버 주소 참조
             serverAddress = "http://t6-on-race-prometheus-server.monitoring.svc.cluster.local:80"
             metricName    = "onrace_tps_requests_total"
-            threshold     = "50" # 파드 1개당 감당할 초당 허용 TPS 기준값
-            
-            # 모든 그룹의 초당 평균 유입량(rate)을 계산하여 스케일링 여부 판단
-            query = replace(<<-EOT
+            threshold     = "50"
+            query         = replace(<<-EOT
               sum(rate(onrace_tps_requests_total{result="allowed"}[1m]))
             EOT
             , "\r", "")
           }
         }
+        
+        /*
+        # [B] 테스트용: CPU 사용률 기반 (현재 인프라 검증용)
+        {
+          type = "cpu"
+          metadata = {
+            type  = "Utilization"
+            value = "10" 
+          }
+        }
+        */
       ]
     }
   }
 
-  # [중요] KEDA Helm 차트가 설치되어 API(CRD)가 인식된 후에만 생성을 시도합니다.
-  depends_on = [helm_release.keda, kubernetes_namespace_v1.app]
+  # [수정] Deployment가 먼저 생성되어야 KEDA가 CPU Request 존재 여부를 검사할 수 있습니다.
+  depends_on = [
+    helm_release.keda, 
+    kubernetes_namespace_v1.app,
+    kubernetes_deployment_v1.on_race_api # 이 부분 추가
+  ]
 }
 
 
@@ -382,10 +400,22 @@ resource "kubernetes_deployment_v1" "on_race_api" {
       spec {
         container {
           name  = "api"
-          image = "nginx" # 테스트용이므로 가벼운 nginx 사용
+          image = "nginx" 
           
           port {
             container_port = 80
+          }
+
+          # CPU 스케일링 계산을 위한 자원 할당량 정의
+          resources {
+            requests = {
+              cpu    = "100m"   # 0.1 코어 (스케일링 계산의 100% 기준점)
+              memory = "128Mi"
+            }
+            limits = {
+              cpu    = "500m"
+              memory = "256Mi"
+            }
           }
         }
       }
@@ -393,4 +423,22 @@ resource "kubernetes_deployment_v1" "on_race_api" {
   }
 
   depends_on = [kubernetes_namespace_v1.app]
+}
+
+# 19. on-race-api 내부 통신용 서비스 (ClusterIP)
+resource "kubernetes_service_v1" "on_race_api" {
+  metadata {
+    name      = "on-race-api"
+    namespace = kubernetes_namespace_v1.app.metadata[0].name
+  }
+  spec {
+    selector = {
+      app = "on-race-api"
+    }
+    port {
+      port        = 80
+      target_port = 80
+    }
+    type = "ClusterIP"
+  }
 }
