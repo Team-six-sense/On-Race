@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.kt.onrace.common.logging.annotation.ServiceLog;
+import com.kt.onrace.domain.entry.entity.Entry;
 import com.kt.onrace.domain.entry.repository.EntryRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -29,12 +30,13 @@ public class EntryCleanupService {
 	 */
 	@ServiceLog
 	@Transactional
-	public void cleanupExpiredEntry(Long userId, Long paceId) {
-		entryRepository.findByUserIdAndEventPaceId(userId, paceId)
-			.ifPresent(entry -> {
-				if (entry.isReserved()) {
-					entryRepository.delete(entry);
-				}
-			});
+	public boolean cleanupExpiredEntry(Long userId, Long paceId) {
+		return entryRepository.findByUserIdAndEventPaceId(userId, paceId)
+			.filter(Entry::isReserved)
+			.map(entry -> {
+				entryRepository.delete(entry);
+				return true;
+			})
+			.orElse(false);
 	}
 }

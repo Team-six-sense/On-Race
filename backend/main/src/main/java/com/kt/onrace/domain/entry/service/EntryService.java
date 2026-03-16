@@ -219,7 +219,6 @@ public class EntryService {
 		Entry entry = entryRepository.findByUserIdAndEventPaceId(userId, paceId)
 			.orElseThrow(() -> new BusinessException(BusinessErrorCode.ENTRY_NOT_FOUND));
 
-		// 멱등성 — 이미 APPLIED면 즉시 반환 (결제 중복 호출 방어)
 		if (entry.getStatus() == EntryStatus.APPLIED) {
 			return;
 		}
@@ -228,21 +227,18 @@ public class EntryService {
 
 		// 원자적 DEL — 성공하면 TTL 리스너가 이 키를 처리할 수 없음
 		Preconditions.validate(
-			eventStockService.deleteReservation(paceId, userId),
+			eventStockService.hasReservation(paceId, userId),
 			BusinessErrorCode.ENTRY_RESERVATION_EXPIRED
 		);
 
-		try {
-			// RESERVED → APPLIED
-			entry.confirmPayment();
+		// RESERVED → APPLIED
+		entry.confirmPayment();
 
-			// DB 재고 확정 — confirmedStock++ (@Version 낙관적 락)
-			eventStockRepository.findByEventPaceIdOrThrow(paceId).confirmStock();
-		} catch (Exception e) {
-			// DB 실패 시 보상: Redis 재고 복원 (키는 이미 삭제됨 → 리스너가 복원 불가하므로 직접 복원)
-			eventStockService.restoreStock(paceId);
-			throw e;
-		}
+		// DB 재고 확정 — confirmedStock++ (@Version 낙관적 락)
+		eventStockRepository.findByEventPaceIdOrThrow(paceId).confirmStock();
+
+		// DB 실패 시 보상: Redis 재고 복원 (키는 이미 삭제됨 → 리스너가 복원 불가하므로 직접 복원)
+		eventStockService.restoreStock(paceId);
 	}
 
 }

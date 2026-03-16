@@ -33,7 +33,7 @@ public class EntryExpListener {
 
 	private final RedissonClient redissonClient;
 	private final EventStockService eventStockService;
-	private final EntryCleanupService reservationCleanupService;
+	private final EntryCleanupService entryCleanupService;
 
 	/**
 	 * 앱 시작 완료 후 Redis expired 이벤트 구독을 시작한다.
@@ -53,11 +53,10 @@ public class EntryExpListener {
 				Long paceId = Long.parseLong(parts[0]);
 				Long userId = Long.parseLong(parts[1]);
 
-				// Redis 재고 복원
-				eventStockService.restoreStock(paceId);
-
-				// DB Entry 정리 (RESERVED면 삭제, APPLIED면 무시)
-				reservationCleanupService.cleanupExpiredEntry(userId, paceId);
+				boolean cleaned = entryCleanupService.cleanupExpiredEntry(userId, paceId);
+				if (cleaned) {
+					eventStockService.restoreStock(paceId);    // RESERVED였을 때만
+				}
 
 				log.info("예약 만료 처리 완료 - paceId: {}, userId: {}", paceId, userId);
 			} catch (Exception e) {
