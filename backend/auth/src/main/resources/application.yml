@@ -72,6 +72,7 @@ spring:
 
 server:
   port: ${AUTH_SERVER_PORT:8081}
+  forward-headers-strategy: framework
 
 jwt:
   secret: ${JWT_SECRET}
@@ -96,5 +97,9 @@ auth:
     captcha-threshold: ${AUTH_LOGIN_FAIL_CAPTCHA_THRESHOLD:10}
     ttl-minutes: ${AUTH_LOGIN_FAIL_TTL_MINUTES:30}
 
+gateway:
+  internal:
+    secret: ${GATEWAY_INTERNAL_SECRET:onrace-super-secret-key}
+    
 oauth:
   redirect-uri: ${OAUTH_REDIRECT_URI:http://localhost:3000/oauth/callback}
