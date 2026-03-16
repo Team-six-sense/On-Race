@@ -39,6 +39,7 @@ spring:
                 - Path=/auth/**
               filters:
                 - StripPrefix=1
+                - SetRequestHeader=X-Forwarded-Prefix, /auth
                 - name: RequestRateLimiter
                   args:
                     redis-rate-limiter.replenishRate: 50
@@ -51,6 +52,7 @@ spring:
                 - Path=/main/tickets/**
               filters:
                 - StripPrefix=1
+                - SetRequestHeader=X-Forwarded-Prefix, /main
                 - name: RequestRateLimiter
                   args:
                     redis-rate-limiter.replenishRate: 10
@@ -70,6 +72,7 @@ spring:
                 - Path=/main/**
               filters:
                 - StripPrefix=1
+                - SetRequestHeader=X-Forwarded-Prefix, /main
                 - name: RequestRateLimiter
                   args:
                     redis-rate-limiter.replenishRate: 50
