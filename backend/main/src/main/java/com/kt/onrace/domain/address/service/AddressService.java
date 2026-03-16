@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,11 +21,17 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+/**
+ * Address는 사용자의 활성 배송지 목록을 관리한다.
+ * 라벨 정책, 기본배송지 단일성, soft delete, 주문에 넘길 기본 배송지 조회를 이 서비스가 맡는다.
+ */
 public class AddressService {
 
 	private static final int MAX_ADDRESS_COUNT = 10;
 	private static final String AUTO_LABEL_PREFIX = "배송지";
 	private static final Pattern LABEL_PATTERN = Pattern.compile("^[가-힣A-Za-z0-9 ]{1,20}$");
+	private static final String DUPLICATE_LABEL_CONSTRAINT = "uk_address_user_normalized_label";
+	private static final String ACTIVE_DEFAULT_CONSTRAINT = "uk_address_active_default_owner";
 
 	private final AddressRepository addressRepository;
 
@@ -70,11 +77,13 @@ public class AddressService {
 
 		if (shouldBeDefault && hasAny) {
 			unsetDefaultIfExists(userId);
+			flushWithConstraintTranslation();
 		}
 
 		Address address = Address.builder()
 			.userId(userId)
 			.label(label)
+			.normalizedLabel(normalizeLabelForComparison(label))
 			.receiverName(request.receiverName())
 			.phone(request.phone())
 			.zipcode(request.zipcode())
@@ -82,9 +91,10 @@ public class AddressService {
 			.address2(request.address2())
 			.memo(request.memo())
 			.isDefault(shouldBeDefault)
+			.activeDefaultOwnerId(shouldBeDefault ? userId : null)
 			.build();
 
-		return AddressDto.Response.from(addressRepository.save(address));
+		return AddressDto.Response.from(saveWithConstraintTranslation(address));
 	}
 
 	@Transactional
@@ -97,14 +107,17 @@ public class AddressService {
 
 		if (Boolean.TRUE.equals(wantDefault) && !address.isDefault()) {
 			unsetDefaultIfExists(userId);
+			flushWithConstraintTranslation();
 			address.markDefault();
 		} else if (Boolean.FALSE.equals(wantDefault) && address.isDefault()) {
 			address.unmarkDefault();
+			flushWithConstraintTranslation();
 			promoteDefaultIfNeededExcluding(userId, addressId);
 		}
 
 		address.update(
 			label,
+			normalizeLabelForComparison(label),
 			request.receiverName(),
 			request.phone(),
 			request.zipcode(),
@@ -113,6 +126,7 @@ public class AddressService {
 			request.memo()
 		);
 
+		flushWithConstraintTranslation();
 		return AddressDto.Response.from(address);
 	}
 
@@ -124,9 +138,12 @@ public class AddressService {
 		boolean wasDefault = address.isDefault();
 
 		address.softDelete();
+		flushWithConstraintTranslation();
 
 		if (wasDefault) {
 			promoteDefaultIfNeeded(userId);
+			flushWithConstraintTranslation();
+			return;
 		}
 	}
 
@@ -140,7 +157,9 @@ public class AddressService {
 		}
 
 		unsetDefaultIfExists(userId);
+		flushWithConstraintTranslation();
 		address.markDefault();
+		flushWithConstraintTranslation();
 	}
 
 	private void unsetDefaultIfExists(Long userId) {
@@ -208,8 +227,8 @@ public class AddressService {
 	private void validateDuplicateLabel(Long userId, String label, Long addressId) {
 		String normalizedLabel = normalizeLabelForComparison(label);
 		long duplicateCount = addressId == null
-			? addressRepository.countByUserIdAndNormalizedLabel(userId, normalizedLabel)
-			: addressRepository.countByUserIdAndNormalizedLabelExcludingId(userId, addressId, normalizedLabel);
+			? addressRepository.countByUserIdAndIsDeletedFalseAndNormalizedLabel(userId, normalizedLabel)
+			: addressRepository.countByUserIdAndIdNotAndIsDeletedFalseAndNormalizedLabel(userId, addressId, normalizedLabel);
 
 		if (duplicateCount > 0) {
 			throw new BusinessException(BusinessErrorCode.ADDRESS_DUPLICATE_LABEL);
@@ -244,5 +263,39 @@ public class AddressService {
 
 	private String normalizeLabelForComparison(String label) {
 		return label.toLowerCase(Locale.ROOT);
+	}
+
+	private Address saveWithConstraintTranslation(Address address) {
+		try {
+			return addressRepository.saveAndFlush(address);
+		} catch (DataIntegrityViolationException exception) {
+			throw translateIntegrityViolation(exception);
+		}
+	}
+
+	private void flushWithConstraintTranslation() {
+		try {
+			addressRepository.flush();
+		} catch (DataIntegrityViolationException exception) {
+			throw translateIntegrityViolation(exception);
+		}
+	}
+
+	private BusinessException translateIntegrityViolation(DataIntegrityViolationException exception) {
+		String message = exception.getMostSpecificCause() != null
+			? exception.getMostSpecificCause().getMessage()
+			: exception.getMessage();
+
+		if (message != null) {
+			String lowerMessage = message.toLowerCase(Locale.ROOT);
+			if (lowerMessage.contains(DUPLICATE_LABEL_CONSTRAINT.toLowerCase(Locale.ROOT))) {
+				return new BusinessException(BusinessErrorCode.ADDRESS_DUPLICATE_LABEL);
+			}
+			if (lowerMessage.contains(ACTIVE_DEFAULT_CONSTRAINT.toLowerCase(Locale.ROOT))) {
+				return new BusinessException(BusinessErrorCode.ADDRESS_DEFAULT_CONFLICT);
+			}
+		}
+
+		throw exception;
 	}
 }

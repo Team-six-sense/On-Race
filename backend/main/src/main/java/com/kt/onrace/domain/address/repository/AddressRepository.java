@@ -51,8 +51,7 @@ public interface AddressRepository extends JpaRepository<Address, Long> {
 		where a.userId = :userId
 			and a.isDefault = true
 			and a.isDeleted = false
-		order by a.createdAt desc
-		limit 1
+			and a.activeDefaultOwnerId = :userId
 		""")
 	Optional<Address> findFirstByUserIdAndIsDefaultTrue(@Param("userId") Long userId);
 
@@ -74,29 +73,7 @@ public interface AddressRepository extends JpaRepository<Address, Long> {
 		""")
 	List<String> findLabelsByUserId(@Param("userId") Long userId);
 
-	@Query("""
-		select count(a)
-		from Address a
-		where a.userId = :userId
-			and a.isDeleted = false
-			and lower(trim(a.label)) = :normalizedLabel
-		""")
-	long countByUserIdAndNormalizedLabel(
-		@Param("userId") Long userId,
-		@Param("normalizedLabel") String normalizedLabel
-	);
+	long countByUserIdAndIsDeletedFalseAndNormalizedLabel(Long userId, String normalizedLabel);
 
-	@Query("""
-		select count(a)
-		from Address a
-		where a.userId = :userId
-			and a.id <> :addressId
-			and a.isDeleted = false
-			and lower(trim(a.label)) = :normalizedLabel
-		""")
-	long countByUserIdAndNormalizedLabelExcludingId(
-		@Param("userId") Long userId,
-		@Param("addressId") Long addressId,
-		@Param("normalizedLabel") String normalizedLabel
-	);
+	long countByUserIdAndIdNotAndIsDeletedFalseAndNormalizedLabel(Long userId, Long addressId, String normalizedLabel);
 }

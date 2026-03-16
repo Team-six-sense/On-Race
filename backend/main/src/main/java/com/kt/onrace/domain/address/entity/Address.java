@@ -16,9 +16,14 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(
 	name = "address",
+	uniqueConstraints = {
+		@jakarta.persistence.UniqueConstraint(name = "uk_address_user_normalized_label", columnNames = {"user_id", "normalized_label"}),
+		@jakarta.persistence.UniqueConstraint(name = "uk_address_active_default_owner", columnNames = {"active_default_owner_id"})
+	},
 	indexes = {
 		@Index(name = "idx_address_user", columnList = "user_id"),
-		@Index(name = "idx_address_user_default", columnList = "user_id,is_default")
+		@Index(name = "idx_address_user_deleted", columnList = "user_id,is_deleted"),
+		@Index(name = "idx_address_user_deleted_default", columnList = "user_id,is_deleted,is_default")
 	}
 )
 public class Address extends BaseEntity {
@@ -28,6 +33,9 @@ public class Address extends BaseEntity {
 
 	@Column(length = 20)
 	private String label;
+
+	@Column(name = "normalized_label", length = 20)
+	private String normalizedLabel;
 
 	@Column(nullable = false, length = 50)
 	private String receiverName;
@@ -56,12 +64,16 @@ public class Address extends BaseEntity {
 	@Column(name = "deleted_at")
 	private LocalDateTime deletedAt;
 
+	@Column(name = "active_default_owner_id")
+	private Long activeDefaultOwnerId;
+
 	@Builder
-	private Address(Long userId, String label, String receiverName, String phone, String zipcode,
+	private Address(Long userId, String label, String normalizedLabel, String receiverName, String phone, String zipcode,
 					String address1, String address2, String memo, Boolean isDefault,
-					Boolean isDeleted, LocalDateTime deletedAt) {
+					Boolean isDeleted, LocalDateTime deletedAt, Long activeDefaultOwnerId) {
 		this.userId = userId;
 		this.label = label;
+		this.normalizedLabel = normalizedLabel;
 		this.receiverName = receiverName;
 		this.phone = phone;
 		this.zipcode = zipcode;
@@ -71,11 +83,13 @@ public class Address extends BaseEntity {
 		this.isDefault = isDefault != null && isDefault;
 		this.isDeleted = isDeleted != null && isDeleted;
 		this.deletedAt = deletedAt;
+		this.activeDefaultOwnerId = activeDefaultOwnerId;
 	}
 
-	public void update(String label, String receiverName, String phone, String zipcode,
+	public void update(String label, String normalizedLabel, String receiverName, String phone, String zipcode,
 					String address1, String address2, String memo) {
 		this.label = label;
+		this.normalizedLabel = normalizedLabel;
 		this.receiverName = receiverName;
 		this.phone = phone;
 		this.zipcode = zipcode;
@@ -86,15 +100,19 @@ public class Address extends BaseEntity {
 
 	public void markDefault() {
 		this.isDefault = true;
+		this.activeDefaultOwnerId = this.userId;
 	}
 
 	public void unmarkDefault() {
 		this.isDefault = false;
+		this.activeDefaultOwnerId = null;
 	}
 
 	public void softDelete() {
 		this.isDeleted = true;
 		this.deletedAt = LocalDateTime.now();
 		this.isDefault = false;
+		this.activeDefaultOwnerId = null;
+		this.normalizedLabel = null;
 	}
 }

@@ -68,6 +68,7 @@ public enum BusinessErrorCode implements ErrorCode {
 		ADDRESS_DUPLICATE_LABEL(HttpStatus.CONFLICT, "ADR_002", "이미 사용 중인 배송지 별칭입니다."),
 		ADDRESS_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "ADR_003", "배송지는 최대 10개까지 등록할 수 있습니다."),
 		ADDRESS_INVALID_LABEL(HttpStatus.BAD_REQUEST, "ADR_004", "배송지 별칭은 20자 이하의 한글/영문/숫자/공백만 사용할 수 있습니다."),
+		ADDRESS_DEFAULT_CONFLICT(HttpStatus.CONFLICT, "ADR_005", "기본 배송지 변경 중 충돌이 발생했습니다. 다시 시도해주세요."),
 
 	// ENTRY
 	ENTRY_NOT_FOUND(HttpStatus.NOT_FOUND, "ENT_001", "신청 정보를 찾을 수 없습니다."),

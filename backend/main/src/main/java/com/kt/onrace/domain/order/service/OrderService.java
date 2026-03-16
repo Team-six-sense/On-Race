@@ -35,6 +35,10 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
+/**
+ * Order는 결제 화면에 필요한 checkout-info를 조합하고,
+ * 실제 주문 생성 시 배송지/금액/옵션을 스냅샷으로 저장하는 역할을 한다.
+ */
 public class OrderService {
 
 	private final EventRepository eventRepository;
