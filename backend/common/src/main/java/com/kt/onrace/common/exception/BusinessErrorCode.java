@@ -80,12 +80,10 @@ public enum BusinessErrorCode implements ErrorCode {
 	ENTRY_CANNOT_APPLY(HttpStatus.BAD_REQUEST, "ENT_007", "신청할 수 없는 상태입니다."),
 	ENTRY_SOLD_OUT(HttpStatus.CONFLICT, "ENT_008", "신청이 마감되었습니다."),
 	ENTRY_RESERVATION_EXPIRED(HttpStatus.BAD_REQUEST, "ENT_009", "만료되었습니다. 다시 신청해주세요."),
-		ENTRY_ALREADY_RESERVED(HttpStatus.CONFLICT, "ENT_010", "이미 선점한 이벤트입니다."),
+	ENTRY_ALREADY_RESERVED(HttpStatus.CONFLICT, "ENT_010", "이미 선점한 이벤트입니다."),
 
 	// STOCK
 	STOCK_NOT_FOUND(HttpStatus.NOT_FOUND, "STK_001", "재고 정보를 찾을 수 없습니다."),
-	STOCK_NOT_INITIALIZED(HttpStatus.BAD_REQUEST, "STK_002", "재고가 초기화되지 않았습니다."),
-	STOCK_CONFIRM_FAILED(HttpStatus.CONFLICT, "STK_003", "재고 확정에 실패했습니다."),
 
 	// SALES_INFO
 	SALES_INFO_NOT_FOUND(HttpStatus.NOT_FOUND, "SLS_001", "판매 정보를 찾을 수 없습니다."),

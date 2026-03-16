@@ -68,4 +68,16 @@ public class RedisKeyGenerator {
 	public String smsSendAttemptKey(String phoneNumber) {
 		return String.format("sms:send_attempt:%s", phoneNumber);
 	}
+
+	public String stockKey(Long paceId) {
+		return String.format("stock:pace:%d", paceId);
+	}
+
+	public String reservationKey(Long paceId, Long userId) {
+		return String.format("reservation:%d:%d", paceId, userId);
+	}
+
+	public String stockInitializedKey(Long paceId) {
+		return String.format("stock:initialized:%d", paceId);
+	}
 }
