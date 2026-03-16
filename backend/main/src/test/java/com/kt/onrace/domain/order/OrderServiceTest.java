@@ -1,13 +1,16 @@
 package com.kt.onrace.domain.order;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
+import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,9 +24,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.kt.onrace.domain.address.entity.Address;
 import com.kt.onrace.domain.address.repository.AddressRepository;
 import com.kt.onrace.common.exception.BusinessErrorCode;
+import com.kt.onrace.common.exception.BusinessException;
 import com.kt.onrace.domain.event.entity.Event;
 import com.kt.onrace.domain.event.entity.EventAppType;
 import com.kt.onrace.domain.event.entity.EventCourse;
+import com.kt.onrace.domain.event.entity.EventImage;
+import com.kt.onrace.domain.event.entity.EventImageType;
 import com.kt.onrace.domain.event.entity.EventPackage;
 import com.kt.onrace.domain.event.entity.EventPace;
 import com.kt.onrace.domain.event.entity.EventRegion;
@@ -35,7 +41,12 @@ import com.kt.onrace.domain.event.repository.EventRepository;
 import com.kt.onrace.domain.order.dto.CheckoutPrepareRequestDto;
 import com.kt.onrace.domain.order.dto.CheckoutPrepareResponseDto;
 import com.kt.onrace.domain.order.dto.CheckoutRequestDto;
+import com.kt.onrace.domain.order.dto.OrderDetailResponseDto;
+import com.kt.onrace.domain.order.dto.OrderListResponseDto;
 import com.kt.onrace.domain.order.entity.Order;
+import com.kt.onrace.domain.order.entity.OrderPackage;
+import com.kt.onrace.domain.order.entity.OrderStatus;
+import com.kt.onrace.domain.order.repository.OrderPackageRepository;
 import com.kt.onrace.domain.order.repository.OrderRepository;
 import com.kt.onrace.domain.order.service.OrderService;
 
@@ -59,6 +70,9 @@ class OrderServiceTest {
 
 	@Mock
 	private OrderRepository orderRepository;
+
+	@Mock
+	private OrderPackageRepository orderPackageRepository;
 
 	@InjectMocks
 	private OrderService orderService;
@@ -153,12 +167,110 @@ class OrderServiceTest {
 		Order savedOrder = orderCaptor.getValue();
 
 		assertThat(savedOrder.getRecipientName()).isEqualTo("선택배송지");
+		assertThat(savedOrder.getAddressLabel()).isEqualTo("회사");
 		assertThat(savedOrder.getRecipientPhone()).isEqualTo("010-2222-3333");
 		assertThat(savedOrder.getZipCode()).isEqualTo("54321");
 		assertThat(savedOrder.getAddress()).isEqualTo("서울시 송파구");
 		assertThat(savedOrder.getDetailAddress()).isEqualTo("202동");
 		assertThat(savedOrder.getDeliveryMemo()).isEqualTo("직접 입력 메모");
 		assertThat(savedOrder.getFinalAmount()).isEqualTo(63000L);
+	}
+
+	@Test
+	@DisplayName("목록 조회는 pending 탭에 대해 주문 요약 정보를 반환한다")
+	void getOrdersReturnsPendingSummaries() {
+		TestFixture fixture = createFixture();
+		Order pendingOrder = createOrder("ORD-PENDING-001", 7L, 10L, 20L, OrderStatus.PENDING, 53000L);
+		setCreatedAt(pendingOrder, LocalDateTime.of(2026, 2, 10, 12, 30));
+
+		when(orderRepository.findByUserIdAndOrderStatusOrderByCreatedAtDesc(eq(7L), eq(OrderStatus.PENDING)))
+			.thenReturn(List.of(pendingOrder));
+		when(eventCourseRepository.findAllById(eq(Set.of(10L)))).thenReturn(List.of(fixture.course()));
+		when(eventPaceRepository.findAllById(eq(Set.of(20L)))).thenReturn(List.of(fixture.pace()));
+		when(eventRepository.findAllById(eq(Set.of(1L)))).thenReturn(List.of(fixture.event()));
+
+		OrderListResponseDto response = orderService.getOrders("pending", 7L);
+
+		assertThat(response.orders()).hasSize(1);
+		assertThat(response.orders().getFirst().eventId()).isEqualTo(1L);
+		assertThat(response.orders().getFirst().orderNumber()).isEqualTo("ORD-PENDING-001");
+		assertThat(response.orders().getFirst().eventTitle()).isEqualTo("서울 마라톤");
+		assertThat(response.orders().getFirst().courseName()).isEqualTo("하프코스");
+		assertThat(response.orders().getFirst().paceName()).isEqualTo("05:30");
+		assertThat(response.orders().getFirst().thumbnailUrl()).isEqualTo("https://example.com/thumb.png");
+	}
+
+	@Test
+	@DisplayName("목록 조회는 completed 탭을 PAID 상태로 매핑한다")
+	void getOrdersMapsCompletedTabToPaid() {
+		TestFixture fixture = createFixture();
+		Order paidOrder = createOrder("ORD-PAID-001", 7L, 10L, 20L, OrderStatus.PAID, 53000L);
+		setCreatedAt(paidOrder, LocalDateTime.of(2026, 2, 11, 9, 0));
+
+		when(orderRepository.findByUserIdAndOrderStatusOrderByCreatedAtDesc(eq(7L), eq(OrderStatus.PAID)))
+			.thenReturn(List.of(paidOrder));
+		when(eventCourseRepository.findAllById(eq(Set.of(10L)))).thenReturn(List.of(fixture.course()));
+		when(eventPaceRepository.findAllById(eq(Set.of(20L)))).thenReturn(List.of(fixture.pace()));
+		when(eventRepository.findAllById(eq(Set.of(1L)))).thenReturn(List.of(fixture.event()));
+
+		OrderListResponseDto response = orderService.getOrders("completed", 7L);
+
+		assertThat(response.orders()).hasSize(1);
+		assertThat(response.orders().getFirst().orderStatus()).isEqualTo(OrderStatus.PAID);
+	}
+
+	@Test
+	@DisplayName("상세 조회는 주문 상품, 배송지, 패키지 스냅샷을 반환한다")
+	void getOrderDetailReturnsSnapshot() {
+		TestFixture fixture = createFixture();
+		Order order = createOrder("ORD-DETAIL-001", 7L, 10L, 20L, OrderStatus.PAID, 63000L);
+		setId(order, 200L);
+		setCreatedAt(order, LocalDateTime.of(2026, 2, 15, 14, 30));
+
+		OrderPackage orderPackage = OrderPackage.builder()
+			.eventPackageId(30L)
+			.name("기념 티셔츠")
+			.price(10000L)
+			.build();
+
+		when(orderRepository.findByOrderNumberAndUserId(eq("ORD-DETAIL-001"), eq(7L))).thenReturn(Optional.of(order));
+		when(eventCourseRepository.findAllById(eq(Set.of(10L)))).thenReturn(List.of(fixture.course()));
+		when(eventPaceRepository.findAllById(eq(Set.of(20L)))).thenReturn(List.of(fixture.pace()));
+		when(eventRepository.findAllById(eq(Set.of(1L)))).thenReturn(List.of(fixture.event()));
+		when(orderPackageRepository.findByOrderIdOrderByIdAsc(eq(200L))).thenReturn(List.of(orderPackage));
+
+		OrderDetailResponseDto response = orderService.getOrderDetail("ORD-DETAIL-001", 7L);
+
+		assertThat(response.orderNumber()).isEqualTo("ORD-DETAIL-001");
+		assertThat(response.eventTitle()).isEqualTo("서울 마라톤");
+		assertThat(response.courseName()).isEqualTo("하프코스");
+		assertThat(response.paceName()).isEqualTo("05:30");
+		assertThat(response.recipientName()).isEqualTo("홍길동");
+		assertThat(response.addressLabel()).isEqualTo("우리 집");
+		assertThat(response.recipientPhone()).isEqualTo("010-1111-2222");
+		assertThat(response.address()).isEqualTo("서울시 마포구");
+		assertThat(response.packages()).hasSize(1);
+		assertThat(response.packages().getFirst().name()).isEqualTo("기념 티셔츠");
+	}
+
+	@Test
+	@DisplayName("상세 조회는 없는 주문번호면 ORDER_NOT_FOUND 예외가 발생한다")
+	void getOrderDetailThrowsWhenOrderDoesNotExist() {
+		when(orderRepository.findByOrderNumberAndUserId(eq("ORD-NOT-FOUND"), eq(7L))).thenReturn(Optional.empty());
+
+		assertThatThrownBy(() -> orderService.getOrderDetail("ORD-NOT-FOUND", 7L))
+			.isInstanceOf(BusinessException.class)
+			.extracting(exception -> ((BusinessException)exception).getErrorCode())
+			.isEqualTo(BusinessErrorCode.ORDER_NOT_FOUND);
+	}
+
+	@Test
+	@DisplayName("목록 조회는 허용되지 않은 탭이면 ORDER_INVALID_TAB 예외가 발생한다")
+	void getOrdersThrowsWhenTabIsInvalid() {
+		assertThatThrownBy(() -> orderService.getOrders("archived", 7L))
+			.isInstanceOf(BusinessException.class)
+			.extracting(exception -> ((BusinessException)exception).getErrorCode())
+			.isEqualTo(BusinessErrorCode.ORDER_INVALID_TAB);
 	}
 
 	private TestFixture createFixture() {
@@ -175,6 +287,15 @@ class OrderServiceTest {
 			.soldOut(false)
 			.build();
 		setId(event, 1L);
+
+		EventImage thumbnailImage = EventImage.builder()
+			.event(event)
+			.type(EventImageType.THUMBNAIL)
+			.url("https://example.com/thumb.png")
+			.sort(1)
+			.build();
+		setId(thumbnailImage, 40L);
+		event.getImages().add(thumbnailImage);
 
 		EventCourse course = EventCourse.builder()
 			.event(event)
@@ -204,6 +325,8 @@ class OrderServiceTest {
 
 		Address defaultAddress = Address.builder()
 			.userId(7L)
+			.label("우리 집")
+			.normalizedLabel("우리 집")
 			.receiverName("기본배송지")
 			.phone("010-0000-0000")
 			.zipcode("12345")
@@ -216,6 +339,8 @@ class OrderServiceTest {
 
 		Address selectedAddress = Address.builder()
 			.userId(7L)
+			.label("회사")
+			.normalizedLabel("회사")
 			.receiverName("선택배송지")
 			.phone("010-2222-3333")
 			.zipcode("54321")
@@ -231,12 +356,44 @@ class OrderServiceTest {
 
 	private void setId(Object target, Long id) {
 		try {
-			java.lang.reflect.Field field = target.getClass().getSuperclass().getDeclaredField("id");
+			Field field = target.getClass().getSuperclass().getDeclaredField("id");
 			field.setAccessible(true);
 			field.set(target, id);
 		} catch (ReflectiveOperationException exception) {
 			throw new IllegalStateException(exception);
 		}
+	}
+
+	private void setCreatedAt(Object target, LocalDateTime createdAt) {
+		try {
+			Field field = target.getClass().getSuperclass().getSuperclass().getDeclaredField("createdAt");
+			field.setAccessible(true);
+			field.set(target, createdAt);
+		} catch (ReflectiveOperationException exception) {
+			throw new IllegalStateException(exception);
+		}
+	}
+
+	private Order createOrder(String orderNumber, Long userId, Long eventCourseId, Long eventPaceId,
+		OrderStatus orderStatus, Long finalAmount) {
+		return Order.builder()
+			.orderNumber(orderNumber)
+			.userId(userId)
+			.eventCourseId(eventCourseId)
+			.eventPaceId(eventPaceId)
+			.orderStatus(orderStatus)
+			.itemTotalAmount(60000L)
+			.shippingFee(3000L)
+			.discountAmount(0L)
+			.finalAmount(finalAmount)
+			.recipientName("홍길동")
+			.addressLabel("우리 집")
+			.recipientPhone("010-1111-2222")
+			.zipCode("04100")
+			.address("서울시 마포구")
+			.detailAddress("301호")
+			.deliveryMemo("문앞에 놓아주세요")
+			.build();
 	}
 
 	private record TestFixture(

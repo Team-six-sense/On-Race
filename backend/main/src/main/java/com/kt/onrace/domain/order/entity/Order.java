@@ -53,6 +53,9 @@ public class Order extends BaseEntity {
 	@Column(nullable = false, length = 50)
 	private String recipientName;
 
+	@Column(length = 20)
+	private String addressLabel;
+
 	@Column(nullable = false, length = 20)
 	private String recipientPhone;
 
@@ -74,7 +77,7 @@ public class Order extends BaseEntity {
 	@Builder
 	public Order(String orderNumber, Long userId, Long eventCourseId, Long eventPaceId, OrderStatus orderStatus,
 		Long itemTotalAmount, Long shippingFee, Long discountAmount, Long finalAmount,
-		String recipientName, String recipientPhone, String zipCode, String address, String detailAddress,
+		String recipientName, String addressLabel, String recipientPhone, String zipCode, String address, String detailAddress,
 		String deliveryMemo) {
 		this.orderNumber = orderNumber;
 		this.userId = userId;
@@ -86,6 +89,7 @@ public class Order extends BaseEntity {
 		this.discountAmount = discountAmount;
 		this.finalAmount = finalAmount;
 		this.recipientName = recipientName;
+		this.addressLabel = addressLabel;
 		this.recipientPhone = recipientPhone;
 		this.zipCode = zipCode;
 		this.address = address;

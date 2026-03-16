@@ -3,7 +3,12 @@ package com.kt.onrace.domain.order.service;
 import java.util.Comparator;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,9 +31,13 @@ import com.kt.onrace.domain.order.dto.CheckoutPrepareRequestDto;
 import com.kt.onrace.domain.order.dto.CheckoutPrepareResponseDto;
 import com.kt.onrace.domain.order.dto.CheckoutRequestDto;
 import com.kt.onrace.domain.order.dto.CheckoutResponseDto;
+import com.kt.onrace.domain.order.dto.OrderDetailResponseDto;
+import com.kt.onrace.domain.order.dto.OrderListResponseDto;
+import com.kt.onrace.domain.order.dto.OrderSummaryDto;
 import com.kt.onrace.domain.order.entity.Order;
 import com.kt.onrace.domain.order.entity.OrderPackage;
 import com.kt.onrace.domain.order.entity.OrderStatus;
+import com.kt.onrace.domain.order.repository.OrderPackageRepository;
 import com.kt.onrace.domain.order.repository.OrderRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -47,6 +56,63 @@ public class OrderService {
 	private final EventPackageRepository eventPackageRepository;
 	private final AddressRepository addressRepository;
 	private final OrderRepository orderRepository;
+	private final OrderPackageRepository orderPackageRepository;
+
+	@Transactional(readOnly = true)
+	public OrderListResponseDto getOrders(String tab, Long userId) {
+		OrderStatus orderStatus = resolveOrderStatus(tab);
+		List<Order> orders = orderRepository.findByUserIdAndOrderStatusOrderByCreatedAtDesc(userId, orderStatus);
+
+		return new OrderListResponseDto(buildOrderSummaries(orders));
+	}
+
+	@Transactional(readOnly = true)
+	public OrderDetailResponseDto getOrderDetail(String orderNumber, Long userId) {
+		Order order = orderRepository.findByOrderNumberAndUserId(orderNumber, userId)
+			.orElseThrow(() -> new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND));
+
+		Map<Long, EventCourse> courseById = loadCourses(List.of(order));
+		Map<Long, EventPace> paceById = loadPaces(List.of(order));
+		Map<Long, Event> eventById = loadEvents(courseById.values());
+		Map<Long, String> thumbnailByEventId = buildThumbnailMap(eventById);
+
+		EventCourse course = courseById.get(order.getEventCourseId());
+		Long eventId = course != null && course.getEvent() != null ? course.getEvent().getId() : null;
+		Event event = eventId != null ? eventById.get(eventId) : null;
+		EventPace pace = order.getEventPaceId() != null ? paceById.get(order.getEventPaceId()) : null;
+
+		List<OrderDetailResponseDto.PackageInfo> packages = orderPackageRepository.findByOrderIdOrderByIdAsc(order.getId())
+			.stream()
+			.map(orderPackage -> new OrderDetailResponseDto.PackageInfo(
+				orderPackage.getEventPackageId(),
+				orderPackage.getName(),
+				orderPackage.getPrice()
+			))
+			.toList();
+
+		return new OrderDetailResponseDto(
+			eventId,
+			order.getOrderNumber(),
+			order.getOrderStatus(),
+			order.getCreatedAt(),
+			order.getItemTotalAmount(),
+			order.getShippingFee(),
+			order.getDiscountAmount(),
+			order.getFinalAmount(),
+			event != null ? event.getTitle() : null,
+			eventId != null ? thumbnailByEventId.get(eventId) : null,
+			course != null ? course.getName() : null,
+			pace != null ? pace.getName() : null,
+			order.getRecipientName(),
+			order.getAddressLabel(),
+			order.getRecipientPhone(),
+			order.getZipCode(),
+			order.getAddress(),
+			order.getDetailAddress(),
+			order.getDeliveryMemo(),
+			packages
+		);
+	}
 
 	@Transactional(readOnly = true)
 	public CheckoutPrepareResponseDto getCheckoutPrepareInfo(CheckoutPrepareRequestDto request, Long userId) {
@@ -127,6 +193,7 @@ public class OrderService {
 			.discountAmount(discountAmount)
 			.finalAmount(calculatedFinalAmount)
 			.recipientName(shippingAddress.receiverName())
+			.addressLabel(shippingAddress.label())
 			.recipientPhone(shippingAddress.phone())
 			.zipCode(shippingAddress.zipcode())
 			.address(shippingAddress.address1())
@@ -191,6 +258,7 @@ public class OrderService {
 				.orElseThrow(() -> new BusinessException(BusinessErrorCode.ADDRESS_NOT_FOUND));
 
 			return new ShippingAddressSnapshot(
+				address.getLabel(),
 				address.getReceiverName(),
 				address.getPhone(),
 				address.getZipcode(),
@@ -206,6 +274,7 @@ public class OrderService {
 		}
 
 		return new ShippingAddressSnapshot(
+			null,
 			request.recipientName(),
 			request.recipientPhone(),
 			request.zipCode(),
@@ -233,11 +302,104 @@ public class OrderService {
 			.orElse(null);
 	}
 
+	private OrderStatus resolveOrderStatus(String tab) {
+		if ("pending".equalsIgnoreCase(tab)) {
+			return OrderStatus.PENDING;
+		}
+		if ("completed".equalsIgnoreCase(tab)) {
+			return OrderStatus.PAID;
+		}
+
+		throw new BusinessException(BusinessErrorCode.ORDER_INVALID_TAB);
+	}
+
+	private List<OrderSummaryDto> buildOrderSummaries(List<Order> orders) {
+		if (orders.isEmpty()) {
+			return List.of();
+		}
+
+		Map<Long, EventCourse> courseById = loadCourses(orders);
+		Map<Long, EventPace> paceById = loadPaces(orders);
+		Map<Long, Event> eventById = loadEvents(courseById.values());
+		Map<Long, String> thumbnailByEventId = buildThumbnailMap(eventById);
+
+		return orders.stream()
+			.map(order -> {
+				EventCourse course = courseById.get(order.getEventCourseId());
+				Long eventId = course != null && course.getEvent() != null ? course.getEvent().getId() : null;
+				Event event = eventId != null ? eventById.get(eventId) : null;
+				EventPace pace = order.getEventPaceId() != null ? paceById.get(order.getEventPaceId()) : null;
+
+				return new OrderSummaryDto(
+					eventId,
+					order.getOrderNumber(),
+					order.getOrderStatus(),
+					order.getCreatedAt(),
+					order.getFinalAmount(),
+					event != null ? event.getTitle() : null,
+					eventId != null ? thumbnailByEventId.get(eventId) : null,
+					course != null ? course.getName() : null,
+					pace != null ? pace.getName() : null
+				);
+			})
+			.toList();
+	}
+
+	private Map<Long, EventCourse> loadCourses(List<Order> orders) {
+		Set<Long> courseIds = orders.stream()
+			.map(Order::getEventCourseId)
+			.filter(Objects::nonNull)
+			.collect(Collectors.toSet());
+
+		if (courseIds.isEmpty()) {
+			return Map.of();
+		}
+
+		return eventCourseRepository.findAllById(courseIds).stream()
+			.collect(Collectors.toMap(EventCourse::getId, Function.identity()));
+	}
+
+	private Map<Long, EventPace> loadPaces(List<Order> orders) {
+		Set<Long> paceIds = orders.stream()
+			.map(Order::getEventPaceId)
+			.filter(Objects::nonNull)
+			.collect(Collectors.toSet());
+
+		if (paceIds.isEmpty()) {
+			return Map.of();
+		}
+
+		return eventPaceRepository.findAllById(paceIds).stream()
+			.collect(Collectors.toMap(EventPace::getId, Function.identity()));
+	}
+
+	private Map<Long, Event> loadEvents(Iterable<EventCourse> courses) {
+		Set<Long> eventIds = java.util.stream.StreamSupport.stream(courses.spliterator(), false)
+			.map(EventCourse::getEvent)
+			.filter(Objects::nonNull)
+			.map(Event::getId)
+			.filter(Objects::nonNull)
+			.collect(Collectors.toSet());
+
+		if (eventIds.isEmpty()) {
+			return Map.of();
+		}
+
+		return eventRepository.findAllById(eventIds).stream()
+			.collect(Collectors.toMap(Event::getId, Function.identity()));
+	}
+
+	private Map<Long, String> buildThumbnailMap(Map<Long, Event> eventById) {
+		return eventById.values().stream()
+			.collect(Collectors.toMap(Event::getId, this::extractThumbnailUrl));
+	}
+
 	private boolean isBlank(String value) {
 		return value == null || value.isBlank();
 	}
 
 	private record ShippingAddressSnapshot(
+		String label,
 		String receiverName,
 		String phone,
 		String zipcode,
