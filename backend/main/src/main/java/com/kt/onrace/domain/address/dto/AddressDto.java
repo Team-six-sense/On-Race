@@ -11,12 +11,14 @@ public class AddressDto {
 		@NotBlank String address1,
 		String address2,
 		String memo,
-		Boolean isDefault
+		Boolean isDefault,
+		String label
 	) {
 	}
 
 	public record Response(
 		Long id,
+		String label,
 		String receiverName,
 		String phone,
 		String zipcode,
@@ -28,6 +30,7 @@ public class AddressDto {
 		public static Response from(com.kt.onrace.domain.address.entity.Address address) {
 			return new Response(
 				address.getId(),
+				address.getLabel(),
 				address.getReceiverName(),
 				address.getPhone(),
 				address.getZipcode(),

@@ -63,8 +63,11 @@ public enum BusinessErrorCode implements ErrorCode {
 	EVENT_PRE_SAVE_NOT_FOUND(HttpStatus.NOT_FOUND, "EVT_005", "사전정보를 찾을 수 없습니다."),
 	EVENT_NOT_IN_PROGRESS(HttpStatus.BAD_REQUEST, "EVT_006", "진행중인 이벤트가 아닙니다."),
 
-	// ADDRESS
-	ADDRESS_NOT_FOUND(HttpStatus.NOT_FOUND, "ADR_001", "배송지를 찾을 수 없습니다."),
+		// ADDRESS
+		ADDRESS_NOT_FOUND(HttpStatus.NOT_FOUND, "ADR_001", "배송지를 찾을 수 없습니다."),
+		ADDRESS_DUPLICATE_LABEL(HttpStatus.CONFLICT, "ADR_002", "이미 사용 중인 배송지 별칭입니다."),
+		ADDRESS_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "ADR_003", "배송지는 최대 10개까지 등록할 수 있습니다."),
+		ADDRESS_INVALID_LABEL(HttpStatus.BAD_REQUEST, "ADR_004", "배송지 별칭은 20자 이하의 한글/영문/숫자/공백만 사용할 수 있습니다."),
 
 	// ENTRY
 	ENTRY_NOT_FOUND(HttpStatus.NOT_FOUND, "ENT_001", "신청 정보를 찾을 수 없습니다."),
@@ -76,7 +79,7 @@ public enum BusinessErrorCode implements ErrorCode {
 	ENTRY_CANNOT_APPLY(HttpStatus.BAD_REQUEST, "ENT_007", "신청할 수 없는 상태입니다."),
 	ENTRY_SOLD_OUT(HttpStatus.CONFLICT, "ENT_008", "신청이 마감되었습니다."),
 	ENTRY_RESERVATION_EXPIRED(HttpStatus.BAD_REQUEST, "ENT_009", "만료되었습니다. 다시 신청해주세요."),
-	ENTRY_ALREADY_RESERVED(HttpStatus.BAD_REQUEST, "ENT_010", "이미 선점한 이벤트입니다."),
+		ENTRY_ALREADY_RESERVED(HttpStatus.CONFLICT, "ENT_010", "이미 선점한 이벤트입니다."),
 
 	// STOCK
 	STOCK_NOT_FOUND(HttpStatus.NOT_FOUND, "STK_001", "재고 정보를 찾을 수 없습니다."),

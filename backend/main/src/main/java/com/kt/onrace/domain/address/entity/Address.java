@@ -1,6 +1,7 @@
 package com.kt.onrace.domain.address.entity;
 
 import com.kt.onrace.common.entity.BaseEntity;
+import java.time.LocalDateTime;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Index;
@@ -25,6 +26,9 @@ public class Address extends BaseEntity {
 	@Column(name = "user_id", nullable = false)
 	private Long userId;
 
+	@Column(length = 20)
+	private String label;
+
 	@Column(nullable = false, length = 50)
 	private String receiverName;
 
@@ -46,10 +50,18 @@ public class Address extends BaseEntity {
 	@Column(name = "is_default", nullable = false)
 	private boolean isDefault;
 
+	@Column(name = "is_deleted", nullable = false)
+	private boolean isDeleted;
+
+	@Column(name = "deleted_at")
+	private LocalDateTime deletedAt;
+
 	@Builder
-	private Address(Long userId, String receiverName, String phone, String zipcode,
-					String address1, String address2, String memo, Boolean isDefault) {
+	private Address(Long userId, String label, String receiverName, String phone, String zipcode,
+					String address1, String address2, String memo, Boolean isDefault,
+					Boolean isDeleted, LocalDateTime deletedAt) {
 		this.userId = userId;
+		this.label = label;
 		this.receiverName = receiverName;
 		this.phone = phone;
 		this.zipcode = zipcode;
@@ -57,10 +69,13 @@ public class Address extends BaseEntity {
 		this.address2 = address2;
 		this.memo = memo;
 		this.isDefault = isDefault != null && isDefault;
+		this.isDeleted = isDeleted != null && isDeleted;
+		this.deletedAt = deletedAt;
 	}
 
-	public void update(String receiverName, String phone, String zipcode,
+	public void update(String label, String receiverName, String phone, String zipcode,
 					String address1, String address2, String memo) {
+		this.label = label;
 		this.receiverName = receiverName;
 		this.phone = phone;
 		this.zipcode = zipcode;
@@ -74,6 +89,12 @@ public class Address extends BaseEntity {
 	}
 
 	public void unmarkDefault() {
+		this.isDefault = false;
+	}
+
+	public void softDelete() {
+		this.isDeleted = true;
+		this.deletedAt = LocalDateTime.now();
 		this.isDefault = false;
 	}
 }
