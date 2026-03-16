@@ -33,7 +33,10 @@ resource "aws_subnet" "private" {
   tags = {
     Name                              = "${var.project_name}-${var.environment}-private-${var.azs[count.index]}"
     "kubernetes.io/role/internal-elb" = "1" # [필수] EKS 내부 로드밸런서 자동 할당 태그
-  }
+
+    # Karpenter가 서브넷을 찾기 위한 필수 식별 태그
+    "karpenter.sh/discovery"          = "t6-on-race-prod-cluster"
+  } 
 }
 
 # 4. Database Subnets (Redis, RDS 용)

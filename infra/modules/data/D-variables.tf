@@ -5,3 +5,4 @@ variable "database_subnets" { type = list(string) }
 variable "redis_node_type" { type = string }
 variable "automatic_failover_enabled" { type = bool }
 variable "num_cache_clusters" { type = number }
+variable "eks_node_security_group_id" { type = string }

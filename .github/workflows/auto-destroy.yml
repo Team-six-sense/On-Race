@@ -1,0 +1,54 @@
+# .github/workflows/auto-destroy.yml
+
+name: 'Auto Destroy Infrastructure'
+
+on:
+  schedule:
+    # 매일 한국 시간 밤 12시 (UTC 15:00) 실행
+    - cron: '0 15 * * *'
+  workflow_dispatch: # 수동 실행 가능
+
+jobs:
+  auto-destroy:
+    name: 'Auto Destroy Sequence'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # 1. Slack 알림 전송 (삭제 10분 전 경고)
+      - name: Notify Slack (Warning)
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{"text":"🚨 [긴급] 10분 뒤 인프라(EKS 등)가 자동 삭제됩니다!\n연장하려면 GitHub Actions에서 지금 바로 워크플로우를 취소하세요."}' \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      # 2. 10분 대기 (사용자가 취소할 시간을 줌)
+      - name: Wait for 10 minutes
+        run: sleep 600
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-2
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Terraform Init
+        run: terraform init
+
+      # 3. 인프라 삭제 실행
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve
+        
+      # 4. 삭제 완료 알림
+      - name: Notify Slack (Success)
+        if: success()
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{"text":"🗑️ [완료] 인프라가 안전하게 삭제되었습니다. 비용 발생이 중지됩니다."}' \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
