@@ -8,7 +8,7 @@ public interface OrderEntryContract {
 
 	OrderCheckoutEligibility resolveCheckoutEligibility(Long userId, Long eventId, Long paceId);
 
-	boolean hasReservation(Long paceId, Long userId);
+	boolean hasReservation(Long eventId, Long paceId, Long userId);
 
 	void confirmReservation(Long userId, Long eventId, Long paceId);
 }
