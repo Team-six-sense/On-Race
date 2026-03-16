@@ -64,7 +64,5 @@ public class EntryExpListener {
 				log.error("예약 만료 처리 실패 - expiredKey: {}", expiredKey, e);
 			}
 		});
-
-		log.info("Redis 예약 만료 리스너 구독 시작");
 	}
 }

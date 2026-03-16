@@ -34,7 +34,6 @@ public class EntryCleanupService {
 			.ifPresent(entry -> {
 				if (entry.isReserved()) {
 					entryRepository.delete(entry);
-					log.info("만료된 예약 Entry 삭제 완료 - userId: {}, paceId: {}", userId, paceId);
 				}
 			});
 	}
