@@ -8,6 +8,7 @@ spring:
     redis:
       host: ${GATEWAY_REDIS_HOST:localhost}
       port: ${GATEWAY_REDIS_PORT:6379}
+      password: ${GATEWAY_REDIS_PASSWORD}
   cloud:
     gateway:
       server:
