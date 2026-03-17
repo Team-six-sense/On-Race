@@ -28,6 +28,10 @@ import lombok.RequiredArgsConstructor;
 public class AddressService {
 
 	private static final int MAX_ADDRESS_COUNT = 10;
+	private static final int MAX_RECEIVER_NAME_LENGTH = 50;
+	private static final int MAX_ZIPCODE_LENGTH = 10;
+	private static final int MAX_ADDRESS_LENGTH = 255;
+	private static final int MAX_MEMO_LENGTH = 255;
 	private static final String AUTO_LABEL_PREFIX = "배송지";
 	private static final Pattern LABEL_PATTERN = Pattern.compile("^[가-힣A-Za-z0-9 ]{1,20}$");
 	private static final Pattern PHONE_PATTERN = Pattern.compile("^[0-9]{10,11}$");
@@ -43,6 +47,7 @@ public class AddressService {
 			.toList();
 	}
 
+	@Transactional
 	public AddressDto.DefaultResponse getDefault(Long userId) {
 		Optional<Address> defaultAddress = addressRepository.findFirstByUserIdAndIsDefaultTrue(userId);
 
@@ -50,11 +55,20 @@ public class AddressService {
 			return AddressDto.DefaultResponse.from(defaultAddress.get());
 		}
 
-		return addressRepository.findByUserIdOrderByCreatedAtDesc(userId)
-			.stream()
-			.findFirst()
-			.map(AddressDto.DefaultResponse::from)
-			.orElseGet(AddressDto.DefaultResponse::empty);
+		List<Address> activeAddresses = lockActiveAddresses(userId);
+		if (activeAddresses.isEmpty()) {
+			return AddressDto.DefaultResponse.empty();
+		}
+
+		Address latestAddress = activeAddresses.get(0);
+		activeAddresses.stream()
+			.filter(address -> !address.getId().equals(latestAddress.getId()))
+			.filter(Address::isDefault)
+			.forEach(Address::unmarkDefault);
+		latestAddress.markDefault();
+		flushWithConstraintTranslation();
+
+		return AddressDto.DefaultResponse.from(latestAddress);
 	}
 
 	public AddressDto.Response get(Long userId, Long addressId) {
@@ -71,7 +85,7 @@ public class AddressService {
 			throw new BusinessException(BusinessErrorCode.ADDRESS_LIMIT_EXCEEDED);
 		}
 
-		validatePhone(request.phone());
+		validateRequest(request);
 
 		boolean hasAny = addressCount > 0;
 		boolean hasDefault = findCurrentDefault(activeAddresses).isPresent();
@@ -105,7 +119,7 @@ public class AddressService {
 	public AddressDto.Response update(Long userId, Long addressId, AddressDto.SaveRequest request) {
 		List<Address> activeAddresses = lockActiveAddresses(userId);
 		Address address = findOwnedAddressOrThrow(activeAddresses, addressId);
-		validatePhone(request.phone());
+		validateRequest(request);
 		String label = resolveLabelForUpdate(userId, addressId, address.getLabel(), request.label());
 
 		Boolean wantDefault = request.isDefault();
@@ -240,9 +254,33 @@ public class AddressService {
 		}
 	}
 
+	private void validateRequest(AddressDto.SaveRequest request) {
+		validateRequiredText(request.receiverName());
+		validateRequiredText(request.zipcode());
+		validateRequiredText(request.address1());
+		validatePhone(request.phone());
+		validateMaxLength(request.receiverName(), MAX_RECEIVER_NAME_LENGTH);
+		validateMaxLength(request.zipcode(), MAX_ZIPCODE_LENGTH);
+		validateMaxLength(request.address1(), MAX_ADDRESS_LENGTH);
+		validateMaxLength(request.address2(), MAX_ADDRESS_LENGTH);
+		validateMaxLength(request.memo(), MAX_MEMO_LENGTH);
+	}
+
 	private void validatePhone(String phone) {
 		if (phone == null || !PHONE_PATTERN.matcher(phone).matches()) {
 			throw new BusinessException(BusinessErrorCode.ADDRESS_INVALID_PHONE);
+		}
+	}
+
+	private void validateRequiredText(String value) {
+		if (value == null || value.isBlank()) {
+			throw new BusinessException(BusinessErrorCode.COMMON_INVALID_PARAMETER);
+		}
+	}
+
+	private void validateMaxLength(String value, int maxLength) {
+		if (value != null && value.length() > maxLength) {
+			throw new BusinessException(BusinessErrorCode.COMMON_INVALID_PARAMETER);
 		}
 	}
 

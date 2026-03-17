@@ -127,6 +127,24 @@ class AddressServiceTest {
 	}
 
 	@Test
+	@DisplayName("주소 입력 필드가 최대 길이를 초과하면 COMMON_INVALID_PARAMETER 예외가 발생한다")
+	void overlyLongFieldIsRejected() {
+		assertThatThrownBy(() -> addressService.create(1L, new AddressDto.SaveRequest(
+			"a".repeat(51),
+			"01011112222",
+			"12345",
+			"서울",
+			"101동",
+			"문앞",
+			false,
+			null
+		)))
+			.isInstanceOf(BusinessException.class)
+			.extracting(ex -> ((BusinessException)ex).getErrorCode())
+			.isEqualTo(BusinessErrorCode.COMMON_INVALID_PARAMETER);
+	}
+
+	@Test
 	@DisplayName("사용자당 배송지는 최대 10개까지만 등록할 수 있다")
 	void cannotCreateMoreThanTenAddresses() {
 		for (int i = 1; i <= 10; i++) {
@@ -171,6 +189,50 @@ class AddressServiceTest {
 
 		assertThat(response.hasAddress()).isFalse();
 		assertThat(response.address()).isNull();
+	}
+
+	@Test
+	@DisplayName("기본배송지가 없으면 최신 주소를 기본배송지로 복구한다")
+	void getDefaultRepairsMissingDefault() {
+		Address first = addressRepository.saveAndFlush(Address.builder()
+			.userId(1L)
+			.label("집")
+			.normalizedLabel("집")
+			.receiverName("홍길동")
+			.phone("01011112222")
+			.zipcode("12345")
+			.address1("서울")
+			.address2("101동")
+			.memo("문앞")
+			.isDefault(false)
+			.activeDefaultOwnerId(null)
+			.build());
+
+		Address latest = addressRepository.saveAndFlush(Address.builder()
+			.userId(1L)
+			.label("회사")
+			.normalizedLabel("회사")
+			.receiverName("홍길동")
+			.phone("01011112222")
+			.zipcode("12345")
+			.address1("서울")
+			.address2("202동")
+			.memo("경비실")
+			.isDefault(false)
+			.activeDefaultOwnerId(null)
+			.build());
+
+		AddressDto.DefaultResponse response = addressService.getDefault(1L);
+
+		assertThat(response.hasAddress()).isTrue();
+		assertThat(response.address()).isNotNull();
+		assertThat(response.address().id()).isEqualTo(latest.getId());
+		assertThat(response.address().isDefault()).isTrue();
+		assertThat(addressRepository.findFirstByUserIdAndIsDefaultTrue(1L))
+			.get()
+			.extracting(Address::getId)
+			.isEqualTo(latest.getId());
+		assertThat(addressRepository.findById(first.getId()).orElseThrow().isDefault()).isFalse();
 	}
 
 	@Test
