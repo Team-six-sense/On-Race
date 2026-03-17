@@ -10,6 +10,8 @@ import com.kt.onrace.auth.dto.LoginResponse;
 import com.kt.onrace.auth.dto.OAuthLoginRequest;
 import com.kt.onrace.auth.entity.AuthProvider;
 import com.kt.onrace.auth.service.OAuthService;
+import com.kt.onrace.common.exception.BusinessErrorCode;
+import com.kt.onrace.common.exception.BusinessException;
 import com.kt.onrace.common.logging.annotation.ApiLog;
 import com.kt.onrace.common.response.ApiResponse;
 import com.kt.onrace.common.swagger.SwaggerAssistance;
@@ -34,7 +36,12 @@ public class OAuthController extends SwaggerAssistance {
 			@PathVariable String provider,
 			@Valid @RequestBody OAuthLoginRequest request) {
 
-		AuthProvider authProvider = AuthProvider.valueOf(provider.toUpperCase());
+		AuthProvider authProvider;
+		try {
+			authProvider = AuthProvider.valueOf(provider.toUpperCase());
+		} catch (IllegalArgumentException e) {
+			throw new BusinessException(BusinessErrorCode.COMMON_INVALID_PARAMETER);
+		}
 		return ApiResponse.success(oAuthService.login(request, authProvider));
 	}
 }
