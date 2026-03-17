@@ -40,11 +40,13 @@ public class OAuthService {
 	}
 
 	private User registerOAuthUser(OAuthLoginRequest request, AuthProvider provider) {
-		if (request.email() != null) {
-			userRepository.findByEmailAndIsDeletedFalse(request.email()).ifPresent(existing -> {
-				throw new BusinessException(BusinessErrorCode.AUTH_DUPLICATE_EMAIL);
-			});
+		if (request.email() == null) {
+			throw new BusinessException(BusinessErrorCode.COMMON_INVALID_PARAMETER);
 		}
+
+		userRepository.findByEmailAndIsDeletedFalse(request.email()).ifPresent(existing -> {
+			throw new BusinessException(BusinessErrorCode.AUTH_DUPLICATE_EMAIL);
+		});
 
 		String name = (request.name() == null || request.name().isBlank())
 				? provider.name() + "_" + request.providerId()
