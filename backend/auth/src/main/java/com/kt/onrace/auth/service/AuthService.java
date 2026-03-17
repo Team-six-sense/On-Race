@@ -198,6 +198,11 @@ public class AuthService {
 		return new TokenRefreshResponse(newAccessToken, newRefreshToken, jwtProperties.getAccessTokenExpiration());
 	}
 
+	@Transactional(readOnly = true)
+	public boolean isEmailDuplicate(String email) {
+		return userRepository.existsByEmail(email);
+	}
+
 	@Transactional
 	public FindEmailResponse findEmail(FindEmailRequest request) {
 		if (!smsVerifyService.consumeVerification(request.phoneNumber())) {
