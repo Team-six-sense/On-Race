@@ -7,8 +7,13 @@ on:
 jobs:
   terraform:
     runs-on: ubuntu-latest
+    
+    # 모든 run 명령어가 실행될 기본 경로를 설정합니다. (중복 제거)
+    defaults:
+      run:
+        working-directory: ./infra/envs/prod
+
     env:
-      WORKING_DIR: ./infra/envs/prod
       CLUSTER_NAME: t6-on-race-prod-cluster
       AWS_REGION: ap-northeast-2
 
@@ -28,18 +33,21 @@ jobs:
 
       - name: Terraform Init
         run: terraform init
-        working-directory: ${{ env.WORKING_DIR }}
 
       # [Step 1] 인프라 기저(VPC, EKS) 선배포
       - name: Step 1 - Core Infrastructure
         run: terraform apply -target=module.vpc -target=module.eks -auto-approve
-        working-directory: ${{ env.WORKING_DIR }}
 
-      # [Step 2] EKS 인증 정보 갱신 (쿠버네티스 리소스 배포 준비)
+      # [Step 2] EKS 인증 정보 갱신
       - name: Step 2 - Update Kubeconfig
+        # 이 명령어는 working-directory 영향이 없으므로 그대로 실행됩니다.
         run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }}
 
-      # [Step 3] 나머지 전체 리소스 배포 (KEDA, Prometheus, Service 등)
-      - name: Step 3 - Full Resources Apply
+      # [Step 3] KEDA 엔진 우선 설치 (ScaledObject 에러 방지용)
+      # CRD 설계도를 먼저 클러스터에 등록하는 과정입니다.
+      - name: Step 3 - KEDA Engine Setup
+        run: terraform apply -target=helm_release.keda -auto-approve
+
+      # [Step 4] 나머지 전체 리소스 배포 (KEDA 리소스, Prometheus, Service 등)
+      - name: Step 4 - Full Resources Apply
         run: terraform apply -auto-approve
-        working-directory: ${{ env.WORKING_DIR }}
