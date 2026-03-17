@@ -1,10 +1,12 @@
 package com.kt.onrace.auth.controller;
 
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,6 +28,7 @@ import com.kt.onrace.common.swagger.SwaggerAssistance;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
 import lombok.RequiredArgsConstructor;
 
 @Tag(name = "Auth", description = "인증/회원 API")
@@ -36,6 +39,12 @@ import lombok.RequiredArgsConstructor;
 public class AuthController extends SwaggerAssistance {
 
 	private final AuthService authService;
+
+	@Operation(summary = "이메일 중복 확인", description = "회원가입 전 이메일 중복 여부 확인 (true: 중복, false: 사용 가능)")
+	@GetMapping("/check-email")
+	public ApiResponse<Boolean> checkEmail(@RequestParam @Email String email) {
+		return ApiResponse.success(authService.isEmailDuplicate(email));
+	}
 
 	@Operation(summary = "회원가입", description = "이메일, 비밀번호로 회원가입")
 	@PostMapping("/signup")
