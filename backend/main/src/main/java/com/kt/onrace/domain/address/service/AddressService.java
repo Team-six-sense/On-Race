@@ -104,7 +104,7 @@ public class AddressService {
 	@Transactional
 	public AddressDto.Response update(Long userId, Long addressId, AddressDto.SaveRequest request) {
 		List<Address> activeAddresses = lockActiveAddresses(userId);
-		Address address = findOwnedAddressOrThrow(activeAddresses, userId, addressId);
+		Address address = findOwnedAddressOrThrow(activeAddresses, addressId);
 		validatePhone(request.phone());
 		String label = resolveLabelForUpdate(userId, addressId, address.getLabel(), request.label());
 
@@ -140,7 +140,7 @@ public class AddressService {
 	@Transactional
 	public void delete(Long userId, Long addressId) {
 		List<Address> activeAddresses = lockActiveAddresses(userId);
-		Address address = findOwnedAddressOrThrow(activeAddresses, userId, addressId);
+		Address address = findOwnedAddressOrThrow(activeAddresses, addressId);
 
 		boolean wasDefault = address.isDefault();
 
@@ -157,7 +157,7 @@ public class AddressService {
 	@Transactional
 	public void setDefault(Long userId, Long addressId) {
 		List<Address> activeAddresses = lockActiveAddresses(userId);
-		Address address = findOwnedAddressOrThrow(activeAddresses, userId, addressId);
+		Address address = findOwnedAddressOrThrow(activeAddresses, addressId);
 
 		if (address.isDefault()) {
 			return;
@@ -178,9 +178,8 @@ public class AddressService {
 			.orElseThrow(() -> new BusinessException(BusinessErrorCode.ADDRESS_NOT_FOUND));
 	}
 
-	private Address findOwnedAddressOrThrow(List<Address> activeAddresses, Long userId, Long addressId) {
+	private Address findOwnedAddressOrThrow(List<Address> activeAddresses, Long addressId) {
 		return activeAddresses.stream()
-			.filter(address -> address.getUserId().equals(userId))
 			.filter(address -> address.getId().equals(addressId))
 			.findFirst()
 			.orElseThrow(() -> new BusinessException(BusinessErrorCode.ADDRESS_NOT_FOUND));
