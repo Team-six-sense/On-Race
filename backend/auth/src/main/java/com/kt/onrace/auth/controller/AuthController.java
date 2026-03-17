@@ -28,6 +28,7 @@ import com.kt.onrace.common.swagger.SwaggerAssistance;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
 import lombok.RequiredArgsConstructor;
 
 @Tag(name = "Auth", description = "인증/회원 API")
@@ -41,7 +42,7 @@ public class AuthController extends SwaggerAssistance {
 
 	@Operation(summary = "이메일 중복 확인", description = "회원가입 전 이메일 중복 여부 확인 (true: 중복, false: 사용 가능)")
 	@GetMapping("/check-email")
-	public ApiResponse<Boolean> checkEmail(@RequestParam @jakarta.validation.constraints.Email String email) {
+	public ApiResponse<Boolean> checkEmail(@RequestParam @Email String email) {
 		return ApiResponse.success(authService.isEmailDuplicate(email));
 	}
 
