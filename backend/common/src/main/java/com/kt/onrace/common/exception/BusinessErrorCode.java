@@ -85,8 +85,6 @@ public enum BusinessErrorCode implements ErrorCode {
 
 	// STOCK
 	STOCK_NOT_FOUND(HttpStatus.NOT_FOUND, "STK_001", "재고 정보를 찾을 수 없습니다."),
-	STOCK_NOT_INITIALIZED(HttpStatus.BAD_REQUEST, "STK_002", "재고가 초기화되지 않았습니다."),
-	STOCK_CONFIRM_FAILED(HttpStatus.CONFLICT, "STK_003", "재고 확정에 실패했습니다."),
 
 	// SALES_INFO
 	SALES_INFO_NOT_FOUND(HttpStatus.NOT_FOUND, "SLS_001", "판매 정보를 찾을 수 없습니다."),

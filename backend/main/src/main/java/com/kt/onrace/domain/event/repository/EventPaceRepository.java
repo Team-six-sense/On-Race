@@ -1,5 +1,6 @@
 package com.kt.onrace.domain.event.repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -15,4 +16,7 @@ public interface EventPaceRepository extends JpaRepository<EventPace, Long>, Eve
 	}
 
 	Optional<EventPace> findByIdAndEventCourseId(Long id, Long courseId);
+
+	List<EventPace> findByEventCourseEventId(Long eventId);
+
 }

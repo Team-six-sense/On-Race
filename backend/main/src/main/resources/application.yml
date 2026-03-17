@@ -48,6 +48,10 @@ management:
       correlation:
         fields: traceId
 
+entry:
+  reservation:
+    ttl-seconds: ${MAIN_ENTRY_RESERVATION_TTL:600}
+
 aws:
   region: ${AWS_REGION:ap-northeast-2}
   s3:

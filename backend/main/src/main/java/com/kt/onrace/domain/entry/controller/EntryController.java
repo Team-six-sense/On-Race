@@ -72,4 +72,15 @@ public class EntryController {
 	) {
 		return ApiResponse.success(entryService.apply(userId, eventId, request));
 	}
+
+	// TODO: 결제 API 연동 후 제거 — 테스트용 임시 API입니다 추후에 제가 삭제하겠습니다
+	@PostMapping("/confirm")
+	public ApiResponse<Void> confirmReservation(
+		@RequestHeader("X-User-Id") Long userId,
+		@PathVariable Long eventId,
+		@RequestParam Long paceId
+	) {
+		entryService.confirmReservation(userId, eventId, paceId);
+		return ApiResponse.success();
+	}
 }

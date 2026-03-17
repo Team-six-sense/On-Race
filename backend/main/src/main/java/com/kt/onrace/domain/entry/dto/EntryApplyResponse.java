@@ -22,4 +22,15 @@ public record EntryApplyResponse(
 			entry.getUpdatedAt()
 		);
 	}
+
+	public static EntryApplyResponse fromReserved(Entry entry, LocalDateTime reservedUntil) {
+		return new EntryApplyResponse(
+			entry.getId(),
+			entry.getEvent().getId(),
+			entry.getStatus().getDescription(),
+			reservedUntil,
+			entry.getCreatedAt(),
+			entry.getUpdatedAt()
+		);
+	}
 }
