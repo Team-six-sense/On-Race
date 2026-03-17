@@ -237,60 +237,64 @@ public class OrderService {
 	}
 
 	private CheckoutPrepareResponseDto.ShippingAddressInfo resolveShippingAddress(Long userId, Long addressId) {
-		return findAddressForCheckout(userId, addressId)
-			.map(address -> new CheckoutPrepareResponseDto.ShippingAddressInfo(
-				true,
-				address.getId(),
-				address.getReceiverName(),
-				address.getPhone(),
-				address.getZipcode(),
-				address.getAddress1(),
-				address.getAddress2(),
-				address.getMemo(),
-				address.isDefault()
-			))
+		if (addressId != null) {
+			Address address = findOwnedAddressOrThrow(userId, addressId);
+
+			return toShippingAddressInfo(address);
+		}
+
+		return findDefaultAddressForCheckout(userId)
+			.map(this::toShippingAddressInfo)
 			.orElseGet(CheckoutPrepareResponseDto.ShippingAddressInfo::empty);
 	}
 
 	private ShippingAddressSnapshot resolveShippingAddressSnapshot(Long userId, CheckoutRequestDto request) {
 		if (request.addressId() != null) {
-			Address address = addressRepository.findByIdAndUserId(request.addressId(), userId)
-				.orElseThrow(() -> new BusinessException(BusinessErrorCode.ADDRESS_NOT_FOUND));
+			Address address = findOwnedAddressOrThrow(userId, request.addressId());
 
-			return new ShippingAddressSnapshot(
-				address.getLabel(),
-				address.getReceiverName(),
-				address.getPhone(),
-				address.getZipcode(),
-				address.getAddress1(),
-				address.getAddress2(),
-				request.deliveryMemo() != null ? request.deliveryMemo() : address.getMemo()
-			);
+			return toShippingAddressSnapshot(address, request.deliveryMemo());
 		}
 
-		if (isBlank(request.recipientName()) || isBlank(request.recipientPhone()) || isBlank(request.zipCode())
-			|| isBlank(request.address())) {
-			throw new BusinessException(BusinessErrorCode.COMMON_INVALID_FORMAT);
-		}
+		Address defaultAddress = findDefaultAddressForCheckout(userId)
+			.orElseThrow(() -> new BusinessException(BusinessErrorCode.ADDRESS_NOT_FOUND));
 
-		return new ShippingAddressSnapshot(
-			null,
-			request.recipientName(),
-			request.recipientPhone(),
-			request.zipCode(),
-			request.address(),
-			request.detailAddress(),
-			request.deliveryMemo()
+		return toShippingAddressSnapshot(defaultAddress, request.deliveryMemo());
+	}
+
+	private java.util.Optional<Address> findDefaultAddressForCheckout(Long userId) {
+		return addressRepository.findFirstByUserIdAndIsDefaultTrue(userId)
+			.or(() -> addressRepository.findByUserIdOrderByCreatedAtDesc(userId).stream().findFirst());
+	}
+
+	private Address findOwnedAddressOrThrow(Long userId, Long addressId) {
+		return addressRepository.findByIdAndUserId(addressId, userId)
+			.orElseThrow(() -> new BusinessException(BusinessErrorCode.ADDRESS_NOT_FOUND));
+	}
+
+	private CheckoutPrepareResponseDto.ShippingAddressInfo toShippingAddressInfo(Address address) {
+		return new CheckoutPrepareResponseDto.ShippingAddressInfo(
+			true,
+			address.getId(),
+			address.getReceiverName(),
+			address.getPhone(),
+			address.getZipcode(),
+			address.getAddress1(),
+			address.getAddress2(),
+			address.getMemo(),
+			address.isDefault()
 		);
 	}
 
-	private java.util.Optional<Address> findAddressForCheckout(Long userId, Long addressId) {
-		if (addressId != null) {
-			return addressRepository.findByIdAndUserId(addressId, userId);
-		}
-
-		return addressRepository.findFirstByUserIdAndIsDefaultTrue(userId)
-			.or(() -> addressRepository.findByUserIdOrderByCreatedAtDesc(userId).stream().findFirst());
+	private ShippingAddressSnapshot toShippingAddressSnapshot(Address address, String overrideMemo) {
+		return new ShippingAddressSnapshot(
+			address.getLabel(),
+			address.getReceiverName(),
+			address.getPhone(),
+			address.getZipcode(),
+			address.getAddress1(),
+			address.getAddress2(),
+			overrideMemo != null ? overrideMemo : address.getMemo()
+		);
 	}
 
 	private String extractThumbnailUrl(Event event) {
@@ -392,10 +396,6 @@ public class OrderService {
 	private Map<Long, String> buildThumbnailMap(Map<Long, Event> eventById) {
 		return eventById.values().stream()
 			.collect(Collectors.toMap(Event::getId, this::extractThumbnailUrl));
-	}
-
-	private boolean isBlank(String value) {
-		return value == null || value.isBlank();
 	}
 
 	private record ShippingAddressSnapshot(
