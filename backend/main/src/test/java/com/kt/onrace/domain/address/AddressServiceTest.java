@@ -109,6 +109,42 @@ class AddressServiceTest {
 	}
 
 	@Test
+	@DisplayName("전화번호는 숫자 10~11자리만 허용한다")
+	void invalidPhoneFormatIsRejected() {
+		assertThatThrownBy(() -> addressService.create(1L, new AddressDto.SaveRequest(
+			"홍길동",
+			"010-12AB-5678",
+			"12345",
+			"서울",
+			"101동",
+			"문앞",
+			false,
+			null
+		)))
+			.isInstanceOf(BusinessException.class)
+			.extracting(ex -> ((BusinessException)ex).getErrorCode())
+			.isEqualTo(BusinessErrorCode.ADDRESS_INVALID_PHONE);
+	}
+
+	@Test
+	@DisplayName("주소 입력 필드가 최대 길이를 초과하면 COMMON_INVALID_PARAMETER 예외가 발생한다")
+	void overlyLongFieldIsRejected() {
+		assertThatThrownBy(() -> addressService.create(1L, new AddressDto.SaveRequest(
+			"a".repeat(51),
+			"01011112222",
+			"12345",
+			"서울",
+			"101동",
+			"문앞",
+			false,
+			null
+		)))
+			.isInstanceOf(BusinessException.class)
+			.extracting(ex -> ((BusinessException)ex).getErrorCode())
+			.isEqualTo(BusinessErrorCode.COMMON_INVALID_PARAMETER);
+	}
+
+	@Test
 	@DisplayName("사용자당 배송지는 최대 10개까지만 등록할 수 있다")
 	void cannotCreateMoreThanTenAddresses() {
 		for (int i = 1; i <= 10; i++) {
@@ -156,6 +192,50 @@ class AddressServiceTest {
 	}
 
 	@Test
+	@DisplayName("기본배송지가 없으면 최신 주소를 기본배송지로 복구한다")
+	void getDefaultRepairsMissingDefault() {
+		Address first = addressRepository.saveAndFlush(Address.builder()
+			.userId(1L)
+			.label("집")
+			.normalizedLabel("집")
+			.receiverName("홍길동")
+			.phone("01011112222")
+			.zipcode("12345")
+			.address1("서울")
+			.address2("101동")
+			.memo("문앞")
+			.isDefault(false)
+			.activeDefaultOwnerId(null)
+			.build());
+
+		Address latest = addressRepository.saveAndFlush(Address.builder()
+			.userId(1L)
+			.label("회사")
+			.normalizedLabel("회사")
+			.receiverName("홍길동")
+			.phone("01011112222")
+			.zipcode("12345")
+			.address1("서울")
+			.address2("202동")
+			.memo("경비실")
+			.isDefault(false)
+			.activeDefaultOwnerId(null)
+			.build());
+
+		AddressDto.DefaultResponse response = addressService.getDefault(1L);
+
+		assertThat(response.hasAddress()).isTrue();
+		assertThat(response.address()).isNotNull();
+		assertThat(response.address().id()).isEqualTo(latest.getId());
+		assertThat(response.address().isDefault()).isTrue();
+		assertThat(addressRepository.findFirstByUserIdAndIsDefaultTrue(1L))
+			.get()
+			.extracting(Address::getId)
+			.isEqualTo(latest.getId());
+		assertThat(addressRepository.findById(first.getId()).orElseThrow().isDefault()).isFalse();
+	}
+
+	@Test
 	@DisplayName("기본배송지 삭제 시 남은 주소 중 최신 주소가 기본배송지로 승격된다")
 	void deleteDefaultPromotesLatest() {
 		AddressDto.Response first = addressService.create(1L, createRequest("기본주소", false));
@@ -200,11 +280,22 @@ class AddressServiceTest {
 	}
 
 	@Test
+	@DisplayName("유일한 기본배송지를 isDefault=false로 수정하면 충돌 예외가 발생한다")
+	void updateOnlyDefaultToNormalThrowsConflict() {
+		AddressDto.Response first = addressService.create(1L, createRequest("기본주소", false));
+
+		assertThatThrownBy(() -> addressService.update(1L, first.id(), createRequest("기본주소", false)))
+			.isInstanceOf(BusinessException.class)
+			.extracting(ex -> ((BusinessException)ex).getErrorCode())
+			.isEqualTo(BusinessErrorCode.ADDRESS_DEFAULT_CONFLICT);
+	}
+
+	@Test
 	@DisplayName("update에서 label 미전송 시 기존 label을 유지한다")
 	void updateKeepsExistingLabelWhenLabelIsMissing() {
 		AddressDto.Response response = addressService.create(1L, createRequest("첫주소", false, "우리 집"));
 
-		AddressDto.Response updated = addressService.update(1L, response.id(), createRequest("수정주소", false, null));
+		AddressDto.Response updated = addressService.update(1L, response.id(), createRequest("수정주소", null, null));
 
 		assertThat(updated.label()).isEqualTo("우리 집");
 	}
@@ -228,6 +319,39 @@ class AddressServiceTest {
 		AddressDto.Response response = addressService.create(1L, createRequest("첫주소", false));
 
 		assertThatThrownBy(() -> addressService.get(2L, response.id()))
+			.isInstanceOf(BusinessException.class)
+			.extracting(ex -> ((BusinessException)ex).getErrorCode())
+			.isEqualTo(BusinessErrorCode.ADDRESS_NOT_FOUND);
+	}
+
+	@Test
+	@DisplayName("다른 유저의 배송지 수정은 NOT_FOUND 예외가 발생한다")
+	void updateAddressOfAnotherUserReturnsNotFound() {
+		AddressDto.Response response = addressService.create(1L, createRequest("첫주소", false));
+
+		assertThatThrownBy(() -> addressService.update(2L, response.id(), createRequest("수정주소", null)))
+			.isInstanceOf(BusinessException.class)
+			.extracting(ex -> ((BusinessException)ex).getErrorCode())
+			.isEqualTo(BusinessErrorCode.ADDRESS_NOT_FOUND);
+	}
+
+	@Test
+	@DisplayName("다른 유저의 배송지 삭제는 NOT_FOUND 예외가 발생한다")
+	void deleteAddressOfAnotherUserReturnsNotFound() {
+		AddressDto.Response response = addressService.create(1L, createRequest("첫주소", false));
+
+		assertThatThrownBy(() -> addressService.delete(2L, response.id()))
+			.isInstanceOf(BusinessException.class)
+			.extracting(ex -> ((BusinessException)ex).getErrorCode())
+			.isEqualTo(BusinessErrorCode.ADDRESS_NOT_FOUND);
+	}
+
+	@Test
+	@DisplayName("다른 유저의 배송지 기본 설정은 NOT_FOUND 예외가 발생한다")
+	void setDefaultAddressOfAnotherUserReturnsNotFound() {
+		AddressDto.Response response = addressService.create(1L, createRequest("첫주소", false));
+
+		assertThatThrownBy(() -> addressService.setDefault(2L, response.id()))
 			.isInstanceOf(BusinessException.class)
 			.extracting(ex -> ((BusinessException)ex).getErrorCode())
 			.isEqualTo(BusinessErrorCode.ADDRESS_NOT_FOUND);
@@ -259,7 +383,7 @@ class AddressServiceTest {
 	private AddressDto.SaveRequest createRequest(String receiverName, Boolean isDefault, String label) {
 		return new AddressDto.SaveRequest(
 			receiverName,
-			"010-1111-2222",
+			"01011112222",
 			"12345",
 			"서울",
 			"101동",

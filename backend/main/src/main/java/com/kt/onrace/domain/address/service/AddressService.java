@@ -28,8 +28,13 @@ import lombok.RequiredArgsConstructor;
 public class AddressService {
 
 	private static final int MAX_ADDRESS_COUNT = 10;
+	private static final int MAX_RECEIVER_NAME_LENGTH = 50;
+	private static final int MAX_ZIPCODE_LENGTH = 10;
+	private static final int MAX_ADDRESS_LENGTH = 255;
+	private static final int MAX_MEMO_LENGTH = 255;
 	private static final String AUTO_LABEL_PREFIX = "배송지";
 	private static final Pattern LABEL_PATTERN = Pattern.compile("^[가-힣A-Za-z0-9 ]{1,20}$");
+	private static final Pattern PHONE_PATTERN = Pattern.compile("^[0-9]{10,11}$");
 	private static final String DUPLICATE_LABEL_CONSTRAINT = "uk_address_user_normalized_label";
 	private static final String ACTIVE_DEFAULT_CONSTRAINT = "uk_address_active_default_owner";
 
@@ -42,6 +47,7 @@ public class AddressService {
 			.toList();
 	}
 
+	@Transactional
 	public AddressDto.DefaultResponse getDefault(Long userId) {
 		Optional<Address> defaultAddress = addressRepository.findFirstByUserIdAndIsDefaultTrue(userId);
 
@@ -49,34 +55,46 @@ public class AddressService {
 			return AddressDto.DefaultResponse.from(defaultAddress.get());
 		}
 
-		return addressRepository.findByUserIdOrderByCreatedAtDesc(userId)
-			.stream()
-			.findFirst()
-			.map(AddressDto.DefaultResponse::from)
-			.orElseGet(AddressDto.DefaultResponse::empty);
+		List<Address> activeAddresses = lockActiveAddresses(userId);
+		if (activeAddresses.isEmpty()) {
+			return AddressDto.DefaultResponse.empty();
+		}
+
+		Address latestAddress = activeAddresses.get(0);
+		activeAddresses.stream()
+			.filter(address -> !address.getId().equals(latestAddress.getId()))
+			.filter(Address::isDefault)
+			.forEach(Address::unmarkDefault);
+		latestAddress.markDefault();
+		flushWithConstraintTranslation();
+
+		return AddressDto.DefaultResponse.from(latestAddress);
 	}
 
 	public AddressDto.Response get(Long userId, Long addressId) {
-		Address address = addressRepository.findByIdAndUserId(addressId, userId)
-			.orElseThrow(() -> new BusinessException(BusinessErrorCode.ADDRESS_NOT_FOUND));
+		Address address = findOwnedAddressOrThrow(userId, addressId);
 
 		return AddressDto.Response.from(address);
 	}
 
 	@Transactional
 	public AddressDto.Response create(Long userId, AddressDto.SaveRequest request) {
-		long addressCount = addressRepository.countByUserId(userId);
+		List<Address> activeAddresses = lockActiveAddresses(userId);
+		long addressCount = activeAddresses.size();
 		if (addressCount >= MAX_ADDRESS_COUNT) {
 			throw new BusinessException(BusinessErrorCode.ADDRESS_LIMIT_EXCEEDED);
 		}
 
+		validateRequest(request);
+
 		boolean hasAny = addressCount > 0;
+		boolean hasDefault = findCurrentDefault(activeAddresses).isPresent();
 		String label = resolveLabelForCreate(userId, request.label());
 
-		boolean shouldBeDefault = !hasAny || Boolean.TRUE.equals(request.isDefault());
+		boolean shouldBeDefault = !hasAny || !hasDefault || Boolean.TRUE.equals(request.isDefault());
 
-		if (shouldBeDefault && hasAny) {
-			unsetDefaultIfExists(userId);
+		if (shouldBeDefault && hasDefault) {
+			unsetDefaultIfExists(activeAddresses);
 			flushWithConstraintTranslation();
 		}
 
@@ -99,20 +117,23 @@ public class AddressService {
 
 	@Transactional
 	public AddressDto.Response update(Long userId, Long addressId, AddressDto.SaveRequest request) {
-		Address address = addressRepository.findByIdAndUserId(addressId, userId)
-			.orElseThrow(() -> new BusinessException(BusinessErrorCode.ADDRESS_NOT_FOUND));
+		List<Address> activeAddresses = lockActiveAddresses(userId);
+		Address address = findOwnedAddressOrThrow(activeAddresses, addressId);
+		validateRequest(request);
 		String label = resolveLabelForUpdate(userId, addressId, address.getLabel(), request.label());
 
 		Boolean wantDefault = request.isDefault();
 
 		if (Boolean.TRUE.equals(wantDefault) && !address.isDefault()) {
-			unsetDefaultIfExists(userId);
+			unsetDefaultIfExists(activeAddresses);
 			flushWithConstraintTranslation();
 			address.markDefault();
 		} else if (Boolean.FALSE.equals(wantDefault) && address.isDefault()) {
+			Address replacement = findReplacementDefault(activeAddresses, addressId)
+				.orElseThrow(() -> new BusinessException(BusinessErrorCode.ADDRESS_DEFAULT_CONFLICT));
 			address.unmarkDefault();
 			flushWithConstraintTranslation();
-			promoteDefaultIfNeededExcluding(userId, addressId);
+			replacement.markDefault();
 		}
 
 		address.update(
@@ -132,8 +153,8 @@ public class AddressService {
 
 	@Transactional
 	public void delete(Long userId, Long addressId) {
-		Address address = addressRepository.findByIdAndUserId(addressId, userId)
-			.orElseThrow(() -> new BusinessException(BusinessErrorCode.ADDRESS_NOT_FOUND));
+		List<Address> activeAddresses = lockActiveAddresses(userId);
+		Address address = findOwnedAddressOrThrow(activeAddresses, addressId);
 
 		boolean wasDefault = address.isDefault();
 
@@ -141,49 +162,58 @@ public class AddressService {
 		flushWithConstraintTranslation();
 
 		if (wasDefault) {
-			promoteDefaultIfNeeded(userId);
+			findReplacementDefault(activeAddresses, addressId)
+				.ifPresent(Address::markDefault);
 			flushWithConstraintTranslation();
-			return;
 		}
 	}
 
 	@Transactional
 	public void setDefault(Long userId, Long addressId) {
-		Address address = addressRepository.findByIdAndUserId(addressId, userId)
-			.orElseThrow(() -> new BusinessException(BusinessErrorCode.ADDRESS_NOT_FOUND));
+		List<Address> activeAddresses = lockActiveAddresses(userId);
+		Address address = findOwnedAddressOrThrow(activeAddresses, addressId);
 
 		if (address.isDefault()) {
 			return;
 		}
 
-		unsetDefaultIfExists(userId);
+		unsetDefaultIfExists(activeAddresses);
 		flushWithConstraintTranslation();
 		address.markDefault();
 		flushWithConstraintTranslation();
 	}
 
-	private void unsetDefaultIfExists(Long userId) {
-		addressRepository.findFirstByUserIdAndIsDefaultTrue(userId)
-			.ifPresent(Address::unmarkDefault);
+	private List<Address> lockActiveAddresses(Long userId) {
+		return addressRepository.findByUserIdOrderByCreatedAtDescForUpdate(userId);
 	}
 
-	private void promoteDefaultIfNeeded(Long userId) {
-		List<Address> remaining = addressRepository.findByUserIdOrderByCreatedAtDesc(userId);
-		if (remaining.isEmpty()) {
-			return;
-		}
-		remaining.get(0).markDefault();
+	private Address findOwnedAddressOrThrow(Long userId, Long addressId) {
+		return addressRepository.findByIdAndUserId(addressId, userId)
+			.orElseThrow(() -> new BusinessException(BusinessErrorCode.ADDRESS_NOT_FOUND));
 	}
 
-	private void promoteDefaultIfNeededExcluding(Long userId, Long excludedAddressId) {
-		List<Address> remaining = addressRepository.findByUserIdOrderByCreatedAtDesc(userId);
-		if (remaining.isEmpty()) {
-			return;
-		}
-		remaining.stream()
-			.filter(address -> !address.getId().equals(excludedAddressId))
+	private Address findOwnedAddressOrThrow(List<Address> activeAddresses, Long addressId) {
+		return activeAddresses.stream()
+			.filter(address -> address.getId().equals(addressId))
 			.findFirst()
-			.ifPresent(Address::markDefault);
+			.orElseThrow(() -> new BusinessException(BusinessErrorCode.ADDRESS_NOT_FOUND));
+	}
+
+	private Optional<Address> findCurrentDefault(List<Address> activeAddresses) {
+		return activeAddresses.stream()
+			.filter(Address::isDefault)
+			.findFirst();
+	}
+
+	private Optional<Address> findReplacementDefault(List<Address> activeAddresses, Long excludedAddressId) {
+		return activeAddresses.stream()
+			.filter(address -> !address.getId().equals(excludedAddressId))
+			.findFirst();
+	}
+
+	private void unsetDefaultIfExists(List<Address> activeAddresses) {
+		findCurrentDefault(activeAddresses)
+			.ifPresent(Address::unmarkDefault);
 	}
 
 	private String resolveLabelForCreate(Long userId, String rawLabel) {
@@ -221,6 +251,36 @@ public class AddressService {
 	private void validateLabelFormat(String label) {
 		if (!LABEL_PATTERN.matcher(label).matches()) {
 			throw new BusinessException(BusinessErrorCode.ADDRESS_INVALID_LABEL);
+		}
+	}
+
+	private void validateRequest(AddressDto.SaveRequest request) {
+		validateRequiredText(request.receiverName());
+		validateRequiredText(request.zipcode());
+		validateRequiredText(request.address1());
+		validatePhone(request.phone());
+		validateMaxLength(request.receiverName(), MAX_RECEIVER_NAME_LENGTH);
+		validateMaxLength(request.zipcode(), MAX_ZIPCODE_LENGTH);
+		validateMaxLength(request.address1(), MAX_ADDRESS_LENGTH);
+		validateMaxLength(request.address2(), MAX_ADDRESS_LENGTH);
+		validateMaxLength(request.memo(), MAX_MEMO_LENGTH);
+	}
+
+	private void validatePhone(String phone) {
+		if (phone == null || !PHONE_PATTERN.matcher(phone).matches()) {
+			throw new BusinessException(BusinessErrorCode.ADDRESS_INVALID_PHONE);
+		}
+	}
+
+	private void validateRequiredText(String value) {
+		if (value == null || value.isBlank()) {
+			throw new BusinessException(BusinessErrorCode.COMMON_INVALID_PARAMETER);
+		}
+	}
+
+	private void validateMaxLength(String value, int maxLength) {
+		if (value != null && value.length() > maxLength) {
+			throw new BusinessException(BusinessErrorCode.COMMON_INVALID_PARAMETER);
 		}
 	}
 

@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -177,6 +178,21 @@ public class GlobalExceptionHandler {
 			errorCode.getMessage(),
 			request.getRequestURI(),
 			e.getParameterName()
+		);
+
+		return response(errorCode);
+	}
+
+	@ExceptionHandler(MissingRequestHeaderException.class)
+	public ResponseEntity<ApiResponse<Void>> handleMissingRequestHeaderException(
+		MissingRequestHeaderException e, HttpServletRequest request) {
+		ErrorCode errorCode = BusinessErrorCode.COMMON_INVALID_PARAMETER;
+
+		log.warn("[MissingRequestHeaderException] code={}, message={}, path={}, header={}",
+			errorCode.getCode(),
+			errorCode.getMessage(),
+			request.getRequestURI(),
+			e.getHeaderName()
 		);
 
 		return response(errorCode);

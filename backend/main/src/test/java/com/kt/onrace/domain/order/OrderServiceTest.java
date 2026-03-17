@@ -131,6 +131,50 @@ class OrderServiceTest {
 	}
 
 	@Test
+	@DisplayName("checkout-info는 잘못된 배송지 id면 ADDRESS_NOT_FOUND 예외가 발생한다")
+	void checkoutPrepareThrowsWhenSelectedAddressDoesNotExist() {
+		TestFixture fixture = createFixture();
+
+		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(fixture.event());
+		when(eventCourseRepository.findByIdAndEventIdOrThrow(
+			eq(10L), eq(1L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.course());
+		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
+			eq(20L), eq(10L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.pace());
+		when(eventPackageRepository.findByEventId(eq(1L))).thenReturn(List.of(fixture.eventPackage()));
+		when(addressRepository.findByIdAndUserId(eq(999L), eq(7L))).thenReturn(Optional.empty());
+
+		assertThatThrownBy(() -> orderService.getCheckoutPrepareInfo(
+			new CheckoutPrepareRequestDto(1L, 10L, 20L, 999L),
+			7L
+		))
+			.isInstanceOf(BusinessException.class)
+			.extracting(exception -> ((BusinessException)exception).getErrorCode())
+			.isEqualTo(BusinessErrorCode.ADDRESS_NOT_FOUND);
+	}
+
+	@Test
+	@DisplayName("checkout-info는 다른 유저 배송지 id면 ADDRESS_NOT_FOUND 예외가 발생한다")
+	void checkoutPrepareThrowsWhenAddressBelongsToAnotherUser() {
+		TestFixture fixture = createFixture();
+
+		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(fixture.event());
+		when(eventCourseRepository.findByIdAndEventIdOrThrow(
+			eq(10L), eq(1L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.course());
+		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
+			eq(20L), eq(10L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.pace());
+		when(eventPackageRepository.findByEventId(eq(1L))).thenReturn(List.of(fixture.eventPackage()));
+		when(addressRepository.findByIdAndUserId(eq(101L), eq(8L))).thenReturn(Optional.empty());
+
+		assertThatThrownBy(() -> orderService.getCheckoutPrepareInfo(
+			new CheckoutPrepareRequestDto(1L, 10L, 20L, 101L),
+			8L
+		))
+			.isInstanceOf(BusinessException.class)
+			.extracting(exception -> ((BusinessException)exception).getErrorCode())
+			.isEqualTo(BusinessErrorCode.ADDRESS_NOT_FOUND);
+	}
+
+	@Test
 	@DisplayName("checkout은 선택한 배송지 정보를 주문 payload에 반영한다")
 	void checkoutUsesSelectedAddressSnapshot() {
 		TestFixture fixture = createFixture();
@@ -174,6 +218,124 @@ class OrderServiceTest {
 		assertThat(savedOrder.getDetailAddress()).isEqualTo("202동");
 		assertThat(savedOrder.getDeliveryMemo()).isEqualTo("직접 입력 메모");
 		assertThat(savedOrder.getFinalAmount()).isEqualTo(63000L);
+	}
+
+	@Test
+	@DisplayName("checkout은 addressId가 없으면 기본 배송지 스냅샷을 사용한다")
+	void checkoutUsesDefaultAddressSnapshotWhenAddressIdMissing() {
+		TestFixture fixture = createFixture();
+
+		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(fixture.event());
+		when(eventCourseRepository.findByIdAndEventIdOrThrow(
+			eq(10L), eq(1L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.course());
+		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
+			eq(20L), eq(10L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.pace());
+		when(eventPackageRepository.findAllById(eq(List.of(30L)))).thenReturn(List.of(fixture.eventPackage()));
+		when(addressRepository.findFirstByUserIdAndIsDefaultTrue(eq(7L))).thenReturn(Optional.of(fixture.defaultAddress()));
+		when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+		orderService.checkout(
+			new CheckoutRequestDto(
+				"prepare-token",
+				1L,
+				10L,
+				20L,
+				List.of(30L),
+				63000L,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				"직접 입력 메모"
+			),
+			7L
+		);
+
+		org.mockito.Mockito.verify(orderRepository).save(orderCaptor.capture());
+		Order savedOrder = orderCaptor.getValue();
+
+		assertThat(savedOrder.getRecipientName()).isEqualTo("기본배송지");
+		assertThat(savedOrder.getAddressLabel()).isEqualTo("우리 집");
+		assertThat(savedOrder.getRecipientPhone()).isEqualTo("010-0000-0000");
+		assertThat(savedOrder.getZipCode()).isEqualTo("12345");
+		assertThat(savedOrder.getAddress()).isEqualTo("서울시 강남구");
+		assertThat(savedOrder.getDetailAddress()).isEqualTo("101동");
+		assertThat(savedOrder.getDeliveryMemo()).isEqualTo("직접 입력 메모");
+	}
+
+	@Test
+	@DisplayName("checkout은 저장된 배송지가 없으면 ADDRESS_NOT_FOUND 예외가 발생한다")
+	void checkoutThrowsWhenNoSavedAddressExists() {
+		TestFixture fixture = createFixture();
+
+		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(fixture.event());
+		when(eventCourseRepository.findByIdAndEventIdOrThrow(
+			eq(10L), eq(1L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.course());
+		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
+			eq(20L), eq(10L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.pace());
+		when(eventPackageRepository.findAllById(eq(List.of(30L)))).thenReturn(List.of(fixture.eventPackage()));
+		when(addressRepository.findFirstByUserIdAndIsDefaultTrue(eq(7L))).thenReturn(Optional.empty());
+		when(addressRepository.findByUserIdOrderByCreatedAtDesc(eq(7L))).thenReturn(List.of());
+
+		assertThatThrownBy(() -> orderService.checkout(
+			new CheckoutRequestDto(
+				"prepare-token",
+				1L,
+				10L,
+				20L,
+				List.of(30L),
+				63000L,
+				null,
+				"직접입력",
+				"01012345678",
+				"12345",
+				"서울 어딘가",
+				"101동",
+				"직접 입력 메모"
+			),
+			7L
+		))
+			.isInstanceOf(BusinessException.class)
+			.extracting(exception -> ((BusinessException)exception).getErrorCode())
+			.isEqualTo(BusinessErrorCode.ADDRESS_NOT_FOUND);
+	}
+
+	@Test
+	@DisplayName("checkout은 다른 유저 배송지 id면 ADDRESS_NOT_FOUND 예외가 발생한다")
+	void checkoutThrowsWhenAddressBelongsToAnotherUser() {
+		TestFixture fixture = createFixture();
+
+		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(fixture.event());
+		when(eventCourseRepository.findByIdAndEventIdOrThrow(
+			eq(10L), eq(1L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.course());
+		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
+			eq(20L), eq(10L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.pace());
+		when(eventPackageRepository.findAllById(eq(List.of(30L)))).thenReturn(List.of(fixture.eventPackage()));
+		when(addressRepository.findByIdAndUserId(eq(101L), eq(8L))).thenReturn(Optional.empty());
+
+		assertThatThrownBy(() -> orderService.checkout(
+			new CheckoutRequestDto(
+				"prepare-token",
+				1L,
+				10L,
+				20L,
+				List.of(30L),
+				63000L,
+				101L,
+				null,
+				null,
+				null,
+				null,
+				null,
+				"직접 입력 메모"
+			),
+			8L
+		))
+			.isInstanceOf(BusinessException.class)
+			.extracting(exception -> ((BusinessException)exception).getErrorCode())
+			.isEqualTo(BusinessErrorCode.ADDRESS_NOT_FOUND);
 	}
 
 	@Test
