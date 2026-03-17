@@ -23,12 +23,14 @@ public class User extends BaseEntity {
 	@Column(nullable = false, length = 50)
 	private String name;
 
+	// OAuth 사용자는 전화번호 없이 가입 가능
 	@Column(length = 20)
 	private String phoneNumber;
 
 	@Column(length = 20)
 	private String mobile;
 
+	// OAuth 사용자는 비밀번호 없음
 	@Column(length = 255)
 	private String password;
 
