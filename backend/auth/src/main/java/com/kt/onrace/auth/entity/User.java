@@ -40,17 +40,38 @@ public class User extends BaseEntity {
 	@Column(nullable = false, columnDefinition = "VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'")
 	private UserStatus status;
 
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false)
+	private AuthProvider authProvider;
+
+	@Column(length = 100)
+	private String providerId;
+
 	private User(String email, String name, String password, String phoneNumber) {
 		this.email = email;
 		this.name = name;
 		this.password = password;
 		this.phoneNumber = phoneNumber;
+		this.authProvider = AuthProvider.LOCAL;
+		this.role = USER;
+		this.status = ACTIVE;
+	}
+
+	private User(String email, String name, AuthProvider authProvider, String providerId) {
+		this.email = email;
+		this.name = name;
+		this.authProvider = authProvider;
+		this.providerId = providerId;
 		this.role = USER;
 		this.status = ACTIVE;
 	}
 
 	public static User createUser(String email, String name, String password, String phoneNumber) {
 		return new User(email, name, password, phoneNumber);
+	}
+
+	public static User createOAuthUser(String email, String name, AuthProvider authProvider, String providerId) {
+		return new User(email, name, authProvider, providerId);
 	}
 
 	public void deactivate() {
