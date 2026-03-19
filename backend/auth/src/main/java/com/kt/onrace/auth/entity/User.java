@@ -51,13 +51,6 @@ public class User extends BaseEntity {
 	@Column(nullable = false, columnDefinition = "VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'")
 	private UserStatus status;
 
-	@Enumerated(EnumType.STRING)
-	@Column(nullable = false)
-	private AuthProvider authProvider;
-
-	@Column(length = 100)
-	private String providerId;
-
 	private User(String email, String name, String password, String phoneNumber) {
 		this.email = email;
 		this.name = name;
@@ -99,6 +92,10 @@ public class User extends BaseEntity {
 
 	public void changePassword(String encodedPassword) {
 		this.password = encodedPassword;
+	}
+
+	public void changeName(String name) {
+		this.name = name;
 	}
 
 }
