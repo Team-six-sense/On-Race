@@ -1,6 +1,39 @@
+import NextAuth from 'next-auth';
+
+declare module 'next-auth' {
+  interface Session {
+    accessToken?: string;
+    refreshToken?: string;
+    userRole?: string;
+  }
+
+  interface User {
+    // 백엔드에서 받는 유저 정보 타입 정의
+    accessToken?: string;
+    refreshToken?: string;
+    role?: string;
+  }
+}
+
+declare module 'next-auth/jwt' {
+  interface JWT {
+    springAccessToken?: string;
+    springRefreshToken?: string;
+    userRole?: string;
+  }
+}
+
+interface TermAgreement {
+  termVersionId: number;
+  agreed: boolean;
+}
+
 export interface SignupRequest {
   email: string;
+  name: string;
   password: string;
+  phoneNumber: string;
+  termAgreements: TermAgreement[];
 }
 
 export interface SignupResponse {
@@ -15,10 +48,38 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
+  id: string;
+  name?: string;
+  email?: string;
   accessToken: string;
   refreshToken: string;
   tokenType: string;
   expiresIn: number;
+}
+
+export interface FindAccountRequest {
+  phoneNumber: string;
+}
+
+export interface FindAccountResponse {
+  email: string;
+}
+
+export interface CheckEmailAddressRequest {
+  email: string;
+}
+
+export interface resetPasswordRequest {
+  token: string;
+  newPassword: string;
+}
+
+export interface SendPasswordResetLinkRequest {
+  email: string;
+}
+
+export interface VerifyPasswordLinkRequest {
+  token: string;
 }
 
 export interface AccessTokenRequest {
@@ -36,4 +97,14 @@ export interface EmailSendCodeRequest {
 
 export interface EmailVerifyCodeRequest {
   email: string;
+  code: string;
+}
+
+export interface SmsSendCodeRequest {
+  phoneNumber: string;
+}
+
+export interface SmsVerifyCodeRequest {
+  phoneNumber: string;
+  code: string;
 }

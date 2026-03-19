@@ -5,5 +5,6 @@ export * from './EntryParticipationInfo';
 export * from './EntryConfirmModal';
 
 export * from './UserConfirmModal';
+export * from './AgreeConfirmModal';
 export * from './EventConfirmModal';
 export * from './OptionConfirmModal';

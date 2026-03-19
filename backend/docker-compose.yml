@@ -12,6 +12,8 @@ services:
       - --collation-server=utf8mb4_unicode_ci
     volumes:
       - main-db-data:/var/lib/mysql
+    networks:
+      - on-race-network
 
   main-redis:
     image: redis:7-alpine
@@ -20,6 +22,71 @@ services:
       - '${MAIN_REDIS_PORT}:6379'
     volumes:
       - main-redis-data:/data
+    networks:
+      - on-race-network
+    command: redis-server --requirepass ${MAIN_REDIS_PASSWORD}
+
+  gateway:
+    build:
+      context: .
+      args:
+        SERVICE: gateway
+    container_name: on-race-gateway
+    env_file: .env
+    ports:
+      - '${GATEWAY_SERVER_PORT}:8080'
+    environment:
+      - GATEWAY_REDIS_HOST=main-redis
+      - AUTH_SERVICE_URI=http://auth:8081
+      - MAIN_SERVICE_URI=http://main:8082
+    depends_on:
+      - main-redis
+    networks:
+      - on-race-network
+    restart: always
+
+  auth:
+    build:
+      context: .
+      args:
+        SERVICE: auth
+    container_name: on-race-auth
+    env_file: .env
+    ports:
+      - '${AUTH_SERVER_PORT}:8081'
+    environment:
+      - AUTH_DB_HOST=main-mysql
+      - AUTH_REDIS_HOST=main-redis
+      - MAIN_SERVICE_URI=http://main:8082
+    depends_on:
+      - main-mysql
+      - main-redis
+    networks:
+      - on-race-network
+    restart: always
+
+  main:
+    build:
+      context: .
+      args:
+        SERVICE: main
+    container_name: on-race-main
+    env_file: .env
+    ports:
+      - '${MAIN_SERVER_PORT}:8082'
+    environment:
+      - MAIN_DB_HOST=main-mysql
+      - MAIN_REDIS_HOST=main-redis
+    depends_on:
+      - main-mysql
+      - main-redis
+    networks:
+      - on-race-network
+    restart: always
+
+networks:
+  on-race-network:
+    driver: bridge
 
 volumes:
   main-db-data:

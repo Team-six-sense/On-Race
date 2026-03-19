@@ -4,26 +4,27 @@ import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import { RiKakaoTalkFill } from 'react-icons/ri';
 import { SiNaver } from 'react-icons/si';
-import { FcGoogle } from 'react-icons/fc';
 import { Button } from '@/components/ui/button';
 import { LuMail } from 'react-icons/lu';
+import { FcGoogle } from 'react-icons/fc';
 
 export function SocialLoginButtons() {
   const router = useRouter();
 
   const handleLogin = (provider: 'google' | 'kakao' | 'naver') => {
-    signIn(provider, { callbackUrl: '/' });
+    signIn(provider, { callbackUrl: '/login/social' });
   };
   return (
     <div className="py-5 flex flex-col justify-center gap-3 w-full max-w-sm">
       {/* 구글 로그인: White/Border */}
       {/* <Button
-        rounded="none"
+        variant="outline"
+        rounded="sm"
         onClick={() => handleLogin('google')}
-        className="gap-3 bg-white text-[#3c4043] border border-gray-300 hover:bg-gray-50"
+        className="gap-3"
       >
         <FcGoogle className="w-5 h-5 flex-shrink-0" />
-        구글 로그인
+        구글로 계속하기
       </Button> */}
 
       {/* 카카오 로그인: #FEE500 */}

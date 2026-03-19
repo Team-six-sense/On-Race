@@ -68,4 +68,18 @@ public class Entry extends BaseEntity {
 		this.eventPace = eventPace;
 		this.status = EntryStatus.APPLIED;
 	}
+
+	public void reserve(EventCourse eventCourse, EventPace eventPace) {
+		this.eventCourse = eventCourse;
+		this.eventPace = eventPace;
+		this.status = EntryStatus.RESERVED;
+	}
+
+	public void confirmPayment() {
+		this.status = EntryStatus.APPLIED;
+	}
+
+	public boolean isReserved() {
+		return this.status == EntryStatus.RESERVED;
+	}
 }

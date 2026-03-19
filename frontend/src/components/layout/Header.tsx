@@ -106,7 +106,7 @@ export default function Header() {
                   )}
                   variant="text"
                   size="fit"
-                  onClick={() => signOut()}
+                  onClick={() => signOut({ callbackUrl: '/login' })}
                 >
                   로그아웃
                 </Button>
@@ -123,7 +123,7 @@ export default function Header() {
                   로그인
                 </Link>
                 <Link
-                  href="/signup/agree"
+                  href="/signup/email/agree"
                   className={cn(
                     'flex items-center transition-colors duration-500',
                     isHome ? 'hover:text-white' : 'hover:text-black',

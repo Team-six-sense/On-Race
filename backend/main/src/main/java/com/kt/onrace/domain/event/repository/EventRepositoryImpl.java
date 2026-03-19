@@ -228,6 +228,20 @@ public class EventRepositoryImpl implements EventRepositoryCustom {
 	}
 
 	@Override
+	public Optional<Event> findVisibleEvent(Long id) {
+		return Optional.ofNullable(
+			queryFactory
+				.selectFrom(event)
+				.where(
+					event.id.eq(id),
+					event.isView.isTrue(),
+					event.isDeleted.isFalse()
+				)
+				.fetchOne()
+		);
+	}
+
+	@Override
 	public Optional<Event> findEventWithCoursesAndPaces(Long id) {
 		Event foundEvent = queryFactory
 			.selectDistinct(event)

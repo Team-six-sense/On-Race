@@ -9,25 +9,12 @@ import com.kt.onrace.domain.event.entity.Event;
 import com.kt.onrace.domain.event.entity.EventImage;
 import com.kt.onrace.domain.event.entity.EventImageType;
 import com.kt.onrace.domain.event.entity.EventPace;
-import com.kt.onrace.domain.event.entity.EventRegion;
-import com.kt.onrace.domain.event.entity.EventStatus;
-import com.kt.onrace.domain.event.entity.EventAppType;
-import com.kt.onrace.domain.event.entity.EventType;
 
 import lombok.Builder;
 
 @Builder
 public record EventDetailResponse(
 	Long id,
-	String title,
-	EventType type,
-	EventAppType appType,
-	EventStatus status,
-	LocalDateTime eventAt,
-	LocalDateTime appStartAt,
-	LocalDateTime appEndAt,
-	EventRegion region,
-	String venue,
 	LocalDateTime lotteryAnnouncedAt,
 	String notice,
 	List<CourseDto> courses,
@@ -123,15 +110,6 @@ public record EventDetailResponse(
 
 		return EventDetailResponse.builder()
 			.id(event.getId())
-			.title(event.getTitle())
-			.type(event.getType())
-			.appType(event.getAppType())
-			.status(event.getStatus())
-			.eventAt(event.getEventAt())
-			.appStartAt(event.getAppStartAt())
-			.appEndAt(event.getAppEndAt())
-			.region(event.getRegion())
-			.venue(event.getVenue())
 			.lotteryAnnouncedAt(event.getLotteryAnnouncedAt())
 			.notice(event.getNotice())
 			.courses(courses)

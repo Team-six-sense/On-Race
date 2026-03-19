@@ -28,25 +28,21 @@ public record EventListResponse(
 	EventRegion region,
 	String venue,
 	List<CourseDto> courses,
-	List<ImageDto> images,
+	ImageDto thumbnailImg,
 	Long minPrice
 ) {
 
 	@Builder
 	public record CourseDto(
 		Long id,
-		String name,
-		Integer distanceMeter,
-		Long price
+		String name
 	) {
 	}
 
 	@Builder
 	public record ImageDto(
 		Long id,
-		EventImageType type,
-		String url,
-		Integer sort
+		String url
 	) {
 	}
 
@@ -55,21 +51,17 @@ public record EventListResponse(
 			.map(course -> CourseDto.builder()
 				.id(course.getId())
 				.name(course.getName())
-				.distanceMeter(course.getDistanceMeter())
-				.price(course.getPrice())
 				.build())
 			.toList();
 
-		List<ImageDto> images = event.getImages().stream()
+		ImageDto thumbnailImg = event.getImages().stream()
 			.filter(image -> image.getType() == EventImageType.THUMBNAIL)
 			.sorted(Comparator.comparingInt(EventImage::getSort))
 			.map(image -> ImageDto.builder()
 				.id(image.getId())
-				.type(image.getType())
 				.url(image.getUrl())
-				.sort(image.getSort())
 				.build())
-			.toList();
+			.findFirst().orElse(null);
 
 		Long minPrice = event.getCourses().stream()
 			.mapToLong(EventCourse::getPrice)
@@ -88,7 +80,7 @@ public record EventListResponse(
 			.region(event.getRegion())
 			.venue(event.getVenue())
 			.courses(courses)
-			.images(images)
+			.thumbnailImg(thumbnailImg)
 			.minPrice(minPrice)
 			.build();
 	}

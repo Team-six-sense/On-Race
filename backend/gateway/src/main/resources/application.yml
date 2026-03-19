@@ -8,6 +8,7 @@ spring:
     redis:
       host: ${GATEWAY_REDIS_HOST:localhost}
       port: ${GATEWAY_REDIS_PORT:6379}
+      password: ${GATEWAY_REDIS_PASSWORD}
   cloud:
     gateway:
       server:
@@ -39,6 +40,7 @@ spring:
                 - Path=/auth/**
               filters:
                 - StripPrefix=1
+                - SetRequestHeader=X-Forwarded-Prefix, /auth
                 - name: RequestRateLimiter
                   args:
                     redis-rate-limiter.replenishRate: 50
@@ -51,6 +53,7 @@ spring:
                 - Path=/main/tickets/**
               filters:
                 - StripPrefix=1
+                - SetRequestHeader=X-Forwarded-Prefix, /main
                 - name: RequestRateLimiter
                   args:
                     redis-rate-limiter.replenishRate: 10
@@ -70,12 +73,15 @@ spring:
                 - Path=/main/**
               filters:
                 - StripPrefix=1
+                - SetRequestHeader=X-Forwarded-Prefix, /main
                 - name: RequestRateLimiter
                   args:
                     redis-rate-limiter.replenishRate: 50
                     redis-rate-limiter.burstCapacity: 100
                     redis-rate-limiter.requestedTokens: 1
                     key-resolver: "#{@userOrIpKeyResolver}"
+          default-filters:
+            - AddRequestHeader=X-Gateway-Token, ${GATEWAY_INTERNAL_SECRET:onrace-super-secret-key}
 jwt:
   secret: ${JWT_SECRET}
   access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:300000}
