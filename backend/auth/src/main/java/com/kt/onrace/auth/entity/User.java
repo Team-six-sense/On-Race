@@ -1,6 +1,7 @@
 package com.kt.onrace.auth.entity;
 
 import static com.kt.onrace.auth.entity.Role.*;
+import static com.kt.onrace.auth.entity.UserStatus.*;
 
 import com.kt.onrace.common.entity.BaseEntity;
 
@@ -35,8 +36,9 @@ public class User extends BaseEntity {
 	@Column(nullable = false)
 	private Role role;
 
-	@Column(nullable = false)
-	private boolean isDeleted;
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false, columnDefinition = "VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'")
+	private UserStatus status;
 
 	private User(String email, String name, String password, String phoneNumber) {
 		this.email = email;
@@ -44,15 +46,23 @@ public class User extends BaseEntity {
 		this.password = password;
 		this.phoneNumber = phoneNumber;
 		this.role = USER;
-		this.isDeleted = false;
+		this.status = ACTIVE;
 	}
 
 	public static User createUser(String email, String name, String password, String phoneNumber) {
 		return new User(email, name, password, phoneNumber);
 	}
 
-	public void markDeleted() {
-		this.isDeleted = true;
+	public void deactivate() {
+		this.status = INACTIVE;
+	}
+
+	public boolean isActive() {
+		return this.status == ACTIVE;
+	}
+
+	public boolean isInactive() {
+		return this.status == INACTIVE;
 	}
 
 	public void changePassword(String encodedPassword) {
