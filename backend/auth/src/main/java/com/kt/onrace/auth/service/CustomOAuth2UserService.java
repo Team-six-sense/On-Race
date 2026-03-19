@@ -14,6 +14,7 @@ import com.kt.onrace.auth.common.oauth2.OAuth2UserInfoFactory;
 import com.kt.onrace.auth.common.oauth2.OAuth2UserPrincipal;
 import com.kt.onrace.auth.entity.AuthProvider;
 import com.kt.onrace.auth.entity.User;
+import com.kt.onrace.auth.entity.UserStatus;
 import com.kt.onrace.auth.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -44,7 +45,7 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
 	private User registerOAuthUser(OAuth2UserInfo userInfo, AuthProvider provider) {
 		// 동일 이메일로 LOCAL 계정이 이미 존재하는 경우 소셜 로그인 차단
 		if (userInfo.getEmail() != null) {
-			userRepository.findByEmailAndIsDeletedFalse(userInfo.getEmail()).ifPresent(existing -> {
+			userRepository.findByEmailAndStatus(userInfo.getEmail(), UserStatus.ACTIVE).ifPresent(existing -> {
 				throw new OAuth2AuthenticationException(
 						new OAuth2Error("email_already_registered",
 								"이미 일반 회원가입으로 등록된 이메일입니다. 이메일/비밀번호로 로그인해 주세요.", null));
