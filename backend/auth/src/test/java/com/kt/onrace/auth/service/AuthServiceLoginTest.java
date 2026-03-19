@@ -24,6 +24,7 @@ import com.kt.onrace.auth.dto.LoginResponse;
 import com.kt.onrace.auth.dto.TokenRefreshRequest;
 import com.kt.onrace.auth.dto.TokenRefreshResponse;
 import com.kt.onrace.auth.entity.User;
+import com.kt.onrace.auth.entity.UserStatus;
 import com.kt.onrace.auth.repository.TermUserRepository;
 import com.kt.onrace.auth.repository.TermVersionRepository;
 import com.kt.onrace.auth.repository.UserRepository;
@@ -109,7 +110,7 @@ class AuthServiceLoginTest {
 		setupLoginFailCounter();
 		LoginRequest request = new LoginRequest("test@test.com", "password123!");
 
-		given(userRepository.findByEmailAndIsDeletedFalse("test@test.com")).willReturn(Optional.of(testUser));
+		given(userRepository.findByEmailAndStatus("test@test.com", UserStatus.ACTIVE)).willReturn(Optional.of(testUser));
 		given(passwordEncoder.matches("password123!", "encodedPw")).willReturn(true);
 		given(jwtTokenProvider.generateAccessToken(1L, "test@test.com", "USER")).willReturn("access-token");
 		given(jwtTokenProvider.generateRefreshToken(1L)).willReturn("refresh-token");
@@ -135,7 +136,7 @@ class AuthServiceLoginTest {
 		setupLoginFailCounter();
 		LoginRequest request = new LoginRequest("unknown@test.com", "password123!");
 
-		given(userRepository.findByEmailAndIsDeletedFalse("unknown@test.com")).willReturn(Optional.empty());
+		given(userRepository.findByEmailAndStatus("unknown@test.com", UserStatus.ACTIVE)).willReturn(Optional.empty());
 		given(rAtomicLong.incrementAndGet()).willReturn(1L);
 
 		// when & then
@@ -152,7 +153,7 @@ class AuthServiceLoginTest {
 		setupLoginFailCounter();
 		LoginRequest request = new LoginRequest("test@test.com", "wrongPassword!");
 
-		given(userRepository.findByEmailAndIsDeletedFalse("test@test.com")).willReturn(Optional.of(testUser));
+		given(userRepository.findByEmailAndStatus("test@test.com", UserStatus.ACTIVE)).willReturn(Optional.of(testUser));
 		given(passwordEncoder.matches("wrongPassword!", "encodedPw")).willReturn(false);
 		given(rAtomicLong.incrementAndGet()).willReturn(1L);
 
