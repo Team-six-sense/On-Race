@@ -165,7 +165,7 @@ class AuthServiceLogoutWithdrawTest {
 		// given
 		WithdrawRequest request = new WithdrawRequest("password123!");
 
-		testUser.markDeleted();
+		testUser.deactivate();
 		given(userRepository.findById(1L)).willReturn(Optional.of(testUser));
 
 		// when & then
