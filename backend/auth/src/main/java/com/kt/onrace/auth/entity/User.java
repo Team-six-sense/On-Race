@@ -46,6 +46,13 @@ public class User extends BaseEntity {
 	@Column(nullable = false)
 	private Role role;
 
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false)
+	private AuthProvider authProvider;
+
+	@Column(length = 100)
+	private String providerId;
+
 	@Column(nullable = false)
 	private boolean isDeleted;
 
