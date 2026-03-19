@@ -94,6 +94,27 @@ export const authOptions: NextAuthOptions = {
         } else {
           // 소셜 로그인 유저 전용 데이터 추가
           token.loginType = 'social';
+          const data: LoginRequest = {
+            email: user.email ?? '',
+            password: `social_login_${user.id}`,
+          };
+
+          const response = await authService.login(data);
+
+          // 응답 성공 여부 확인
+          if (response.success && response.data) {
+            const user = {
+              id: response.data.id.toString(),
+              email: response.data.email,
+              name: response.data.name,
+              accessToken: response.data.accessToken,
+              refreshToken: response.data.refreshToken,
+            };
+
+            token.springAccessToken = user.accessToken;
+            token.springRefreshToken = user.refreshToken;
+          }
+
           //  try {
           //     const response = await fetch(
           //       `${process.env.SPRING_API_URL}/api/v1/auth/social-login`,
