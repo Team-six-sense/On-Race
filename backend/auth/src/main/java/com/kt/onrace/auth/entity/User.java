@@ -1,6 +1,7 @@
 package com.kt.onrace.auth.entity;
 
 import static com.kt.onrace.auth.entity.Role.*;
+import static com.kt.onrace.auth.entity.UserStatus.*;
 
 import com.kt.onrace.common.entity.BaseEntity;
 
@@ -47,14 +48,15 @@ public class User extends BaseEntity {
 	private Role role;
 
 	@Enumerated(EnumType.STRING)
+	@Column(nullable = false, columnDefinition = "VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'")
+	private UserStatus status;
+
+	@Enumerated(EnumType.STRING)
 	@Column(nullable = false)
 	private AuthProvider authProvider;
 
 	@Column(length = 100)
 	private String providerId;
-
-	@Column(nullable = false)
-	private boolean isDeleted;
 
 	private User(String email, String name, String password, String phoneNumber) {
 		this.email = email;
@@ -63,7 +65,7 @@ public class User extends BaseEntity {
 		this.phoneNumber = phoneNumber;
 		this.authProvider = AuthProvider.LOCAL;
 		this.role = USER;
-		this.isDeleted = false;
+		this.status = ACTIVE;
 	}
 
 	private User(String email, String name, AuthProvider authProvider, String providerId) {
@@ -72,7 +74,7 @@ public class User extends BaseEntity {
 		this.authProvider = authProvider;
 		this.providerId = providerId;
 		this.role = USER;
-		this.isDeleted = false;
+		this.status = ACTIVE;
 	}
 
 	public static User createUser(String email, String name, String password, String phoneNumber) {
@@ -83,8 +85,16 @@ public class User extends BaseEntity {
 		return new User(email, name, authProvider, providerId);
 	}
 
-	public void markDeleted() {
-		this.isDeleted = true;
+	public void deactivate() {
+		this.status = INACTIVE;
+	}
+
+	public boolean isActive() {
+		return this.status == ACTIVE;
+	}
+
+	public boolean isInactive() {
+		return this.status == INACTIVE;
 	}
 
 	public void changePassword(String encodedPassword) {
