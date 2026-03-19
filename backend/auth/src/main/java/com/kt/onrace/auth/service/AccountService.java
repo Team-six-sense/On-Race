@@ -1,9 +1,12 @@
 package com.kt.onrace.auth.service;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.kt.onrace.auth.dto.AccountMeResponse;
+import com.kt.onrace.auth.entity.AuthProvider;
 import com.kt.onrace.auth.entity.User;
 import com.kt.onrace.auth.repository.UserRepository;
 import com.kt.onrace.common.exception.BusinessErrorCode;
@@ -16,6 +19,11 @@ import lombok.RequiredArgsConstructor;
 public class AccountService {
 
 	private final UserRepository userRepository;
+	private final PasswordEncoder passwordEncoder;
+	private final PasswordResetService passwordResetService;
+
+	@Value("${app.password-reset.base-url}")
+	private String resetBaseUrl;
 
 	public AccountMeResponse getMyInfo(Long userId) {
 		User user = findActiveUser(userId);
@@ -32,6 +40,20 @@ public class AccountService {
 	public void updateName(Long userId, String name) {
 		User user = findActiveUser(userId);
 		user.changeName(name);
+	}
+
+	public void requestPasswordChange(Long userId, String currentPassword) {
+		User user = findActiveUser(userId);
+
+		if (user.getAuthProvider() != AuthProvider.LOCAL) {
+			throw new BusinessException(BusinessErrorCode.AUTH_FORBIDDEN_USER);
+		}
+
+		if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+			throw new BusinessException(BusinessErrorCode.AUTH_INVALID_PASSWORD);
+		}
+
+		passwordResetService.requestPasswordReset(user.getEmail(), resetBaseUrl);
 	}
 
 	private User findActiveUser(Long userId) {
