@@ -16,7 +16,7 @@ const inputVariants = cva(
       },
       inputSize: {
         default: 'h-10 text-sm',
-        sm: 'h-8 px-2 text-xs',
+        sm: 'h-6 px-2 text-xs',
         lg: 'h-12 px-4 text-base',
       },
     },
@@ -33,10 +33,22 @@ export interface InputProps
     VariantProps<typeof inputVariants> {
   label?: string;
   helperText?: string;
+  rightElement?: React.ReactNode;
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, variant, inputSize, label, helperText, ...props }, ref) => {
+  (
+    {
+      className,
+      variant,
+      inputSize,
+      label,
+      helperText,
+      rightElement,
+      ...props
+    },
+    ref,
+  ) => {
     return (
       <div className="w-full space-y-1.5">
         {label && (
@@ -44,11 +56,25 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             {label}
           </label>
         )}
-        <input
-          className={cn(inputVariants({ variant, inputSize, className }))}
-          ref={ref}
-          {...props}
-        />
+
+        {/* input과 버튼을 감싸는 컨테이너 추가 */}
+        <div className="relative flex items-center">
+          <input
+            className={cn(
+              inputVariants({ variant, inputSize, className }),
+              // 우측 요소가 있을 경우 텍스트가 겹치지 않게 오른쪽 패딩 추가
+              rightElement && 'pr-12',
+            )}
+            ref={ref}
+            {...props}
+          />
+          {rightElement && (
+            <div className="absolute right-3 inset-y-0 flex items-center">
+              {rightElement}
+            </div>
+          )}
+        </div>
+
         {helperText && (
           <p
             className={cn(

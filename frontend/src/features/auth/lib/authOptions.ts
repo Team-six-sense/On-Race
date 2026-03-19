@@ -1,17 +1,56 @@
 import { NextAuthOptions } from 'next-auth';
+import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
 import NaverProvider from 'next-auth/providers/naver';
 import KakaoProvider from 'next-auth/providers/kakao';
+import { authService } from '../services';
+import { LoginRequest } from '../types';
 
 export const authOptions: NextAuthOptions = {
   providers: [
+    CredentialsProvider({
+      name: 'Email Login',
+      credentials: {
+        email: { label: 'Email', type: 'text' },
+        password: { label: 'Password', type: 'password' },
+      },
+      async authorize(credentials) {
+        try {
+          const data: LoginRequest = {
+            email: credentials?.email?.toString() ?? '',
+            password: credentials?.password?.toString() ?? '',
+          };
+
+          // 백엔드 API 호출
+          const response = await authService.login(data);
+
+          // 응답 성공 여부 확인
+          if (response.success && response.data) {
+            const user = {
+              id: response.data.id.toString(),
+              email: response.data.email || credentials?.email,
+              name: response.data.name || credentials?.email,
+              accessToken: response.data.accessToken,
+              refreshToken: response.data.refreshToken,
+            };
+
+            return user;
+          }
+
+          return null;
+        } catch (error: any) {
+          console.error('Login Authorize Error:', error);
+
+          return null;
+        }
+      },
+    }),
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
       authorization: {
         params: {
-          prompt: 'select_account', // 매번 계정 선택창을 띄움
-          // access_type: "offline",   // (선택사항) 리프레시 토큰이 필요할 경우
+          prompt: 'select_account',
           response_type: 'code',
         },
       },
@@ -21,14 +60,13 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.NAVER_CLIENT_SECRET!,
       authorization: {
         params: {
-          auth_type: 'reauthenticate', // 재인증을 강제하여 계정 선택/로그인창 유도
+          auth_type: 'reauthenticate',
         },
       },
-
       profile(profile) {
         return {
           id: profile.response.id,
-          name: profile.response.name || profile.response.nickname, // 이름이 없으면 별명이라도 가져옴
+          name: profile.response.name || profile.response.nickname,
           email: profile.response.email,
           image: profile.response.profile_image,
         };
@@ -39,26 +77,59 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.KAKAO_CLIENT_SECRET!,
       authorization: {
         params: {
-          // 'login': 매번 카카오 계정 로그인 창(ID/PW 입력)을 띄움
-          // 'select_account': 이미 로그인된 계정 리스트 중 선택하거나 다른 계정으로 로그인 유도
           prompt: 'login',
         },
       },
     }),
   ],
-  pages: {
-    signIn: '/login', // 커스텀 로그인 페이지 경로
-  },
   callbacks: {
-    async jwt({ token, account, profile }) {
-      // 로그인 시점에 실행: 유저 정보를 토큰에 저장
-      if (account && profile) {
-        token.accessToken = account.access_token;
+    async jwt({ token, account, user }) {
+      // 일반 로그인 (Credentials) 시 실행
+      if (account && user) {
+        if (account.provider === 'credentials') {
+          // 로컬 로그인 유저 전용 데이터 추가
+          token.loginType = 'local';
+          token.springAccessToken = user.accessToken;
+          token.springRefreshToken = user.refreshToken;
+        } else {
+          // 소셜 로그인 유저 전용 데이터 추가
+          token.loginType = 'social';
+          //  try {
+          //     const response = await fetch(
+          //       `${process.env.SPRING_API_URL}/api/v1/auth/social-login`,
+          //       {
+          //         method: 'POST',
+          //         headers: { 'Content-Type': 'application/json' },
+          //         body: JSON.stringify({
+          //           type: 'social',
+          //           provider: account.provider,
+          //           accessToken: account.access_token,
+          //           email: user.email,
+          //           name: user.name,
+          //         }),
+          //       },
+          //     );
+
+          //     const data = await response.json();
+          //     if (response.ok) {
+          //       token.springAccessToken = data.accessToken;
+          //     }
+          //   } catch (error) {
+          //     console.error('Social Login Sync Error:', error);
+          //   }
+        }
       }
+
       return token;
     },
+
     async session({ session, token }) {
-      // 클라이언트에서 세션을 사용할 때 실행
+      // 공통으로 Spring 토큰을 세션에 주입
+
+      session.accessToken = token.springAccessToken;
+      session.refreshToken = token.springRefreshToken;
+
+      console.log('session', session);
       return session;
     },
   },

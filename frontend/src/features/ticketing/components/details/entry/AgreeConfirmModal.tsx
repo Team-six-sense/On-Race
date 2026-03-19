@@ -17,13 +17,13 @@ export const AgreeConfirmModal = ({
   onClose,
   onConfirm,
 }: AgreementModalProps) => {
-  // 1. 체크박스 상태 관리
+  // 체크박스 상태 관리
   const [agreements, setAgreements] = useState({
     terms: false,
     privacy: false,
   });
 
-  // 2. 전체 동의 체크 여부 확인
+  // 전체 동의 체크 여부 확인
   const isAllChecked = agreements.terms && agreements.privacy;
 
   // 체크박스 핸들러

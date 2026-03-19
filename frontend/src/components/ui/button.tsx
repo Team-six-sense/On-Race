@@ -19,7 +19,7 @@ export const buttonVariants = cva(
           'bg-cta-secondary text-black hover:bg-status-hover-secondary active:bg-status-press-secondary active:scale-95',
         outline:
           'bg-cta-primary2 text-black hover:bg-status-hover2 active:bg-status-press2 active:scale-95' +
-          ' border border-black',
+          ' border border-gray-300',
         ghost:
           'bg-transparent text-black hover:bg-status-hover2 active:bg-status-press2 active:scale-95',
         link: 'bg-transparent text-black underline underline-offset-4 hover:text-status-hover1 active:text-status-press1 active:scale-95',
@@ -30,6 +30,7 @@ export const buttonVariants = cva(
       },
       size: {
         default: 'h-10 py-2 px-4',
+        xs: 'h-7 px-2',
         sm: 'h-9 px-3',
         lg: 'h-12 px-8 text-base',
         iconSm: 'h-10 w-10 [&_svg]:w-5 [&_svg]:h-5',
