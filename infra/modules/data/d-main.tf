@@ -158,7 +158,7 @@ resource "aws_db_proxy_default_target_group" "this" {
 resource "aws_db_proxy_target" "this" {
   db_proxy_name          = aws_db_proxy.this.name
   target_group_name      = aws_db_proxy_default_target_group.this.name
-  db_instance_identifier = aws_db_instance.this.id
+  db_instance_identifier = aws_db_instance.this.identifier
 }
 
 # 6. RDS Proxy용 IAM 역할 (Trust Policy)
