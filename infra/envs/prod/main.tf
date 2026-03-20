@@ -27,7 +27,7 @@ module "eks" {
   
   instance_types = ["m5.large"]
   min_size       = 2
-  max_size       = 5  
+  max_size       = 15  
   
   depends_on = [module.vpc] 
 }
@@ -298,7 +298,7 @@ resource "kubernetes_manifest" "on_race_tps_scaler" {
         name = "on-race-api"
       }
       minReplicaCount = 2
-      maxReplicaCount = 100
+      maxReplicaCount = 300
       
       advanced = {
         restoreToOriginalReplicaCount = true
@@ -313,7 +313,18 @@ resource "kubernetes_manifest" "on_race_tps_scaler" {
       }
 
       triggers = [
-        # [A] 실제 운영용: Prometheus TPS 기반
+        # [a] 예약형 스케일링 (티켓팅 1시간 전인 오전 9시부터 100대 미리 확보)
+        {
+          type = "cron"
+          metadata = {
+            timezone = "Asia/Seoul"
+            start    = "00 09 * * *" 
+            end      = "00 11 * * *"
+            desiredReplicas = "100"
+          }
+        },
+
+        # [b] 실제 운영용: Prometheus TPS 기반
         {
           type = "prometheus"
           metadata = {
@@ -328,7 +339,7 @@ resource "kubernetes_manifest" "on_race_tps_scaler" {
         }
         
         /*
-        # [B] 테스트용: CPU 사용률 기반 (현재 인프라 검증용)
+        # [c] 테스트용: CPU 사용률 기반 (현재 인프라 검증용)
         {
           type = "cpu"
           metadata = {
@@ -363,12 +374,18 @@ resource "helm_release" "prometheus" {
 
   set {
     name  = "server.persistentVolume.enabled"
-    value = "false" # 테스트 환경이므로 우선 저장소 비활성화 (필요시 true로 변경)
+    value = "true" # 테스트 환경이므로 우선 저장소 비활성화 (필요시 true로 변경)
   }
 
   set {
     name  = "alertmanager.enabled"
     value = "false" # 불필요한 리소스 방지
+  }
+
+  # gp3 스토리지를 쓰도록 추가 설정 (12번 항목의 gp3_default 참조)
+  set {
+    name  = "server.persistentVolume.storageClass"
+    value = "gp3"
   }
 
   # EKS 클러스터가 준비된 후 설치
