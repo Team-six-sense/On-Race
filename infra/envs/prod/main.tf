@@ -471,12 +471,22 @@ resource "kubernetes_manifest" "karpenter_node_class" {
       name = "default"
     }
     spec = {
-      amiFamily = "AL2023"
-      # [중요] v1에서는 spec 바로 아래 role이 위치합니다.
+      amiFamily = "AL2023" # Amazon Linux 2023 사용
+      
+      # 어떤 AMI를 쓸지 정의합니다. 
+      # alias를 사용하면 최신 EKS 최적화 이미지를 자동으로 찾아줍니다.
+      amiSelectorTerms = [
+        {
+          alias = "al2023@latest" 
+        }
+      ]
+
       role = module.karpenter.node_iam_role_name 
+      
       subnetSelectorTerms = [{
         tags = { "karpenter.sh/discovery" = module.eks.cluster_name }
       }]
+      
       securityGroupSelectorTerms = [{
         tags = { "karpenter.sh/discovery" = module.eks.cluster_name }
       }]
