@@ -70,7 +70,7 @@ resource "aws_secretsmanager_secret_version" "db_password" {
   secret_id     = aws_secretsmanager_secret.db_password.id
   secret_string = jsonencode({
     username = "admin"
-    password = "YourComplexPassword123!" # 실제로는 변수 처리 권장
+    password = "ktcloudteam6!" # 실제로는 변수 처리 권장
     engine   = "mysql"
     host     = aws_db_instance.this.address
     port     = 3306
@@ -97,6 +97,10 @@ resource "aws_db_instance" "this" {
   engine_version    = "8.0"
   instance_class    = "db.m5.large" # 파드 300대 대응을 위해 사양 상향
   allocated_storage = 20
+   
+  username          = "admin"
+  password          = "ktcloudteam6!" # Secrets Manager와 동일하게 설정
+  db_name           = "onrace"                  # 초기 생성할 DB 이름 (옵션)
   
   db_subnet_group_name   = aws_db_subnet_group.this.name
   vpc_security_group_ids = [aws_security_group.rds.id]
