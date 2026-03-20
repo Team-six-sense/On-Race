@@ -127,31 +127,58 @@ resource "aws_route_table_association" "database" {
   route_table_id = aws_route_table.database.id
 }
 
-# 10. v-main.tf 하단에 추가
-resource "aws_vpc_endpoint" "sqs" {
+# 10. VPC Interface Endpoints (비용 절감 핵심 4종 세트)
+locals {
+  # 비용과 성능에 가장 큰 영향을 미치는 서비스들입니다.
+  interface_services = ["sqs", "sts", "logs", "monitoring"]
+}
+
+resource "aws_vpc_endpoint" "interface" {
+  for_each = toset(local.services)
+
   vpc_id              = aws_vpc.this.id
-  service_name        = "com.amazonaws.${data.aws_region.current.name}.sqs"
+  service_name        = "com.amazonaws.${data.aws_region.current.name}.${each.value}"
   vpc_endpoint_type   = "Interface"
+  
+  # 프라이빗 서브넷에 배치하여 파드들이 내부망으로 통신하게 함
   subnet_ids          = aws_subnet.private[*].id
   security_group_ids  = [aws_security_group.vpc_endpoint.id]
+  
+  # [필수] 앱 코드 수정 없이 자동으로 엔드포인트를 사용하게 함
   private_dns_enabled = true
+
+  tags = {
+    Name = "${var.project_name}-${each.value}-endpoint"
+  }
+}
+
+# S3는 'Gateway' 타입이므로 따로 생성 (이건 완전 무료입니다!)
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id            = aws_vpc.this.id
+  service_name      = "com.amazonaws.${data.aws_region.current.name}.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = concat(aws_route_table.private[*].id, [aws_route_table.database.id])
+
+  tags = {
+    Name = "${var.project_name}-s3-endpoint"
+  }
 }
 
 # 리전 정보를 가져오기 위한 데이터 소스
 data "aws_region" "current" {}
 
-# VPC Endpoint 전용 보안 그룹 (EKS 노드에서 443 포트 접근 허용)
+# VPC Endpoint 전용 보안 그룹 (기존 코드 유지 및 최적화)
 resource "aws_security_group" "vpc_endpoint" {
   name        = "${var.project_name}-${var.environment}-vpce-sg"
   description = "Security group for VPC Endpoints"
   vpc_id      = aws_vpc.this.id
 
   ingress {
-    from_port       = 443
-    to_port         = 443
-    protocol        = "tcp"
-    # EKS 노드 보안 그룹을 직접 참조하거나 프라이빗 서브넷 대역을 허용합니다.
-    cidr_blocks     = [var.vpc_cidr] 
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    # VPC 내부의 모든 통신 허용 (EKS 노드 포함)
+    cidr_blocks = [var.vpc_cidr] 
   }
 
   egress {

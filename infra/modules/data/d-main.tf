@@ -64,6 +64,7 @@ resource "aws_elasticache_replication_group" "this" {
 # 1. DB 비밀번호 관리 (Secrets Manager)
 resource "aws_secretsmanager_secret" "db_password" {
   name = "${var.project_name}-db-password-${var.environment}"
+  recovery_window_in_days = 0
 }
 
 resource "aws_secretsmanager_secret_version" "db_password" {
@@ -136,6 +137,7 @@ resource "aws_db_proxy" "this" {
   role_arn               = aws_iam_role.rds_proxy_role.arn
   vpc_security_group_ids = [aws_security_group.rds_proxy.id]
   vpc_subnet_ids         = var.database_subnets
+  debug_logging          = true
 
   auth {
     auth_scheme = "SECRETS"

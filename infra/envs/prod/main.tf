@@ -340,16 +340,19 @@ resource "kubernetes_manifest" "on_race_tps_scaler" {
           }
         }
         
-        /*
-        # [c] 테스트용: CPU 사용률 기반 (현재 인프라 검증용)
+        # [c] 대기열 적체 기반: AWS SQS (새로 추가)
         {
-          type = "cpu"
+          type = "aws-sqs-queue"
           metadata = {
-            type  = "Utilization"
-            value = "10" 
+            # 변수 정의가 필요합니다 (예: var.sqs_url)
+            queueURL    = var.sqs_url 
+            awsRegion   = "ap-northeast-2"
+            # queueLength: 큐에 5개 쌓일 때마다 파드 1개 추가 계산
+            queueLength = "5" 
+            # KEDA Operator의 IAM Role(IRSA)을 사용하여 권한 획득
+            identityOwner = "operator" 
           }
         }
-        */
       ]
     }
   }
