@@ -129,11 +129,11 @@ resource "aws_route_table_association" "database" {
 
 # 10. VPC Interface Endpoints (비용 절감 핵심 4종 세트)
 locals {
-  # 비용과 성능에 가장 큰 영향을 미치는 서비스들입니다.
-  interface_services = ["sqs", "sts", "logs", "monitoring"]
+  services = ["sqs", "sts", "logs", "monitoring"]
 }
 
 resource "aws_vpc_endpoint" "interface" {
+  # 이제 local.services가 정상적으로 인식됩니다.
   for_each = toset(local.services)
 
   vpc_id              = aws_vpc.this.id
