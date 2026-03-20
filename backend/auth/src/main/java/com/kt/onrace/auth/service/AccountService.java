@@ -1,10 +1,10 @@
 package com.kt.onrace.auth.service;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.kt.onrace.auth.config.AppProperties;
 import com.kt.onrace.auth.dto.AccountMeResponse;
 import com.kt.onrace.auth.entity.AuthProvider;
 import com.kt.onrace.auth.entity.User;
@@ -18,12 +18,10 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AccountService {
 
+	private final AppProperties appProperties;
 	private final UserRepository userRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final PasswordResetService passwordResetService;
-
-	@Value("${app.password-reset.base-url}")
-	private String resetBaseUrl;
 
 	public AccountMeResponse getMyInfo(Long userId) {
 		User user = findActiveUser(userId);
@@ -53,7 +51,7 @@ public class AccountService {
 			throw new BusinessException(BusinessErrorCode.AUTH_INVALID_PASSWORD);
 		}
 
-		passwordResetService.requestPasswordReset(user.getEmail(), resetBaseUrl);
+		passwordResetService.requestPasswordReset(user.getEmail(), appProperties.getPasswordReset().getBaseUrl());
 	}
 
 	private User findActiveUser(Long userId) {
