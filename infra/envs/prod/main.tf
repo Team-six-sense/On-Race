@@ -285,6 +285,7 @@ resource "helm_release" "keda" {
 
 
 # 16. KEDA ScaledObject: Prometheus 메트릭 기반 지능형 스케일링
+# 16. KEDA ScaledObject: 하이브리드 지능형 스케일링 (Cron + Prometheus + SQS)
 resource "kubernetes_manifest" "on_race_tps_scaler" {
   manifest = {
     apiVersion = "keda.sh/v1alpha1"
@@ -313,20 +314,18 @@ resource "kubernetes_manifest" "on_race_tps_scaler" {
       }
 
       triggers = [
-        # [a] 예약형 스케일링 (티켓팅 1시간 전인 오전 9시부터 100대 미리 확보)
+        # [a] 예약형 스케일링: 티켓팅 오픈 전 100대 예열
         {
           type = "cron"
           metadata = {
-            timezone = "Asia/Seoul"
+            timezone        = "Asia/Seoul"
             start           = "05 21 * * *" 
             end             = "10 21 * * *"
-            /*start    = "00 09 * * *" 
-            end      = "00 11 * * *"*/
             desiredReplicas = "100"
           }
         },
 
-        # [b] 실제 운영용: Prometheus TPS 기반
+        # [b] 실시간 유입 기반: Prometheus TPS
         {
           type = "prometheus"
           metadata = {
@@ -338,18 +337,16 @@ resource "kubernetes_manifest" "on_race_tps_scaler" {
             EOT
             , "\r", "")
           }
-        }
-        
-        # [c] 대기열 적체 기반: AWS SQS (새로 추가)
+        }, # <--- 콤마 추가됨 (해결 완료!)
+
+        # [c] 대기열 적체 기반: AWS SQS
         {
           type = "aws-sqs-queue"
           metadata = {
-            # 변수 정의가 필요합니다 (예: var.sqs_url)
-            queueURL    = var.sqs_url 
-            awsRegion   = "ap-northeast-2"
-            # queueLength: 큐에 5개 쌓일 때마다 파드 1개 추가 계산
-            queueLength = "5" 
-            # KEDA Operator의 IAM Role(IRSA)을 사용하여 권한 획득
+            # [수정] var.sqs_url 대신 모듈의 출력값을 직접 참조하여 안정성 확보
+            queueURL      = module.queue.queue_url 
+            awsRegion     = "ap-northeast-2"
+            queueLength   = "5" 
             identityOwner = "operator" 
           }
         }
@@ -357,14 +354,13 @@ resource "kubernetes_manifest" "on_race_tps_scaler" {
     }
   }
 
-  # [수정] Deployment가 먼저 생성되어야 KEDA가 CPU Request 존재 여부를 검사할 수 있습니다.
+  # 의존성 관리: KEDA, 네임스페이스, 디플로이먼트가 모두 준비된 후 실행
   depends_on = [
     helm_release.keda, 
     kubernetes_namespace_v1.app,
-    kubernetes_deployment_v1.on_race_api # 이 부분 추가
+    kubernetes_deployment_v1.on_race_api
   ]
 }
-
 
 # 17. Prometheus Helm 배포 (KEDA 메트릭 공급용)
 resource "helm_release" "prometheus" {
