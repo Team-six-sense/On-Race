@@ -472,14 +472,14 @@ resource "kubernetes_manifest" "karpenter_node_class" {
     }
     spec = {
       amiFamily = "AL2023"
-      # EKS 모듈에서 설정한 태그로 서브넷과 보안그룹을 찾습니다.
+      # [중요] v1에서는 spec 바로 아래 role이 위치합니다.
+      role = module.karpenter.node_iam_role_name 
       subnetSelectorTerms = [{
         tags = { "karpenter.sh/discovery" = module.eks.cluster_name }
       }]
       securityGroupSelectorTerms = [{
         tags = { "karpenter.sh/discovery" = module.eks.cluster_name }
       }]
-      role = module.karpenter.node_iam_role_name # Karpenter용 노드 권한
     }
   }
   depends_on = [helm_release.karpenter]
@@ -501,15 +501,15 @@ resource "kubernetes_manifest" "karpenter_node_pool" {
             name  = "default"
           }
           requirements = [
-            { key = "karpenter.sh/capacity-type", operator = "In", values = ["spot", "on-demand"] }, # 비용 절감!
+            { key = "karpenter.sh/capacity-type", operator = "In", values = ["spot", "on-demand"] },
             { key = "k8s.amazonaws.com/instance-category", operator = "In", values = ["c", "m", "r"] },
             { key = "kubernetes.io/arch", operator = "In", values = ["amd64"] }
           ]
         }
       }
       disruption = {
-        consolidationPolicy = "WhenUnderutilized" # 안 쓰는 노드는 바로 반납 (비용 절감)
-        expireAfter        = "720h"
+        # [수정] 에러가 발생하는 expireAfter를 제거했습니다. (기본값 720h 자동 적용)
+        consolidationPolicy = "WhenUnderutilized" 
       }
     }
   }
