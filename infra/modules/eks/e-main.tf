@@ -24,8 +24,13 @@ resource "aws_eks_cluster" "this" {
   role_arn = aws_iam_role.cluster.arn
   version  = "1.30"
 
+  # 감사 로그 활성화
+  enabled_cluster_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+
   vpc_config {
     subnet_ids = var.subnet_ids
+    # [추가] 보안 강화: 특정 IP만 접근 허용 (변수 처리 권장)
+    # public_access_cidrs = [var.my_ip]
   }
 
   # Access Entry API 활성화 (기존 aws-auth와 병행 사용)

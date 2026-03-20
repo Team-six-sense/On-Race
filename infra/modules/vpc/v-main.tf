@@ -126,3 +126,40 @@ resource "aws_route_table_association" "database" {
   subnet_id      = aws_subnet.database[count.index].id
   route_table_id = aws_route_table.database.id
 }
+
+# 10. v-main.tf 하단에 추가
+resource "aws_vpc_endpoint" "sqs" {
+  vpc_id              = aws_vpc.this.id
+  service_name        = "com.amazonaws.${data.aws_region.current.name}.sqs"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = aws_subnet.private[*].id
+  security_group_ids  = [aws_security_group.vpc_endpoint.id]
+  private_dns_enabled = true
+}
+
+# 리전 정보를 가져오기 위한 데이터 소스
+data "aws_region" "current" {}
+
+# VPC Endpoint 전용 보안 그룹 (EKS 노드에서 443 포트 접근 허용)
+resource "aws_security_group" "vpc_endpoint" {
+  name        = "${var.project_name}-${var.environment}-vpce-sg"
+  description = "Security group for VPC Endpoints"
+  vpc_id      = aws_vpc.this.id
+
+  ingress {
+    from_port       = 443
+    to_port         = 443
+    protocol        = "tcp"
+    # EKS 노드 보안 그룹을 직접 참조하거나 프라이빗 서브넷 대역을 허용합니다.
+    cidr_blocks     = [var.vpc_cidr] 
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = { Name = "${var.project_name}-vpce-sg" }
+}

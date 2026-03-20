@@ -60,3 +60,137 @@ resource "aws_elasticache_replication_group" "this" {
   # 성능 및 데이터 정책
   apply_immediately          = true
 }
+
+# 1. DB 비밀번호 관리 (Secrets Manager)
+resource "aws_secretsmanager_secret" "db_password" {
+  name = "${var.project_name}-db-password-${var.environment}"
+}
+
+resource "aws_secretsmanager_secret_version" "db_password" {
+  secret_id     = aws_secretsmanager_secret.db_password.id
+  secret_string = jsonencode({
+    username = "admin"
+    password = "YourComplexPassword123!" # 실제로는 변수 처리 권장
+    engine   = "mysql"
+    host     = aws_db_instance.this.address
+    port     = 3306
+  })
+}
+
+# 2. RDS 보안 그룹 (Proxy만 접근 허용)
+resource "aws_security_group" "rds" {
+  name   = "${var.project_name}-rds-sg"
+  vpc_id = var.vpc_id
+
+  ingress {
+    from_port       = 3306
+    to_port         = 3306
+    protocol        = "tcp"
+    security_groups = [aws_security_group.rds_proxy.id] # Proxy 통해서만 접속
+  }
+}
+
+# 3. RDS 인스턴스 (Main DB)
+resource "aws_db_instance" "this" {
+  identifier        = "${var.project_name}-db"
+  engine            = "mysql"
+  engine_version    = "8.0"
+  instance_class    = "db.m5.large" # 파드 300대 대응을 위해 사양 상향
+  allocated_storage = 20
+  
+  db_subnet_group_name   = aws_db_subnet_group.this.name
+  vpc_security_group_ids = [aws_security_group.rds.id]
+  
+  skip_final_snapshot = true
+  multi_az            = true # 가용성 확보
+}
+
+resource "aws_db_subnet_group" "this" {
+  name       = "${var.project_name}-db-subnet-group"
+  subnet_ids = var.database_subnets
+}
+
+# 4. RDS Proxy 보안 그룹 (EKS 노드에서 접근 허용)
+resource "aws_security_group" "rds_proxy" {
+  name   = "${var.project_name}-rds-proxy-sg"
+  vpc_id = var.vpc_id
+
+  ingress {
+    from_port       = 3306
+    to_port         = 3306
+    protocol        = "tcp"
+    security_groups = [var.eks_node_security_group_id] # 파드들이 Proxy로 접속
+  }
+}
+
+# 5. RDS Proxy (300대 파드 커넥션 방어막)
+resource "aws_db_proxy" "this" {
+  name                   = "${var.project_name}-rds-proxy"
+  engine_family          = "MYSQL"
+  idle_client_timeout    = 1800
+  require_tls            = true
+  role_arn               = aws_iam_role.rds_proxy_role.arn
+  vpc_security_group_ids = [aws_security_group.rds_proxy.id]
+  vpc_subnet_ids         = var.database_subnets
+
+  auth {
+    auth_scheme = "SECRETS"
+    iam_auth    = "DISABLED"
+    secret_arn  = aws_secretsmanager_secret.db_password.arn
+  }
+}
+
+# Proxy와 RDS 연결
+resource "aws_db_proxy_default_target_group" "this" {
+  db_proxy_name = aws_db_proxy.this.name
+
+  connection_pool_config {
+    connection_borrow_timeout    = 120
+    max_connections_percent      = 100
+    max_idle_connections_percent = 50
+  }
+}
+
+resource "aws_db_proxy_target" "this" {
+  db_proxy_name          = aws_db_proxy.this.name
+  target_group_name      = aws_db_proxy_default_target_group.this.name
+  db_instance_identifier = aws_db_instance.this.id
+}
+
+# 6. RDS Proxy용 IAM 역할 (Trust Policy)
+resource "aws_iam_role" "rds_proxy_role" {
+  name = "${var.project_name}-rds-proxy-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = { Service = "rds.amazonaws.com" }
+    }]
+  })
+}
+
+# 7. Secrets Manager 접근 권한 정책
+resource "aws_iam_policy" "rds_proxy_policy" {
+  name = "${var.project_name}-rds-proxy-policy"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret"
+        ]
+        Effect   = "Allow"
+        Resource = [aws_secretsmanager_secret.db_password.arn]
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "rds_proxy_attach" {
+  role       = aws_iam_role.rds_proxy_role.name
+  policy_arn = aws_iam_policy.rds_proxy_policy.arn
+}
