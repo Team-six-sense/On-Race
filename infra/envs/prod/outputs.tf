@@ -11,15 +11,15 @@ output "public_subnets" {
 }
 
 output "redis_endpoint" {
-  value = module.data.redis_endpoint
+  value = try(module.data.redis_endpoint, "pending")
+}
+
+# try()를 써야만 Step 1 배포 시 에러가 나지 않습니다.
+output "rds_proxy_endpoint" {
+  value       = try(module.data.rds_proxy_endpoint, "pending")
+  description = "DB Connection String for Backend Application"
 }
 
 output "queue_url" {
-  value = module.queue.queue_url
-}
-
-# 애플리케이션 연결용 RDS Proxy 엔드포인트 출력
-output "rds_proxy_endpoint" {
-  value       = module.data.rds_proxy_endpoint
-  description = "DB Connection String for Backend Application"
+  value = try(module.queue.queue_url, "pending")
 }

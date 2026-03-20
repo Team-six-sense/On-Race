@@ -1,5 +1,9 @@
 name: "On-Race-Infra-CD"
 
+# [수정] 파일 상단에 환경 변수 추가하여 모든 단계에서 Node.js 24 사용
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 on:
   push:
     branches: [ "feat/infra/init-monitoring" ]
@@ -8,7 +12,6 @@ jobs:
   terraform:
     runs-on: ubuntu-latest
     
-    # 모든 run 명령어가 실행될 기본 경로를 설정합니다. (중복 제거)
     defaults:
       run:
         working-directory: ./infra/envs/prod
@@ -34,20 +37,19 @@ jobs:
       - name: Terraform Init
         run: terraform init
 
-      # [Step 1] 인프라 기저(VPC, EKS) 선배포
-      - name: Step 1 - Core Infrastructure
-        run: terraform apply -target=module.vpc -target=module.eks -auto-approve
+      # [Step 1] 인프라 기저(VPC, EKS) + 데이터(RDS/Redis) 선배포
+      # rds_proxy_endpoint 출력 에러를 방지하기 위해 module.data를 포함합니다.
+      - name: Step 1 - Core Infrastructure & Data
+        run: terraform apply -target=module.vpc -target=module.eks -target=module.data -auto-approve
 
       # [Step 2] EKS 인증 정보 갱신
       - name: Step 2 - Update Kubeconfig
-        # 이 명령어는 working-directory 영향이 없으므로 그대로 실행됩니다.
         run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }}
 
-      # [Step 3] KEDA 엔진 우선 설치 (ScaledObject 에러 방지용)
-      # CRD 설계도를 먼저 클러스터에 등록하는 과정입니다.
-      - name: Step 3 - KEDA Engine Setup
-        run: terraform apply -target=helm_release.keda -auto-approve
+      # [Step 3] KEDA 엔진 및 Karpenter 기초 설치
+      - name: Step 3 - KEDA & Karpenter Engine Setup
+        run: terraform apply -target=helm_release.keda -target=helm_release.karpenter -auto-approve
 
-      # [Step 4] 나머지 전체 리소스 배포 (KEDA 리소스, Prometheus, Service 등)
+      # [Step 4] 나머지 전체 리소스 배포 (KEDA ScaledObject, Karpenter NodePool 등)
       - name: Step 4 - Full Resources Apply
         run: terraform apply -auto-approve

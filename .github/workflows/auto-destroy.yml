@@ -2,6 +2,10 @@
 
 name: 'Auto Destroy Infrastructure'
 
+# [추가] 모든 단계에서 Node.js 24를 사용하도록 강제합니다.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 on:
   schedule:
     # 매일 한국 시간 밤 12시 (UTC 15:00) 실행
@@ -13,9 +17,14 @@ jobs:
     name: 'Auto Destroy Sequence'
     runs-on: ubuntu-latest
     
+    # 테라폼 실행 경로 설정
+    defaults:
+      run:
+        working-directory: ./infra/envs/prod
+
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4 # v3 -> v4로 업데이트
 
       # 1. Slack 알림 전송 (삭제 10분 전 경고)
       - name: Notify Slack (Warning)
@@ -29,14 +38,14 @@ jobs:
         run: sleep 600
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4 # v2 -> v4로 업데이트
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-northeast-2
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+        uses: hashicorp/setup-terraform@v3 # v2 -> v3로 업데이트
 
       - name: Terraform Init
         run: terraform init
