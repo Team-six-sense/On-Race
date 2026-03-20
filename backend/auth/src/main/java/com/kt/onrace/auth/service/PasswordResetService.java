@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.kt.onrace.auth.entity.User;
+import com.kt.onrace.auth.entity.UserStatus;
 import com.kt.onrace.auth.repository.UserRepository;
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
@@ -42,7 +43,7 @@ public class PasswordResetService {
 	 * 비밀번호 재설정 요청: 이메일 검증 후 재설정 링크 발송
 	 */
 	public void requestPasswordReset(String email, String resetBaseUrl) {
-		User user = userRepository.findByEmailAndIsDeletedFalse(email)
+		User user = userRepository.findByEmailAndStatus(email, UserStatus.ACTIVE)
 			.orElseThrow(() -> new BusinessException(BusinessErrorCode.AUTH_PASSWORD_RESET_EMAIL_NOT_FOUND));
 
 		checkCooldown(email);
@@ -97,7 +98,7 @@ public class PasswordResetService {
 		}
 
 		User user = userRepository.findById(userId)
-			.filter(u -> !u.isDeleted())
+			.filter(User::isActive)
 			.orElseThrow(() -> new BusinessException(BusinessErrorCode.AUTH_NOT_FOUND_USER));
 
 		if (passwordEncoder.matches(newPassword, user.getPassword())) {

@@ -7,6 +7,7 @@ import com.kt.onrace.auth.dto.LoginResponse;
 import com.kt.onrace.auth.dto.OAuthLoginRequest;
 import com.kt.onrace.auth.entity.AuthProvider;
 import com.kt.onrace.auth.entity.User;
+import com.kt.onrace.auth.entity.UserStatus;
 import com.kt.onrace.auth.repository.UserRepository;
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
@@ -44,7 +45,7 @@ public class OAuthService {
 			throw new BusinessException(BusinessErrorCode.COMMON_INVALID_PARAMETER);
 		}
 
-		userRepository.findByEmailAndIsDeletedFalse(request.email()).ifPresent(existing -> {
+		userRepository.findByEmailAndStatus(request.email(), UserStatus.ACTIVE).ifPresent(existing -> {
 			throw new BusinessException(BusinessErrorCode.AUTH_DUPLICATE_EMAIL);
 		});
 
