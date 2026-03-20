@@ -518,8 +518,10 @@ resource "kubernetes_manifest" "karpenter_node_pool" {
         }
       }
       disruption = {
-        # [수정] 에러가 발생하는 expireAfter를 제거했습니다. (기본값 720h 자동 적용)
-        consolidationPolicy = "WhenUnderutilized" 
+        # [수정] v1 표준 명칭으로 변경
+        consolidationPolicy = "WhenEmptyOrUnderutilized" 
+        # [추가] 필수 항목: 노드 정리를 위해 대기할 시간 (보통 1분을 권장합니다)
+        consolidateAfter    = "1m"
       }
     }
   }
