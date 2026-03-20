@@ -129,11 +129,12 @@ resource "aws_route_table_association" "database" {
 
 # 10. VPC Interface Endpoints (비용 절감 핵심 4종 세트)
 locals {
-  services = ["sqs", "sts", "logs", "monitoring"]
+  # 이름을 services로 변경하세요.
+  services = ["sqs", "sts", "logs", "monitoring"] 
 }
 
 resource "aws_vpc_endpoint" "interface" {
-  # 이제 local.services가 정상적으로 인식됩니다.
+  # 이제 local.services를 정상적으로 찾을 수 있습니다.
   for_each = toset(local.services)
 
   vpc_id              = aws_vpc.this.id
