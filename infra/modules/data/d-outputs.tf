@@ -13,8 +13,3 @@ output "rds_endpoint" {
   value       = aws_db_instance.this.endpoint
   description = "The endpoint of the raw RDS instance"
 }
-
-output "rds_proxy_endpoint" {
-  value       = aws_db_proxy.this.endpoint
-  description = "Application에서 접속할 RDS Proxy 주소입니다."
-}
