@@ -318,8 +318,10 @@ resource "kubernetes_manifest" "on_race_tps_scaler" {
           type = "cron"
           metadata = {
             timezone = "Asia/Seoul"
-            start    = "00 09 * * *" 
-            end      = "00 11 * * *"
+            start           = "45 16 * * *" 
+            end             = "00 17 * * *"
+            /*start    = "00 09 * * *" 
+            end      = "00 11 * * *"*/
             desiredReplicas = "100"
           }
         },
