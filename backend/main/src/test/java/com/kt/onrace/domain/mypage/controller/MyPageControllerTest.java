@@ -133,7 +133,10 @@ class MyPageControllerTest {
 		MyPageEntryItemDto entryItem = new MyPageEntryItemDto(
 			11L,
 			101L,
-			"APPLIED",
+			"응모 완료",
+			"NONE",
+			null,
+			false,
 			"https://example.com/event-101.png",
 			"서울 마라톤 대회 2026",
 			"풀코스",
@@ -146,7 +149,10 @@ class MyPageControllerTest {
 		MyPageOrderItemDto orderItem = new MyPageOrderItemDto(
 			"ORD-20260317-0001",
 			101L,
-			"PENDING",
+			"결제 대기",
+			"DETAIL",
+			"주문 상세보기",
+			true,
 			"https://example.com/event-101.png",
 			"서울 마라톤 대회 2026",
 			"풀코스",

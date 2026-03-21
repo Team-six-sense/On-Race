@@ -1,5 +1,7 @@
 package com.kt.onrace.domain.mypage.dto;
 
+import com.kt.onrace.domain.address.entity.Address;
+
 public record MyPageAddressDto(
 	Long addressId,
 	String label,
@@ -11,4 +13,17 @@ public record MyPageAddressDto(
 	String memo,
 	boolean isDefault
 ) {
+	public static MyPageAddressDto from(Address address) {
+		return new MyPageAddressDto(
+			address.getId(),
+			address.getLabel(),
+			address.getReceiverName(),
+			address.getPhone(),
+			address.getZipcode(),
+			address.getAddress1(),
+			address.getAddress2(),
+			address.getMemo(),
+			address.isDefault()
+		);
+	}
 }
