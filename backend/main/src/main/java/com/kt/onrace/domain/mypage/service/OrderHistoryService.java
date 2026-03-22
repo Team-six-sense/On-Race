@@ -35,6 +35,10 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * 사용자의 주문 목록과 주문 상세 정보를 마이페이지 응답으로 변환하는 서비스이다.
+ * 탭별 상태 필터링, 연관 이벤트 정보 조회, 취소·환불 가능 여부 계산을 함께 처리한다.
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)

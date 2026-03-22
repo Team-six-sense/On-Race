@@ -22,6 +22,10 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * 사용자의 신청 이력과 신청 대기 이력을 마이페이지용 목록으로 조회하는 서비스이다.
+ * 화면 규칙에 맞춰 상태를 해석하고 결제 완료 주문이 있는 신청은 제외한다.
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)

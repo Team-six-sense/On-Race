@@ -3,6 +3,10 @@ package com.kt.onrace.domain.mypage.service;
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.util.Preconditions;
 
+/**
+ * 마이페이지 목록 조회에 공통으로 사용하는 페이징 규칙을 모아둔 유틸리티 클래스이다.
+ * 기본 페이지 크기, 최대 조회 크기, 파라미터 검증과 오프셋 계산을 담당한다.
+ */
 final class MyPagePagingPolicy {
 
 	static final int DEFAULT_PAGE = 0;

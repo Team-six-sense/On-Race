@@ -14,12 +14,13 @@ import com.kt.onrace.domain.mypage.dto.MyPageOverviewResponseDto;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * 마이페이지 조회 기능의 진입점 서비스이다.
+ * 회원 존재 여부를 검증한 뒤 개별 조회 서비스를 조합해 화면용 응답을 반환한다.
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-/**
- * MyPage는 생성/수정이 아니라 여러 도메인의 조회 결과를 화면용 응답으로 조합하는 진입점이다.
- */
 public class MyPageService {
 
 	private final MemberRepository memberRepository;

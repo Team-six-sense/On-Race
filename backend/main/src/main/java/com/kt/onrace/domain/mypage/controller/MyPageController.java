@@ -21,6 +21,10 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * 마이페이지 화면에서 필요한 조회 API를 제공하는 REST 컨트롤러이다.
+ * 개요, 신청 내역, 대기 신청 내역, 주문 목록 및 상세, 기본 배송지 조회를 담당한다.
+ */
 @ApiLog
 @Validated
 @RestController

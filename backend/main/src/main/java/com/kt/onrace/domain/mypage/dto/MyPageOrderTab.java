@@ -6,6 +6,10 @@ import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
 import com.kt.onrace.domain.order.entity.OrderStatus;
 
+/**
+ * 마이페이지 주문 목록의 탭 필터 값을 정의하는 enum이다.
+ * 문자열 요청값을 안전하게 enum으로 변환하고 주문 상태와의 매칭 규칙을 제공한다.
+ */
 public enum MyPageOrderTab {
 	ALL,
 	PENDING,

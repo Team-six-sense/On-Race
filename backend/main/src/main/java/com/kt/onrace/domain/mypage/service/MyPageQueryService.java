@@ -13,6 +13,10 @@ import com.kt.onrace.domain.mypage.dto.MyPageOverviewResponseDto;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * 마이페이지 상단 요약 정보와 기본 배송지 정보를 조회하는 서비스이다.
+ * 신청, 주문, 주소 데이터를 묶어 메인 화면 응답으로 구성한다.
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)

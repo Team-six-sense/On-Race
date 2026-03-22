@@ -11,6 +11,10 @@ import com.kt.onrace.domain.mypage.dto.MyPageStatusDto;
 import com.kt.onrace.domain.order.entity.Order;
 import com.kt.onrace.domain.order.entity.OrderStatus;
 
+/**
+ * 신청 및 주문 상태를 마이페이지 화면에 노출할 상태 문구와 액션 정보로 해석하는 컴포넌트이다.
+ * 버튼 노출 여부와 라벨을 중앙에서 일관되게 결정한다.
+ */
 @Component
 public class MyPageDisplayStatusResolver {
 

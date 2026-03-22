@@ -2,6 +2,10 @@ package com.kt.onrace.domain.mypage.dto;
 
 import java.util.List;
 
+/**
+ * 마이페이지 신청 이력 목록 페이지 응답을 표현하는 DTO이다.
+ * 페이지 정보, 다음 페이지 존재 여부, 신청 항목 목록을 함께 전달한다.
+ */
 public record MyPageEntryListResponseDto(
 	int page,
 	int size,
