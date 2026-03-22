@@ -8,9 +8,9 @@ public record MyPageOverviewResponseDto(
 ) {
 	public static MyPageOverviewResponseDto empty() {
 		return new MyPageOverviewResponseDto(
-			MyPageEntryListResponseDto.empty(),
-			MyPageEntryListResponseDto.empty(),
-			MyPageOrderListResponseDto.empty(),
+			MyPageEntryListResponseDto.empty(0, 0),
+			MyPageEntryListResponseDto.empty(0, 0),
+			MyPageOrderListResponseDto.empty(0, 0),
 			MyPageAddressResponseDto.empty()
 		);
 	}

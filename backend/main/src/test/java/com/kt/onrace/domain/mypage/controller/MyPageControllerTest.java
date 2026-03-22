@@ -27,6 +27,7 @@ import com.kt.onrace.domain.mypage.dto.MyPageAddressDto;
 import com.kt.onrace.domain.mypage.dto.MyPageAddressResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageEntryItemDto;
 import com.kt.onrace.domain.mypage.dto.MyPageEntryListResponseDto;
+import com.kt.onrace.domain.mypage.dto.MyPageOrderDetailResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageOrderItemDto;
 import com.kt.onrace.domain.mypage.dto.MyPageOrderListResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageOverviewResponseDto;
@@ -68,41 +69,65 @@ class MyPageControllerTest {
 
 	@Test
 	void getEntriesReturnsEntryList() throws Exception {
-		given(myPageService.getEntries(USER_ID)).willReturn(sampleOverview().entries());
+		given(myPageService.getEntries(USER_ID, 0, 20)).willReturn(sampleOverview().entries());
 
 		mockMvc.perform(get("/mypage/entries").header(USER_ID_HEADER, USER_ID))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.page").value(0))
+			.andExpect(jsonPath("$.data.size").value(3))
 			.andExpect(jsonPath("$.data.totalCount").value(1))
+			.andExpect(jsonPath("$.data.hasNext").value(false))
 			.andExpect(jsonPath("$.data.items[0].title").value("서울 마라톤 대회 2026"));
 
-		verify(myPageService).getEntries(USER_ID);
+		verify(myPageService).getEntries(USER_ID, 0, 20);
 	}
 
 	@Test
 	void getWaitingEntriesReturnsWaitingList() throws Exception {
-		given(myPageService.getWaitingEntries(USER_ID)).willReturn(MyPageEntryListResponseDto.empty());
+		given(myPageService.getWaitingEntries(USER_ID, 0, 20)).willReturn(MyPageEntryListResponseDto.empty(0, 20));
 
 		mockMvc.perform(get("/mypage/waiting-entries").header(USER_ID_HEADER, USER_ID))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.page").value(0))
+			.andExpect(jsonPath("$.data.size").value(20))
 			.andExpect(jsonPath("$.data.totalCount").value(0))
+			.andExpect(jsonPath("$.data.hasNext").value(false))
 			.andExpect(jsonPath("$.data.items").isArray());
 
-		verify(myPageService).getWaitingEntries(USER_ID);
+		verify(myPageService).getWaitingEntries(USER_ID, 0, 20);
 	}
 
 	@Test
 	void getOrdersReturnsOrderList() throws Exception {
-		given(myPageService.getOrders(USER_ID)).willReturn(sampleOverview().orders());
+		given(myPageService.getOrders(USER_ID, "ALL", 0, 20)).willReturn(sampleOverview().orders());
 
 		mockMvc.perform(get("/mypage/orders").header(USER_ID_HEADER, USER_ID))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.page").value(0))
+			.andExpect(jsonPath("$.data.size").value(3))
 			.andExpect(jsonPath("$.data.totalCount").value(1))
+			.andExpect(jsonPath("$.data.hasNext").value(false))
 			.andExpect(jsonPath("$.data.items[0].orderNumber").value("ORD-20260317-0001"));
 
-		verify(myPageService).getOrders(USER_ID);
+		verify(myPageService).getOrders(USER_ID, "ALL", 0, 20);
+	}
+
+	@Test
+	void getOrderDetailReturnsDetailResponse() throws Exception {
+		given(myPageService.getOrderDetail(USER_ID, "ORD-20260317-0001")).willReturn(sampleOrderDetail());
+
+		mockMvc.perform(get("/mypage/orders/ORD-20260317-0001").header(USER_ID_HEADER, USER_ID))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.orderNumber").value("ORD-20260317-0001"))
+			.andExpect(jsonPath("$.data.status").value("결제 대기"))
+			.andExpect(jsonPath("$.data.canCancel").value(true))
+			.andExpect(jsonPath("$.data.packages[0].name").value("기록칩"));
+
+		verify(myPageService).getOrderDetail(USER_ID, "ORD-20260317-0001");
 	}
 
 	@Test
@@ -175,10 +200,46 @@ class MyPageControllerTest {
 		);
 
 		return new MyPageOverviewResponseDto(
-			new MyPageEntryListResponseDto(1, List.of(entryItem)),
-			MyPageEntryListResponseDto.empty(),
-			new MyPageOrderListResponseDto(1, List.of(orderItem)),
+			new MyPageEntryListResponseDto(0, 3, 1, false, List.of(entryItem)),
+			MyPageEntryListResponseDto.empty(0, 3),
+			new MyPageOrderListResponseDto(0, 3, 1, false, List.of(orderItem)),
 			new MyPageAddressResponseDto(true, address)
+		);
+	}
+
+	private MyPageOrderDetailResponseDto sampleOrderDetail() {
+		return new MyPageOrderDetailResponseDto(
+			101L,
+			"ORD-20260317-0001",
+			"결제 대기",
+			"DETAIL",
+			"주문 상세보기",
+			true,
+			LocalDateTime.of(2026, 3, 17, 10, 0),
+			null,
+			"서울 마라톤 대회 2026",
+			null,
+			"풀코스",
+			"6:00/km",
+			35000L,
+			3000L,
+			0L,
+			38000L,
+			"홍길동",
+			"집",
+			"01012345678",
+			"12345",
+			"서울시 강남구",
+			"101동",
+			"문앞",
+			null,
+			false,
+			null,
+			null,
+			true,
+			false,
+			false,
+			List.of(new MyPageOrderDetailResponseDto.PackageInfo(1L, "기록칩", 5000L))
 		);
 	}
 }
