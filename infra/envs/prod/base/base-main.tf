@@ -24,8 +24,7 @@ module "data" {
   vpc_id           = module.vpc.vpc_id
   database_subnets = module.vpc.database_subnets
   
-  #redis_node_type  = "cache.m5.large" 
-  redis_node_type  = "cache.t3.large" 
+  redis_node_type  = "cache.m7g.large" 
   
   automatic_failover_enabled = true
   num_cache_clusters          = 2
