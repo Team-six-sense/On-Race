@@ -1,5 +1,6 @@
 'use client';
 
+import { Event } from '@/features/event/types';
 import { useEffect, useState } from 'react';
 
 export function EventParticipationInfo() {
@@ -22,29 +23,39 @@ export function EventParticipationInfo() {
         참가/구성 정보
       </h2>
       <div className="border-1 border-gray-300">
-        <table className="w-full text-sm md:text-base border-collapse">
+        <table className="w-full text-sm border-collapse">
           <tbody>
             <tr className="border-b border-gray-300">
-              <th className="w-1/4 py-4 px-4 bg-gray-50 text-left font-semibold text-gray-600">
+              <th className="py-4 px-4 bg-gray-100 text-left text-gray-600 font-medium">
                 참가비 안내
               </th>
-              <td className="py-4 px-4">
+              <td className="py-4 px-4 text-gray-900">
                 <ul className="list-disc list-inside space-y-1">
-                  <p>풀코스 (42.195KM): 50,000원</p>
-                  <p>하프 (21.1KM): 40,000원</p>
-                  <p>10KM: 30,000원</p>
+                  <p>풀 (42.195km) 50,000원</p>
+                  <p>하프 (21.1km) 40,000원</p>
+                  <p>10km 30,000원</p>
                 </ul>
               </td>
             </tr>
             <tr className="border-b border-gray-300">
-              <th className="py-4 px-4 bg-gray-50 text-left font-semibold text-gray-600">
-                패키지 정보
+              <th className="py-4 px-4 bg-gray-100 text-left text-gray-600 font-medium">
+                참가 인원
               </th>
-              <td className="py-4 px-4 leading-relaxed">
+              <td className="py-4 px-4 text-gray-900">
                 <ul className="list-disc list-inside space-y-1">
-                  <p>기본 패키지(상제정보 → 상세이미지): +0원</p>
-                  <p>패키지1(상제정보 → 상세이미지): +40,000원</p>
-                  <p>패키지2(상제정보 → 상세이미지): +30,000원</p>
+                  <p>풀 (42.195km) 1,000명</p>
+                  <p>하프 (21.1km) 1,000명</p>
+                  <p>10km 1,000명</p>
+                </ul>
+              </td>
+            </tr>
+            <tr className="border-b border-gray-300">
+              <th className="py-4 px-4 bg-gray-100 text-left text-gray-600 font-medium">
+                패키지 옵션
+              </th>
+              <td className="py-4 px-4 text-gray-900">
+                <ul className="list-disc list-inside space-y-1">
+                  <p>옵션별 상이 / 상세페이지 참고</p>
                 </ul>
               </td>
             </tr>

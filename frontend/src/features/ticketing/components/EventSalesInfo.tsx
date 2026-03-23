@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import {
+  OperatingPolicy,
   RefundPolicy,
-  SalesShippingInfo,
   SellerInfo,
   ShippingDetails,
 } from './details/sales';
@@ -24,14 +24,8 @@ export function EventSalesInfo() {
 
   return (
     <div className="space-y-4">
-      {/* 판매 및 배송 정보 */}
-      <SalesShippingInfo />
-
-      {/* 구분선 */}
-      <div className="my-3 h-[1px] bg-gray-300"></div>
-
-      {/* 취소 및 환불 정책 */}
-      <RefundPolicy />
+      {/* 판매자 정보 */}
+      <SellerInfo />
 
       {/* 구분선 */}
       <div className="my-3 h-[1px] bg-gray-300"></div>
@@ -42,8 +36,14 @@ export function EventSalesInfo() {
       {/* 구분선 */}
       <div className="my-3 h-[1px] bg-gray-300"></div>
 
-      {/* 판매자 정보 */}
-      <SellerInfo />
+      {/* 취소 및 환불 정책 */}
+      <RefundPolicy />
+
+      {/* 구분선 */}
+      <div className="my-3 h-[1px] bg-gray-300"></div>
+
+      {/* 판매 및 배송 정보 */}
+      <OperatingPolicy />
     </div>
   );
 }

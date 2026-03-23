@@ -1,12 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import {
-  getStatusLabel,
-  getCategoryLabel,
-  getTypeLabel,
-} from '@/types/constants';
-import { MarathonEvent } from '@/features/schedule/types';
+import { getStatusLabel } from '@/types/constants';
+import { Event } from '@/features/event/types';
 import { Button } from '@/components/ui/button';
 import { LuChevronLeft, LuShare } from 'react-icons/lu';
 import {
@@ -20,7 +16,7 @@ export function EventEntryInfo({
   event,
   setIsUserModalOpen,
 }: {
-  event: MarathonEvent;
+  event: Event;
   setIsUserModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
   // 하이드레이션 오류 방지를 위한 마운트 상태 관리
@@ -32,18 +28,18 @@ export function EventEntryInfo({
   const [selectedCourse, setSelectedCourse] = useState('');
   const [selectedPace, setSelectedPace] = useState('');
 
-  const isClosed = event.status === 'CLOSED';
-  const isEntry = event.type === 'LOTTERY' && isClosed;
+  const isClosed = event.status === 'END';
+  const isEntry = event.appType === 'LOTTERY' && isClosed;
 
   const getHeaderText = () => {
-    if (event.status === 'UPCOMING') return '빠른 신청 준비하기';
-    if (event.type === 'LOTTERY') return '응모하기';
-    if (event.type === 'FIRST_COME') return '신청하기';
+    if (event.status === 'READY') return '빠른 신청 준비하기';
+    if (event.appType === 'LOTTERY') return '응모하기';
+    if (event.appType === 'FIRST_COME') return '신청하기';
     return '신청하기';
   };
 
   const getButtonText = () => {
-    if (event.status === 'UPCOMING') return '저장하기';
+    if (event.status === 'READY') return '저장하기';
     return '다음 단계로';
   };
 
@@ -56,7 +52,7 @@ export function EventEntryInfo({
     if (!selectedCourse) return alert('코스를 선택해주세요.');
     if (!selectedPace) return alert('목표 페이스를 선택해주세요.');
 
-    if (event.status === 'UPCOMING') {
+    if (event.status === 'READY') {
       alert('사전 정보가 저장되었습니다.');
     } else {
       setIsUserModalOpen(true);
@@ -109,7 +105,7 @@ export function EventEntryInfo({
               setSelectedPace={setSelectedPace}
             />
 
-            {event.status !== 'UPCOMING' && (
+            {event.status !== 'READY' && (
               <div className="flex">
                 <span className="w-28 text-sm font-semibold text-gray-700">
                   예상 경쟁률

@@ -1,10 +1,10 @@
 'use client';
 
-import { MarathonEvent } from '@/features/schedule/types';
-import { getCategoryLabel } from '@/types/constants';
+import { Event } from '@/features/event/types';
+import { getTypeLabel } from '@/types/constants';
 import { useEffect, useState } from 'react';
 
-export function EntryInfo({ event }: { event: MarathonEvent }) {
+export function EntryInfo({ event }: { event: Event }) {
   // 하이드레이션 오류 방지를 위한 마운트 상태 관리
   const [mounted, setMounted] = useState(false);
 
@@ -14,14 +14,15 @@ export function EntryInfo({ event }: { event: MarathonEvent }) {
   }, []);
 
   const recruitmentType = () => {
-    if (event.status === 'UPCOMING') return '접수 후 추첨';
-    if (event.type === 'LOTTERY') return '응모 후 추첨';
-    if (event.type === 'FIRST_COME') return '선착순 신청';
+    if (event.status === 'READY') return '접수 후 추첨';
+    if (event.appType === 'LOTTERY') return '응모 후 추첨';
+    if (event.appType === 'FIRST_COME') return '선착순 신청';
     return '선착순 신청';
   };
 
   const recruitmentStatus = () => {
-    if (event.status === 'CLOSED' || event.status === 'RESULT') return '마감';
+    if (event.status === 'END' || event.status === 'DRAW_COMPLETED')
+      return '마감';
     return 'N일 N시간 남음';
   };
 
@@ -35,9 +36,7 @@ export function EntryInfo({ event }: { event: MarathonEvent }) {
       <div className="space-y-3 mb-4 text-sm">
         <div className="flex">
           <span className="w-24 font-semibold">장소</span>
-          <span className="flex-1">
-            {event.venueAddress || '서울 광화문 광장'}
-          </span>
+          <span className="flex-1">{event.venue || '서울 광화문 광장'}</span>
         </div>
         <div className="flex">
           <span className="w-24 font-semibold">개최일</span>
@@ -96,9 +95,7 @@ export function EntryInfo({ event }: { event: MarathonEvent }) {
                 카테고리
               </p>
 
-              <p className="text-lg font-bold">
-                {getCategoryLabel(event.category)}
-              </p>
+              <p className="text-lg font-bold">{getTypeLabel(event.type)}</p>
             </div>
 
             {/* 중앙 구분선 */}

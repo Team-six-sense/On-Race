@@ -1,16 +1,16 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { MarathonEvent } from '@/features/schedule/types';
+import { Event } from '@/features/event/types';
 import { useEffect, useState } from 'react';
 import { MdChevronLeft, MdChevronRight, MdImage } from 'react-icons/md';
 
-export function EventThumbnail({ event }: { event: MarathonEvent }) {
+export function EventThumbnail({ event }: { event: Event }) {
   // 하이드레이션 오류 방지를 위한 마운트 상태 관리
   const [mounted, setMounted] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  const images = (event.images || [event.thumbnailImg])
+  const images = (event.thumbnailImg.images || [event.thumbnailImg.url])
     .filter(Boolean)
     .slice(0, 3);
   const hasMultipleImages = images.length > 1;

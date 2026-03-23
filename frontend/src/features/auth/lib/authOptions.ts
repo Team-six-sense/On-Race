@@ -150,7 +150,6 @@ export const authOptions: NextAuthOptions = {
       session.accessToken = token.springAccessToken;
       session.refreshToken = token.springRefreshToken;
 
-      console.log('session', session);
       return session;
     },
   },

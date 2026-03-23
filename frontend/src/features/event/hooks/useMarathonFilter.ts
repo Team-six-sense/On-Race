@@ -1,22 +1,22 @@
 import { useState, useMemo } from 'react';
-import { MarathonEvent } from '@/features/schedule/types';
+import { Event } from '@/features/event/types';
 
 export function useMarathonFilter(
-  events: MarathonEvent[],
+  events: Event[],
   initialSearchDistance = { min: 0, max: 100 },
   initialSearchDate = {
     start: null as string | null,
     end: null as string | null,
   },
-  initialSearchLocation = 'all',
+  initialSearchLocation = 'ALL',
   initialSearchTerm = '',
-  initialSearchCategory = 'all',
+  initialSearchType = 'ALL',
 ) {
   const [searchDistance, setSearchDistance] = useState(initialSearchDistance);
   const [searchDate, setSearchDate] = useState(initialSearchDate);
   const [searchLocation, setSearchLocation] = useState(initialSearchLocation);
   const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
-  const [searchCategory, setSearchCategory] = useState(initialSearchCategory);
+  const [searchType, setSearchType] = useState(initialSearchType);
 
   const formatToLocalISO = (date: Date | string | null): string | null => {
     if (!date) return null;
@@ -53,31 +53,33 @@ export function useMarathonFilter(
       // 지역 필터 (null, undefined, 'all', 빈 문자열일 경우 전체 허용)
       const isNoLocationFilter =
         !searchLocation ||
-        searchLocation.toLowerCase() === 'all' ||
+        searchLocation.toLocaleUpperCase() === 'ALL' ||
         searchLocation.trim() === '';
 
       const locationMatch = isNoLocationFilter
         ? true
-        : event.venueAddress
-            ?.toLowerCase()
-            .includes(searchLocation.trim().toLowerCase());
+        : event.venue
+            ?.toLocaleUpperCase()
+            .includes(searchLocation.trim().toLocaleUpperCase());
 
       // 검색어 필터 (null, 빈 문자열일 경우 전체 허용)
       const isNoSearchFilter = !searchTerm || searchTerm.trim() === '';
       const titleMatch = isNoSearchFilter
         ? true
-        : event.title?.toLowerCase().includes(searchTerm.trim().toLowerCase());
+        : event.title
+            ?.toLocaleUpperCase()
+            .includes(searchTerm.trim().toLocaleUpperCase());
 
       // 거리 필터 (searchDistance 자체가 null이거나 특정 조건일 때 처리)
       const isNoDistanceFilter = !searchDistance;
       const eventDistances = event.courses;
-      const distanceMatch = isNoDistanceFilter
-        ? true
-        : eventDistances.some(
-            (d) =>
-              d.distanceM / 1000 >= searchDistance.min &&
-              d.distanceM / 1000 <= searchDistance.max,
-          );
+      // const distanceMatch = isNoDistanceFilter
+      //   ? true
+      //   : eventDistances.some(
+      //       (d) =>
+      //         d.distanceM / 1000 >= searchDistance.min &&
+      //         d.distanceM / 1000 <= searchDistance.max,
+      //     );
 
       // 날짜 필터 (start와 end가 모두 null이면 전체 허용)
       const eventDateStr = event.eventAt;
@@ -91,21 +93,21 @@ export function useMarathonFilter(
 
       // 카테고리 필터
       const isNoCategoryFilter =
-        !searchCategory ||
-        searchCategory.toLowerCase() === 'all' ||
-        searchCategory.trim() === '';
+        !searchType ||
+        searchType.toLocaleUpperCase() === 'ALL' ||
+        searchType.trim() === '';
 
       const categoryMatch = isNoCategoryFilter
         ? true
-        : event.category
-            ?.toLowerCase()
-            .includes(searchCategory.trim().toLowerCase());
+        : event.type
+            ?.toLocaleUpperCase()
+            .includes(searchType.trim().toLocaleUpperCase());
 
       // 모든 조건을 통과해야 결과에 포함
       return (
         locationMatch &&
         titleMatch &&
-        distanceMatch &&
+        // distanceMatch &&
         dateMatch &&
         categoryMatch
       );
@@ -116,7 +118,7 @@ export function useMarathonFilter(
     searchLocation,
     searchDistance,
     searchDate,
-    searchCategory,
+    searchType,
   ]);
 
   return {
@@ -124,12 +126,12 @@ export function useMarathonFilter(
     searchTerm,
     searchDistance,
     searchDate,
-    searchCategory,
+    searchType,
     setSearchLocation,
     setSearchTerm,
     setSearchDistance,
     setSearchDate: handleSetSearchDate,
-    setSearchCategory,
+    setSearchType,
     filteredEvents,
   };
 }

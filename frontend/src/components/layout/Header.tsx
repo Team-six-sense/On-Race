@@ -17,7 +17,7 @@ export default function Header() {
 
   const navItems = [
     { name: '홈', href: '/' },
-    { name: '이벤트', href: '/schedule' },
+    { name: '이벤트', href: '/event' },
     { name: '마우스이벤트(테스트용)', href: '/mouse-event' },
   ];
 
@@ -99,7 +99,7 @@ export default function Header() {
                 </p>
                 <Button
                   className={cn(
-                    'flex items-center font-bold text-xs p-0 transition-colors duration-500 cursor-pointer',
+                    'flex items-center font-bold text-xs p-0 mr-4 transition-colors duration-500 cursor-pointer',
                     isHome
                       ? 'text-white/80 hover:text-white'
                       : 'text-gray-600 hover:text-black',
@@ -110,6 +110,15 @@ export default function Header() {
                 >
                   로그아웃
                 </Button>
+                <Link
+                  href="/mypage"
+                  className={cn(
+                    'flex items-center transition-colors duration-500',
+                    isHome ? 'hover:text-white' : 'hover:text-black',
+                  )}
+                >
+                  <span className=""> 마이페이지 </span>
+                </Link>
               </div>
             ) : (
               <>
@@ -173,7 +182,7 @@ export default function Header() {
                 rounded="full"
                 size="fit"
                 className="p-6 mb-6"
-                onClick={() => router.push('/schedule')}
+                onClick={() => router.push('/event')}
               >
                 진행 중인 이벤트 보러가기
               </Button>
