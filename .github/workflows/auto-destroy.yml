@@ -1,63 +1,55 @@
-# .github/workflows/auto-destroy.yml
+name: 'Auto Destroy App Layer'
 
-name: 'Auto Destroy Infrastructure'
-
-# [추가] 모든 단계에서 Node.js 24를 사용하도록 강제합니다.
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  AWS_REGION: ap-northeast-2
 
 on:
   schedule:
-    # 매일 한국 시간 밤 12시 (UTC 15:00) 실행
-    - cron: '0 15 * * *'
-  workflow_dispatch: # 수동 실행 가능
+    - cron: '0 15 * * *' # 매일 한국 시간 밤 12시
+  workflow_dispatch:
 
 jobs:
-  auto-destroy:
-    name: 'Auto Destroy Sequence'
+  destroy-app-only:
+    name: 'Destroy EKS & Apps'
     runs-on: ubuntu-latest
     
-    # 테라폼 실행 경로 설정
-    defaults:
-      run:
-        working-directory: ./infra/envs/prod
-
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4 # v3 -> v4로 업데이트
+        uses: actions/checkout@v4
 
-      # 1. Slack 알림 전송 (삭제 10분 전 경고)
+      # 1. 슬랙 알림 (App 삭제 경고)
       - name: Notify Slack (Warning)
         run: |
           curl -X POST -H 'Content-type: application/json' \
-          --data '{"text":"🚨 [긴급] 10분 뒤 인프라(EKS 등)가 자동 삭제됩니다!\n연장하려면 GitHub Actions에서 지금 바로 워크플로우를 취소하세요."}' \
+          --data '{"text":"🚨 [비용절감] 10분 뒤 EKS 클러스터와 애플리케이션만 자동 삭제됩니다.\nVPC와 데이터(Redis/S3)는 유지됩니다."}' \
           ${{ secrets.SLACK_WEBHOOK_URL }}
 
-      # 2. 10분 대기 (사용자가 취소할 시간을 줌)
+      # 2. 10분 대기
       - name: Wait for 10 minutes
         run: sleep 600
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4 # v2 -> v4로 업데이트
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-northeast-2
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3 # v2 -> v3로 업데이트
+        uses: hashicorp/setup-terraform@v3
 
-      - name: Terraform Init
-        run: terraform init
-
-      # 3. 인프라 삭제 실행
-      - name: Terraform Destroy
-        run: terraform destroy -auto-approve
+      # 3. [핵심] 오직 App 계층만 삭제
+      - name: Terraform Destroy (App Only)
+        working-directory: ./infra/envs/prod/app
+        run: |
+          terraform init
+          terraform destroy -auto-approve
         
       # 4. 삭제 완료 알림
       - name: Notify Slack (Success)
         if: success()
         run: |
           curl -X POST -H 'Content-type: application/json' \
-          --data '{"text":"🗑️ [완료] 인프라가 안전하게 삭제되었습니다. 비용 발생이 중지됩니다."}' \
+          --data '{"text":"🗑️ [완료] EKS 클러스터 삭제 완료! 내일 아침에 다시 만나요."}' \
           ${{ secrets.SLACK_WEBHOOK_URL }}

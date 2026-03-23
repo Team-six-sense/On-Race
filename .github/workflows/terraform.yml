@@ -1,8 +1,9 @@
 name: "On-Race-Infra-CD"
 
-# [핵심] 워크플로우 전체에 Node.js 24 강제 적용
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  AWS_REGION: ap-northeast-2
+  CLUSTER_NAME: t6-on-race-prod-cluster
 
 on:
   push:
@@ -12,14 +13,6 @@ jobs:
   terraform:
     runs-on: ubuntu-latest
     
-    defaults:
-      run:
-        working-directory: ./infra/envs/prod
-
-    env:
-      CLUSTER_NAME: t6-on-race-prod-cluster
-      AWS_REGION: ap-northeast-2
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,30 +27,39 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      - name: Terraform Init
+      # --- [1단계] Base 계층 배포 (VPC, Redis, SQS 등) ---
+      - name: Base Layer - Init & Apply
+        working-directory: ./infra/envs/prod/base
+        run: |
+          terraform init
+          terraform apply -auto-approve
+
+      # --- [2단계] App 계층 초기화 (EKS, Helm) ---
+      - name: App Layer - Init
+        working-directory: ./infra/envs/prod/app
         run: terraform init
 
-      # [Step 1] 인프라 기저(VPC, EKS) + 데이터(RDS/Redis) 선배포
-      - name: Step 1 - Core Infrastructure & Data
-        run: terraform apply -target=module.vpc -target=module.eks -target=module.data -auto-approve
+      # --- [3단계] EKS 클러스터 우선 생성 (Targeted Apply) ---
+      # 클러스터가 있어야 K8s Manifest 에러가 나지 않습니다.
+      - name: App Layer - Create EKS Cluster
+        working-directory: ./infra/envs/prod/app
+        run: terraform apply -target="module.eks" -auto-approve
 
-      # [Step 2] EKS 인증 정보 갱신 (Helm/Kubernetes Provider용)
-      - name: Step 2 - Update Kubeconfig
+      # --- [4단계] Kubeconfig 갱신 ---
+      - name: Update Kubeconfig
         run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }}
 
-      # [Step 3] KEDA 엔진 및 Karpenter 기초 설치 (CRD 설치 목적)
-      - name: Step 3 - KEDA & Karpenter Engine Setup
-        run: terraform apply -target=helm_release.keda -target=helm_release.karpenter -auto-approve
-
-      # [Step 4] 나머지 전체 리소스 배포 (ScaledObject, NodePool 등)
-      - name: Step 4 - Full Resources Apply
+      # --- [5단계] App Layer 전체 배포 (KEDA, Karpenter, Manifests) ---
+      - name: App Layer - Full Apply
+        working-directory: ./infra/envs/prod/app
         run: terraform apply -auto-approve
 
-      # [Step 5] 추가된 쿠버네티스 매니페스트 적용 (신규 추가!)
-      - name: Step 5 - Apply Custom K8s Manifests
+      # --- [6단계] Custom K8s 리소스 적용 ---
+      - name: Apply Custom K8s Manifests
+        working-directory: ./infra/envs/prod/app
         run: |
-          # ServiceMonitor CRD 먼저 설치 (아까 수동으로 했던 것)
+          # ServiceMonitor CRD 설치
           kubectl apply -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/main/example/prometheus-operator-crd/monitoring.coreos.com_servicemonitors.yaml
           
-          # 우리가 만든 SCG 모니터링 설정 적용
+          # SCG 모니터링 설정 적용 (상대 경로 주의)
           kubectl apply -f helm-values/service-monitor-scg.yaml
