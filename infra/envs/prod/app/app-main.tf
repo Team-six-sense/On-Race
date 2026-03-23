@@ -52,7 +52,7 @@ resource "time_sleep" "wait_30_seconds_for_keda" {
 # Karpenter를 위한 휴식 시간 (30초)
 resource "time_sleep" "wait_30_seconds_for_karpenter" {
   depends_on = [helm_release.karpenter]
-  create_duration = "120s"
+  create_duration = "60s"
 }
 
 resource "aws_iam_role_policy_attachment" "node_ebs_policy" {

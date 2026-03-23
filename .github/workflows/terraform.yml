@@ -1,4 +1,4 @@
-name: "On-Race-Infra-CD"
+name: "On-Race-Infra-CD" # 요구하신 이름으로 변경
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
@@ -27,39 +27,46 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      # --- [1단계] Base 계층 배포 (VPC, Redis, SQS 등) ---
+      # --- [1단계] Base 계층 배포 ---
       - name: Base Layer - Init & Apply
         working-directory: ./infra/envs/prod/base
         run: |
           terraform init
           terraform apply -auto-approve
 
-      # --- [2단계] App 계층 초기화 (EKS, Helm) ---
+      # --- [2단계] App 계층 초기화 ---
       - name: App Layer - Init
         working-directory: ./infra/envs/prod/app
         run: terraform init
 
-      # --- [3단계] EKS 클러스터 우선 생성 (Targeted Apply) ---
-      # 클러스터가 있어야 K8s Manifest 에러가 나지 않습니다.
-      - name: App Layer - Create EKS Cluster
+      # --- [3단계] 핵심 인프라 및 설명서(CRD) 우선 설치 (에러 방지 핵심!) ---
+      # 헬름 차트들을 먼저 설치해야 클러스터가 ScaledObject, EC2NodeClass를 인식합니다.
+      - name: App Layer - Targeted Apply (EKS & Helm)
         working-directory: ./infra/envs/prod/app
-        run: terraform apply -target="module.eks" -auto-approve
+        run: |
+          terraform apply -target=module.eks \
+            -target=helm_release.keda \
+            -target=helm_release.karpenter \
+            -target=helm_release.prometheus \
+            -target=helm_release.loki -auto-approve
 
       # --- [4단계] Kubeconfig 갱신 ---
       - name: Update Kubeconfig
         run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }}
 
-      # --- [5단계] App Layer 전체 배포 (KEDA, Karpenter, Manifests) ---
+      # --- [5단계] App Layer 전체 배포 (Manifests 등 나머지) ---
       - name: App Layer - Full Apply
         working-directory: ./infra/envs/prod/app
         run: terraform apply -auto-approve
 
-      # --- [6단계] Custom K8s 리소스 적용 ---
+      # --- [6단계] Custom K8s 리소스 적용 (경로 및 네임스페이스 수정) ---
       - name: Apply Custom K8s Manifests
         working-directory: ./infra/envs/prod/app
         run: |
-          # ServiceMonitor CRD 설치
+          # 1. ServiceMonitor CRD 설치 (프로메테우스 연동용 설명서)
           kubectl apply -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/main/example/prometheus-operator-crd/monitoring.coreos.com_servicemonitors.yaml
           
-          # SCG 모니터링 설정 적용 (상대 경로 주의)
-          kubectl apply -f helm-values/service-monitor-scg.yaml
+          # 2. SCG 모니터링 설정 적용
+          # working-directory가 ./infra/envs/prod/app 이므로 상대 경로는 'helm-values/...' 가 맞습니다.
+          # 안정성을 위해 네임스페이스(-n monitoring)를 명시해주는 것이 좋습니다.
+          kubectl apply -n monitoring -f helm-values/service-monitor-scg.yaml
