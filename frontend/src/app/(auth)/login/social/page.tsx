@@ -16,8 +16,6 @@ export default function SocialLoginPage() {
     if (status === 'authenticated' && session) {
       const isSignup = true;
 
-      console.log(JSON.stringify(session, null, 2));
-
       if (isSignup) {
         // 신규 가입자라면 (예: 추가 정보 입력 페이지)
         router.replace('/signup/social/agree');

@@ -42,7 +42,6 @@ export function EventProductInfo({ event }: { event: Event }) {
             ...prev,
             ...response.data,
           }));
-          console.log(event);
         }
       } catch (error) {
         console.error('데이터 로드 실패:', error);
