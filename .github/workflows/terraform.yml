@@ -1,6 +1,6 @@
 name: "On-Race-Infra-CD"
 
-# [수정] 파일 상단에 환경 변수 추가하여 모든 단계에서 Node.js 24 사용
+# [핵심] 워크플로우 전체에 Node.js 24 강제 적용
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
@@ -38,18 +38,26 @@ jobs:
         run: terraform init
 
       # [Step 1] 인프라 기저(VPC, EKS) + 데이터(RDS/Redis) 선배포
-      # rds_proxy_endpoint 출력 에러를 방지하기 위해 module.data를 포함합니다.
       - name: Step 1 - Core Infrastructure & Data
         run: terraform apply -target=module.vpc -target=module.eks -target=module.data -auto-approve
 
-      # [Step 2] EKS 인증 정보 갱신
+      # [Step 2] EKS 인증 정보 갱신 (Helm/Kubernetes Provider용)
       - name: Step 2 - Update Kubeconfig
         run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }}
 
-      # [Step 3] KEDA 엔진 및 Karpenter 기초 설치
+      # [Step 3] KEDA 엔진 및 Karpenter 기초 설치 (CRD 설치 목적)
       - name: Step 3 - KEDA & Karpenter Engine Setup
         run: terraform apply -target=helm_release.keda -target=helm_release.karpenter -auto-approve
 
-      # [Step 4] 나머지 전체 리소스 배포 (KEDA ScaledObject, Karpenter NodePool 등)
+      # [Step 4] 나머지 전체 리소스 배포 (ScaledObject, NodePool 등)
       - name: Step 4 - Full Resources Apply
         run: terraform apply -auto-approve
+
+      # [Step 5] 추가된 쿠버네티스 매니페스트 적용 (신규 추가!)
+      - name: Step 5 - Apply Custom K8s Manifests
+        run: |
+          # ServiceMonitor CRD 먼저 설치 (아까 수동으로 했던 것)
+          kubectl apply -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/main/example/prometheus-operator-crd/monitoring.coreos.com_servicemonitors.yaml
+          
+          # 우리가 만든 SCG 모니터링 설정 적용
+          kubectl apply -f helm-values/service-monitor-scg.yaml

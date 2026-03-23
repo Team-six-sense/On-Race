@@ -122,9 +122,16 @@ provider "helm" {
 # 8. Loki(로키) Helm 배포 (S3/IRSA 연동)
 resource "helm_release" "loki" {
   name             = "loki"
-  repository       = "https://grafana.github.io/helm-charts"
-  chart            = "loki"
-  version          = "6.6.2"
+  
+  # [수정] 인터넷 저장소가 아닌 로컬 폴더 경로를 직접 바라봅니다.
+  # 현재 main.tf가 있는 prod 폴더 기준의 상대 경로입니다.
+  chart            = "./helm-charts/loki-stack"
+
+  # [삭제/주석] 로컬 차트를 쓸 때는 repository와 version을 명시하지 않습니다.
+  # (로컬 폴더 안의 Chart.yaml에 정의된 정보를 따르기 때문입니다.)
+  # repository       = "https://grafana.github.io/helm-charts"
+  # version          = "6.6.2"
+
   namespace        = "loki"
   create_namespace = true
 
@@ -133,7 +140,7 @@ resource "helm_release" "loki" {
     file("${path.module}/helm-values/loki-values.yaml")
   ]
 
-  # EKS 노드가 준비된 후 배포되도록 설정
+  # EKS 노드가 준비되고, Loki용 인프라(S3/IAM 등)가 준비된 후 배포되도록 보장
   depends_on = [module.eks, module.loki] 
 }
 

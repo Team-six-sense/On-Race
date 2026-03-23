@@ -1,0 +1,16 @@
+# service-monitor-scg.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: scg-monitor
+  namespace: monitoring # 또는 scg가 배포될 네임스페이스
+  labels:
+    release: prometheus # Prometheus Operator가 인식할 수 있는 레이블
+spec:
+  selector:
+    matchLabels:
+      app: spring-cloud-gateway # 개발팀이 파드에 붙여야 할 레이블
+  endpoints:
+  - port: http # 서비스의 포트 이름
+    path: /actuator/prometheus # 메트릭 경로
+    interval: 15s

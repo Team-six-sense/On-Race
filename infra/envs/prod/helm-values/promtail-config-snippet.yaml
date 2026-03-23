@@ -1,0 +1,9 @@
+# promtail-config-snippet.yaml
+pipeline_stages:
+  - docker: {}
+  - match:
+      selector: '{app="spring-cloud-gateway"}'
+      stages:
+        - labels:
+            job: scg-gateway # Loki에서 검색할 때 사용할 레이블
+            env: prod
