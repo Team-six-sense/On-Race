@@ -2,16 +2,19 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '../ui/button';
-import { MarathonEvent } from '@/features/schedule/types';
-import { scheduleService } from '@/features/schedule/services';
+import { Event } from '@/features/event/types';
+import { eventService } from '@/features/event/services';
 import { useRouter } from 'next/navigation';
 import { LuArrowLeft, LuArrowRight, LuCircleAlert } from 'react-icons/lu';
-import { getCategoryLabel, getStatusLabel } from '@/types/constants';
+import { getStatusLabel, getTypeLabel } from '@/types/constants';
+import { useEventStore } from '@/features/event/store/useEventStore';
 
 export default function Body() {
-  const [events, setEvents] = useState<MarathonEvent[]>([]);
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const [events, setEvents] = useState<Event[]>([]);
+  const { setEvent } = useEventStore();
 
   const platformContents = [
     {
@@ -58,10 +61,15 @@ export default function Body() {
     }
   };
 
+  const handleEventDetail = (event: Event) => {
+    setEvent(event);
+    router.push(`/ticketing/${event.id}`);
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const result = await scheduleService.getSchedules();
+        const result = await eventService.getEvents();
         setEvents(result.data.content);
       } catch (error) {
         console.error('데이터 로드 실패:', error);
@@ -108,7 +116,7 @@ export default function Body() {
                     <div className="flex flex-col gap-2">
                       <div className="flex items-center gap-3">
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-sm bg-gray-200">
-                          {getCategoryLabel(event.category)}
+                          {getTypeLabel(event.type)}
                         </span>
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-sm bg-gray-200">
                           {getStatusLabel(event.status)}
@@ -118,7 +126,7 @@ export default function Body() {
                         {event.title}
                       </h3>
                       <div className="text-sm text-gray-500">
-                        <span>{event.venueAddress}</span>
+                        <span>{event.venue}</span>
                         <span className="mx-1 shrink-0">·</span>
                         <span>
                           {event.courses.map((c) => c.name).join(', ')}
@@ -134,7 +142,7 @@ export default function Body() {
                       rounded="full"
                       size="lg"
                       // disabled={event.status !== '신청중'}
-                      onClick={() => router.push(`/ticketing/${event.id}`)}
+                      onClick={() => handleEventDetail(event)}
                     >
                       신청하기
                     </Button>
@@ -159,7 +167,7 @@ export default function Body() {
                 variant="outline"
                 rounded="full"
                 className="border-gray-300 text-gray-500"
-                onClick={() => router.push('/schedule')}
+                onClick={() => router.push('/event')}
               >
                 전체 보기
               </Button>

@@ -1,10 +1,6 @@
 'use client';
 
-import { scheduleService } from '@/features/schedule/services';
-import { useParams, useRouter } from 'next/navigation';
-import { MarathonEvent } from '@/features/schedule/types';
-import { useEffect, useState } from 'react';
-import { LuArrowLeft } from 'react-icons/lu';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
@@ -13,34 +9,15 @@ import {
   EventSalesInfo,
   EventEntryInfo,
 } from '@/features/ticketing/components';
-
 import { EventThumbnail } from '@/features/ticketing/components';
 import { EntryConfirmModal } from '@/features/ticketing/components/details/entry';
+import { useEventStore } from '@/features/event/store/useEventStore';
 
 export default function MarathonDetailPage() {
-  const params = useParams();
-  const router = useRouter();
+  const { event } = useEventStore();
 
-  const [events, setEvents] = useState<MarathonEvent[]>([]);
   const [activeTab, setActiveTab] = useState('product');
-
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
-
-  // 데이터 로드
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const result = await scheduleService.getSchedules();
-        setEvents(result.data.content);
-      } catch (error) {
-        console.error('데이터 로드 실패:', error);
-      }
-    };
-
-    fetchData();
-  }, []);
-  // 데이터 찾기
-  const event = events.find((item) => item.id === Number(params.id));
 
   if (!event)
     return <div className="p-10 text-center">대회를 찾을 수 없습니다.</div>;
@@ -56,18 +33,6 @@ export default function MarathonDetailPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 pt-8 pb-0">
-      {/* 상단 네비게이션: 목록으로 가기 */}
-      <div className="flex items-center justify-between w-full">
-        <Button
-          variant="text"
-          size="fit"
-          onClick={() => router.push('/schedule')}
-        >
-          <LuArrowLeft size={20} />
-          목록으로
-        </Button>
-      </div>
-
       <div className="flex flex-col lg:flex-row gap-8">
         {/* 좌측: 대회 상세 정보 영역 */}
         <div className="flex-1">
@@ -114,7 +79,7 @@ export default function MarathonDetailPage() {
               <div className="p-2">
                 {/* 상품정보 탭 */}
                 <div className={activeTab === 'product' ? 'block' : 'hidden'}>
-                  <EventProductInfo />
+                  <EventProductInfo event={event} />
                 </div>
                 {/* 판매정보 탭 */}
                 <div className={activeTab === 'sales' ? 'block' : 'hidden'}>

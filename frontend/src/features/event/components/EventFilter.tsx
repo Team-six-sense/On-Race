@@ -14,7 +14,7 @@ import DualDateRangePicker from './filter/DualDateRangePicker';
 import { IoLocationOutline } from 'react-icons/io5';
 import { Input } from '@/components/ui/input';
 
-export function ScheduleFilter({
+export function EventFilter({
   setSearchDistance,
   setSearchDate,
   setSearchLocation,
@@ -34,7 +34,7 @@ export function ScheduleFilter({
   const [mounted, setMounted] = useState(false);
 
   const [keyword, setKeyword] = useState<string>('');
-  const [location, setLocation] = useState<string>('all');
+  const [location, setLocation] = useState<string>('ALL');
   const [range, setRange] = useState({ min: 0, max: 100 });
   const [dateRange, setDateRange] = useState<{
     start: Date | null;
@@ -50,7 +50,7 @@ export function ScheduleFilter({
   }, []);
 
   const options = [
-    { value: 'all', label: '전체' },
+    { value: 'ALL', label: '전체' },
     { value: '서울', label: '서울' },
     { value: '인천', label: '인천' },
     { value: '대전', label: '대전' },
@@ -77,7 +77,7 @@ export function ScheduleFilter({
   };
   const initFilter = () => {
     setKeyword('');
-    setLocation('all');
+    setLocation('ALL');
     setRange({ min: 0, max: 100 });
     setDateRange({ start: null, end: null });
   };

@@ -21,13 +21,13 @@ export function ShippingDetails() {
       <h2 className="text-xl font-bold text-black mb-6">배송 정보</h2>
       <div className="grid grid-cols-2 md:grid-cols-4 border-t border-l border-gray-300 text-sm md:text-base">
         {/* --- 행 1 (2컬럼) --- */}
-        <div className="bg-gray-100 px-4 py-4 font-semibold text-gray-600 border-b border-r border-gray-200">
+        <div className="bg-gray-100 px-4 py-4 font-medium text-gray-600 border-b border-r border-gray-200">
           배송 대상
         </div>
         <div className="px-4 py-4 text-gray-900 border-b border-r border-gray-200 font-medium">
           -
         </div>
-        <div className="bg-gray-100 px-4 py-4 font-semibold text-gray-600 border-b border-r border-gray-200">
+        <div className="bg-gray-100 px-4 py-4 font-medium text-gray-600 border-b border-r border-gray-200">
           배송 방법
         </div>
         <div className="px-4 py-4 text-gray-900 border-b border-r border-gray-200">
@@ -35,11 +35,11 @@ export function ShippingDetails() {
         </div>
 
         {/* --- 행 2 (2컬럼) --- */}
-        <div className="bg-gray-100 px-4 py-4 font-semibold text-gray-600 border-b border-r border-gray-200">
+        <div className="bg-gray-100 px-4 py-4 font-medium text-gray-600 border-b border-r border-gray-200">
           배송 일정
         </div>
         <div className="px-4 py-4 border-b border-r border-gray-200">-</div>
-        <div className="bg-gray-100 px-4 py-4 font-semibold text-gray-600 border-b border-r border-gray-200">
+        <div className="bg-gray-100 px-4 py-4 font-medium text-gray-600 border-b border-r border-gray-200">
           배송비
         </div>
         <div className="px-4 py-4 text-gray-900 border-b border-r border-gray-200">
@@ -47,18 +47,18 @@ export function ShippingDetails() {
         </div>
 
         {/* --- 행 3 (2컬럼) --- */}
-        <div className="bg-gray-100 px-4 py-4 font-semibold text-gray-600 border-b border-r border-gray-200">
+        <div className="bg-gray-100 px-4 py-4 font-medium text-gray-600 border-b border-r border-gray-200">
           배송 가능 지역
         </div>
         <div className="px-4 py-4 border-b border-r border-gray-200">-</div>
-        <div className="bg-gray-100 px-4 py-4 font-semibold text-gray-600 border-b border-r border-gray-200">
+        <div className="bg-gray-100 px-4 py-4 font-medium text-gray-600 border-b border-r border-gray-200">
           배송지 변경 가능 기간
         </div>
         <div className="px-4 py-4 text-gray-900 border-b border-r border-gray-200">
           -
         </div>
 
-        <div className="bg-gray-100 px-4 py-4 font-semibold text-gray-600 border-b border-r border-gray-200 col-span-1">
+        <div className="bg-gray-100 px-4 py-4 font-medium text-gray-600 border-b border-r border-gray-200 col-span-1">
           미배송 시 보상기준
         </div>
         <div className="px-4 py-4 text-gray-900 border-b border-r border-gray-200 col-span-1 md:col-span-3">

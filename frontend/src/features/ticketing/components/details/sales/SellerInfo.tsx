@@ -21,13 +21,13 @@ export function SellerInfo() {
       <h2 className="text-xl font-bold text-black mb-6">판매자 정보</h2>
       <div className="grid grid-cols-2 md:grid-cols-4 border-t border-l border-gray-300 text-sm md:text-base">
         {/* --- 행 1 (2컬럼) --- */}
-        <div className="bg-gray-100 px-4 py-4 font-semibold text-gray-600 border-b border-r border-gray-200">
+        <div className="bg-gray-100 px-4 py-4 text-gray-600 border-b border-r border-gray-200 font-medium">
           판매자 상호
         </div>
         <div className="px-4 py-4 text-gray-900 border-b border-r border-gray-200 font-medium">
           -
         </div>
-        <div className="bg-gray-100 px-4 py-4 font-semibold text-gray-600 border-b border-r border-gray-200">
+        <div className="bg-gray-100 px-4 py-4 text-gray-600 border-b border-r border-gray-200 font-medium">
           상업자 등록번호
         </div>
         <div className="px-4 py-4 text-gray-900 border-b border-r border-gray-200">
@@ -35,11 +35,11 @@ export function SellerInfo() {
         </div>
 
         {/* --- 행 2 (2컬럼) --- */}
-        <div className="bg-gray-100 px-4 py-4 font-semibold text-gray-600 border-b border-r border-gray-200">
+        <div className="bg-gray-100 px-4 py-4 text-gray-600 border-b border-r border-gray-200 font-medium">
           통신판매업 신고 번호
         </div>
         <div className="px-4 py-4 border-b border-r border-gray-200">-</div>
-        <div className="bg-gray-100 px-4 py-4 font-semibold text-gray-600 border-b border-r border-gray-200">
+        <div className="bg-gray-100 px-4 py-4 text-gray-600 border-b border-r border-gray-200 font-medium">
           통신판매자 중개자 여부
         </div>
         <div className="px-4 py-4 text-gray-900 border-b border-r border-gray-200">
@@ -47,11 +47,11 @@ export function SellerInfo() {
         </div>
 
         {/* --- 행 3 (2컬럼) --- */}
-        <div className="bg-gray-100 px-4 py-4 font-semibold text-gray-600 border-b border-r border-gray-200">
+        <div className="bg-gray-100 px-4 py-4 text-gray-600 border-b border-r border-gray-200 font-medium">
           고객센터
         </div>
         <div className="px-4 py-4 border-b border-r border-gray-200">-</div>
-        <div className="bg-gray-100 px-4 py-4 font-semibold text-gray-600 border-b border-r border-gray-200">
+        <div className="bg-gray-100 px-4 py-4 text-gray-600 border-b border-r border-gray-200 font-medium">
           주소
         </div>
         <div className="px-4 py-4 text-gray-900 border-b border-r border-gray-200">

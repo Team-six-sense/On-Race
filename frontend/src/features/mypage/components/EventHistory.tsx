@@ -1,152 +1,172 @@
-'use client';
+import React, { useState } from 'react';
 
+import { APP_TYPE } from '@/types/constants';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import { useEffect, useState } from 'react';
-import { EventEntryCard } from './EventEntryCard';
-import { EventPendingCard } from './EventPendingCard';
 
-export function EventHistory() {
-  // 하이드레이션 오류 방지를 위한 마운트 상태 관리
-  const [mounted, setMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState<string>('entry');
+export const EventHistory = () => {
+  const [searchType, setSearchType] = useState<string>('ALL');
 
-  const events = [
+  // 하단 결제 리스트 더미 데이터
+  const orderList = [
     {
-      id: 1,
-      status: '신청중',
-      thumbnail:
-        'https://images.unsplash.com/photo-1530541930197-ff16ac917b0e?auto=format&fit=crop&w=800&q=80',
-      price: 35000,
-      title: '서울 마라톤 대회 2026',
-      course: '풀코스 (42.195km)',
-      pace: '중급 (6:00 ~ 7:00/km)',
-      applyDate: '2026.02.10',
-      resultDate: '2026.03.15',
+      id: 'ORD-20231025-001',
+      date: '2023.10.25',
+      name: '프리미엄 코튼 티셔츠 외 1건',
+      option: '화이트 / L',
+      status: '입금 대기',
+      price: '35,000원',
     },
     {
-      id: 2,
-      status: '신청 마감',
-      thumbnail:
-        'https://images.unsplash.com/photo-1530541930197-ff16ac917b0e?auto=format&fit=crop&w=800&q=80',
-      price: 35000,
-      title: '부산 바다 러닝 페스티벌',
-      course: '풀코스 (42.195km)',
-      pace: '중급 (6:00 ~ 7:00/km)',
-      applyDate: '2026.02.10',
-      resultDate: '2026.03.15',
+      id: 'ORD-20231020-042',
+      date: '2023.10.20',
+      name: '울 블렌드 카디건',
+      option: '네이비 / M',
+      status: '결제 완료',
+      price: '89,000원',
     },
     {
-      id: 4,
-      status: '결과 발표',
-      thumbnail:
-        'https://images.unsplash.com/photo-1530541930197-ff16ac917b0e?auto=format&fit=crop&w=800&q=80',
-      price: 35000,
-      title: '제주 올레길 마라톤',
-      course: '풀코스 (42.195km)',
-      pace: '중급 (6:00 ~ 7:00/km)',
-      applyDate: '2026.02.10',
-      resultDate: '2026.03.15',
+      id: 'ORD-20231015-011',
+      date: '2023.10.15',
+      name: '데님 팬츠',
+      option: '중청 / 32',
+      status: '상품 준비중',
+      price: '42,000원',
     },
   ];
 
-  // 컴포넌트가 마운트된 후에만 렌더링을 허용
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const getTabClass = (tabName: string) => {
-    const isActive = activeTab === tabName;
-    return `
-      w-32 py-3 text-center text-sm  transition-all duration-200 relative
-      ${isActive ? 'font-bold' : 'font-medium'}
-    `;
-  };
-
-  // 아직 마운트되지 않았다면 껍데기(Skeleton) 혹은 null 반환
-  if (!mounted) {
-    return <div className="mb-6 min-h-[100px]" />; // 레이아웃 시프트를 방지하기 위해 최소 높이 설정
-  }
+  const appType = [
+    { id: 'ALL', label: '전체' },
+    { id: 'LOTTERY', label: '응모' },
+    { id: 'FIRST_COME', label: '선착' },
+  ];
 
   return (
-    <div className="p-2 ">
-      <div>
-        <h2 className="text-2xl font-bold">이벤트 내역</h2>
+    <div className="max-w-6xl mx-auto p-6 min-h-screen">
+      <h1 className="text-2xl font-bold mb-2 text-gray-800">신청 내역</h1>
+
+      <div className="flex flex-wrap gap-2 mb-2">
+        {appType.map((type) => (
+          <Button
+            key={type.id}
+            variant={searchType === type.id ? 'primary1' : 'outline'}
+            size="fit"
+            rounded="full"
+            onClick={() => {
+              setSearchType(type.id);
+            }}
+            className={`
+            ${
+              searchType === type.id
+                ? '' // 선택되었을 때 스타일
+                : 'border-gray-400' // 비선택 스타일
+            }
+            border
+          `}
+          >
+            {type.label}
+          </Button>
+        ))}
       </div>
-      <div className="w-full">
-        {/* 탭 메뉴: 왼쪽 정렬 및 탭 간 간격 설정 */}
-        <div className="flex border-b border-gray-200 mb-6">
-          <Button
-            variant="text"
-            onClick={() => setActiveTab('entry')}
-            className={cn(
-              getTabClass('entry'),
-              'flex-1 relative rounded-none py-4',
-            )}
-          >
-            응모
-            {/* 활성화 시 나타나는 언더바 */}
-            {activeTab === 'entry' && (
-              <div className="absolute bottom-0 w-full left-0 h-0.5 bg-black transition-all" />
-            )}
-          </Button>
-          <Button
-            variant="text"
-            onClick={() => setActiveTab('wait')}
-            className={cn(
-              getTabClass('wait'),
-              'flex-1 relative rounded-none py-4',
-            )}
-          >
-            대기
-            {/* 활성화 시 나타나는 언더바 */}
-            {activeTab === 'wait' && (
-              <div className="absolute bottom-0 w-full left-0 h-0.5 bg-black transition-all" />
-            )}
-          </Button>
-        </div>
 
-        {/* 메인 컨텐츠 영역 */}
-        <div className="p-2">
-          {/* 응모 탭 */}
-          {activeTab === 'entry' && (
-            <div className="space-y-4">
-              <section>
-                <div>
-                  <h2 className="text-md font-bold mb-2 flex items-center">
-                    {`응모 내역 (${events.length})`}
-                  </h2>
-
-                  {events.map((event, index) => (
-                    <div key={index} className="flex flex-col py-2">
-                      <EventEntryCard key={index} {...event} />
+      {/* 하단 결제 리스트 섹션 */}
+      <div className="bg-white rounded-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-gray-100 border-t border-b border-gray-300">
+                <th className="px-6 py-4 text-sm font-semibold text-gray-600 text-center">
+                  신청일
+                </th>
+                <th className="px-6 py-4 text-sm font-semibold text-gray-600">
+                  신청한 이벤트
+                </th>
+                <th className="px-6 py-4 text-sm font-semibold text-gray-600 text-center">
+                  모집 일정
+                </th>
+                <th className="px-6 py-4 text-sm font-semibold text-gray-600 text-center">
+                  신청상태
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {orderList.map((order) => (
+                <tr
+                  key={order.id}
+                  className="hover:bg-gray-50 transition-colors"
+                >
+                  <td className="px-6 py-6 text-center">
+                    <div className="text-sm font-medium text-gray-800">
+                      {order.date}
                     </div>
-                  ))}
-                </div>
-              </section>
-            </div>
-          )}
+                  </td>
 
-          {/* 대기 탭 */}
-          {activeTab === 'wait' && (
-            <div className="space-y-6">
-              <section>
-                <div>
-                  <h2 className="text-md font-bold mb-2 flex items-center">
-                    {`대기 내역 (${events.length})`}
-                  </h2>
+                  <td className="px-6 py-6">
+                    <div className="flex gap-4 items-start">
+                      <div className="relative w-24 h-24 shrink-0 overflow-hidden rounded-sm">
+                        <img
+                          src={'/image/default.png'}
+                          alt={'이벤트'}
+                          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                        />
+                      </div>
 
-                  {events.map((event, index) => (
-                    <div key={index} className="flex flex-col py-2">
-                      <EventPendingCard key={index} {...event} />
+                      {/* 오른쪽: 카드 바디 (내용) 영역 */}
+                      <div className="flex flex-col flex-1 min-w-0 py-0.5">
+                        {/* 라벨들 */}
+                        <div className="flex gap-1 mb-1">
+                          <div className="inline-block px-2 py-0.5 rounded-sm text-[10px] font-bold bg-gray-100 text-gray-500">
+                            모집마감
+                          </div>
+                          <div className="inline-block px-2 py-0.5 rounded-sm text-[10px] font-bold bg-gray-100 text-gray-500">
+                            추첨
+                          </div>
+                        </div>
+
+                        {/* 제목 */}
+                        <h2 className="font-bold text-black text-base sm:text-lg leading-tight truncate mb-1">
+                          서울 마라톤 2026
+                        </h2>
+
+                        {/* 주소 및 코스 */}
+                        <div className="flex items-center text-gray-500 text-xs sm:text-sm min-w-0 mb-1">
+                          <span className="truncate shrink-0 max-w-[100px] sm:max-w-[150px]">
+                            2026.02.28 (토) 오전 9시
+                          </span>
+                          <span className="mx-1 shrink-0">·</span>
+                          <span className="truncate text-gray-400">
+                            서울 여의도 공원
+                          </span>
+                        </div>
+
+                        {/* 날짜 정보 및 하단 영역 */}
+                        <div className="mt-auto flex justify-between items-end">
+                          <div className="flex items-center text-gray-400 text-xs sm:text-sm">
+                            <span>10km</span>
+                            <span className="mx-1 shrink-0">·</span>
+                            <span className="truncate text-gray-400">
+                              5’30’’ ~ 6’30’’/km
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              </section>
-            </div>
-          )}
+                  </td>
+
+                  <td className="px-6 py-6 text-center text-sm">
+                    <p>2026.02.28 (토)</p>
+                    <p>~</p>
+                    <p>2026.03.13 (금)</p>
+                  </td>
+                  <td className="px-6 py-6 text-center">
+                    <p className="text-md font-semibold">응모 완료</p>
+                    <p className="text-sm">당첨 발표일: 2026.02.28 (토)</p>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
   );
-}
+};
