@@ -17,6 +17,10 @@ terraform {
       source  = "hashicorp/kubernetes"
       version = "~> 2.24"
     }
+    time = {
+      source  = "hashicorp/time"
+      version = "~> 0.9.1"
+    }
   }
 
   # [보완] S3 백엔드 설정 (app 전용 경로)

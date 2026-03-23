@@ -43,6 +43,18 @@ resource "aws_eks_addon" "ebs_csi" {
   depends_on = [module.eks]
 }
 
+# KEDA를 위한 휴식 시간 (30초)
+resource "time_sleep" "wait_30_seconds_for_keda" {
+  depends_on = [helm_release.keda]
+  create_duration = "30s"
+}
+
+# Karpenter를 위한 휴식 시간 (30초)
+resource "time_sleep" "wait_30_seconds_for_karpenter" {
+  depends_on = [helm_release.karpenter]
+  create_duration = "30s"
+}
+
 resource "aws_iam_role_policy_attachment" "node_ebs_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
   role       = module.eks.node_iam_role_name 
@@ -272,7 +284,7 @@ resource "kubernetes_manifest" "on_race_tps_scaler" {
   }
 
   depends_on = [
-    helm_release.keda, 
+    time_sleep.wait_30_seconds_for_keda,
     kubernetes_namespace_v1.app,
     kubernetes_deployment_v1.on_race_api
   ]
@@ -400,7 +412,7 @@ resource "kubernetes_manifest" "karpenter_node_class" {
       }]
     }
   }
-  depends_on = [helm_release.karpenter]
+  depends_on = [time_sleep.wait_30_seconds_for_karpenter]
 }
 
 resource "kubernetes_manifest" "karpenter_node_pool" {
