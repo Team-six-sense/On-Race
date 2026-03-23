@@ -99,6 +99,7 @@ resource "helm_release" "loki" {
   ]
 
   depends_on = [module.eks, module.loki] 
+  timeout = 600
 }
 
 # 7. Grafana Helm 배포
@@ -315,6 +316,7 @@ resource "helm_release" "prometheus" {
   }
 
   depends_on = [module.eks]
+  timeout = 600
 }
 
 # 16. KEDA 테스트용 샘플 Deployment

@@ -41,14 +41,18 @@ jobs:
 
       # --- [3단계] 핵심 인프라 및 설명서(CRD) 우선 설치 (에러 방지 핵심!) ---
       # 헬름 차트들을 먼저 설치해야 클러스터가 ScaledObject, EC2NodeClass를 인식합니다.
-      - name: App Layer - Targeted Apply (EKS & Helm)
+      - name: App Layer - Targeted Apply (EKS, Storage & Helm)
         working-directory: ./infra/envs/prod/app
         run: |
-          terraform apply -target=module.eks \
+          terraform apply -auto-approve \
+            -target=module.eks \
+            -target=aws_eks_addon.ebs_csi \
+            -target=aws_iam_role_policy_attachment.node_ebs_policy \
+            -target=kubernetes_storage_class_v1.gp3_default \
             -target=helm_release.keda \
             -target=helm_release.karpenter \
             -target=helm_release.prometheus \
-            -target=helm_release.loki -auto-approve
+            -target=helm_release.loki
 
       # --- [4단계] Kubeconfig 갱신 ---
       - name: Update Kubeconfig
