@@ -12,6 +12,7 @@ import com.kt.onrace.domain.event.entity.EventImage;
 import com.kt.onrace.domain.event.entity.EventImageType;
 import com.kt.onrace.domain.event.entity.EventPace;
 
+import jakarta.persistence.Column;
 import lombok.Builder;
 
 @Builder
@@ -32,6 +33,10 @@ public record EventDetailResponse(
 		String name,
 		String mapImg,
 		int distanceMeter,
+		Integer timeLimit,
+		Integer waterSource,
+		Integer altitude,
+		String courseRoute,
 		long price,
 		int courseCapacity,
 		List<PaceDto> paces
@@ -78,6 +83,10 @@ public record EventDetailResponse(
 				.name(course.getName())
 				.mapImg(course.getMapUrl())
 				.distanceMeter(course.getDistanceMeter())
+				.timeLimit(course.getTimeLimit())
+				.waterSource(course.getWaterSource())
+				.altitude(course.getAltitude())
+				.courseRoute(course.getCourseRoute())
 				.price(course.getPrice())
 				.courseCapacity(course.getEventPaces().stream()
 					.mapToInt(EventPace::getCapacity)
