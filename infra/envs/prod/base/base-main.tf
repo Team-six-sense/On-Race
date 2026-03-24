@@ -6,11 +6,11 @@ module "vpc" {
   environment  = var.environment
   vpc_cidr     = var.vpc_cidr
   azs          = var.azs
-  
+
   private_subnets  = var.private_subnets
   public_subnets   = var.public_subnets
   database_subnets = var.database_subnets
-  
+
   single_nat_gateway = true
 }
 
@@ -23,11 +23,11 @@ module "data" {
   environment      = var.environment
   vpc_id           = module.vpc.vpc_id
   database_subnets = module.vpc.database_subnets
-  
-  redis_node_type  = "cache.m7g.large" 
-  
+
+  redis_node_type = "cache.m7g.large"
+
   automatic_failover_enabled = true
-  num_cache_clusters          = 2
+  num_cache_clusters         = 2
 
   # [수정] EKS 모듈 참조 제거
   # base 계층에서는 EKS가 없으므로 이 줄은 삭제하거나 주석 처리해야 배포가 가능합니다.
@@ -40,10 +40,10 @@ module "queue" {
 
   project_name = var.project_name
   environment  = var.environment
-  
+
   queue_name = "${var.project_name}-waiting-queue.fifo"
   fifo_queue = true
-  
+
   visibility_timeout_seconds = 60
 }
 
@@ -58,12 +58,12 @@ resource "aws_s3_bucket" "ai_vqa_data" {
   }
 }
 
-# 6. 30일 후 자동 삭제 정책
+# 6. 35일 후 자동 삭제 정책
 resource "aws_s3_bucket_lifecycle_configuration" "ai_vqa_lifecycle" {
   bucket = aws_s3_bucket.ai_vqa_data.id
 
   rule {
-    id     = "auto-delete-30-days"
+    id     = "auto-delete-35-days"
     status = "Enabled"
 
     filter {}

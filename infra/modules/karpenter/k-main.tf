@@ -5,8 +5,8 @@ resource "aws_iam_role" "karpenter_node" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
       Principal = { Service = "ec2.amazonaws.com" }
     }]
   })
@@ -47,7 +47,7 @@ data "aws_iam_policy_document" "karpenter_controller_assume" {
       identifiers = [var.oidc_provider_arn]
     }
     condition {
-      test     = "StringEquals"
+      test = "StringEquals"
       # OIDC ARN에서 URL 부분만 추출하여 검증
       variable = "${replace(var.oidc_provider_arn, "/^(.*provider/)/", "")}:sub"
       values   = ["system:serviceaccount:karpenter:karpenter"]
@@ -62,6 +62,6 @@ resource "aws_iam_role" "karpenter_controller" {
 
 # 컨트롤러에 EC2 생성/삭제 권한 부여 (실무에서는 최소 권한 정책으로 교체 권장)
 resource "aws_iam_role_policy_attachment" "karpenter_controller_admin" {
-  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess" 
+  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
   role       = aws_iam_role.karpenter_controller.name
 }

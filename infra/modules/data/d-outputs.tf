@@ -6,7 +6,7 @@ output "redis_endpoint" {
 }
 
 output "redis_security_group_id" {
-  value = aws_security_group.redis.id  # main.tf의 'redis' 보안 그룹 참조
+  value = aws_security_group.redis.id # main.tf의 'redis' 보안 그룹 참조
 }
 
 # RDS Proxy 관련
@@ -16,7 +16,7 @@ output "rds_proxy_endpoint" {
 }
 
 output "rds_proxy_security_group_id" {
-  value       = aws_security_group.rds_proxy.id # main.tf의 'rds_proxy' 보안 그룹 참조
+  value = aws_security_group.rds_proxy.id # main.tf의 'rds_proxy' 보안 그룹 참조
 }
 
 # RDS 원본 (관리용)

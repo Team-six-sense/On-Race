@@ -35,8 +35,8 @@ resource "aws_subnet" "private" {
     "kubernetes.io/role/internal-elb" = "1" # [필수] EKS 내부 로드밸런서 자동 할당 태그
 
     # Karpenter가 서브넷을 찾기 위한 필수 식별 태그
-    "karpenter.sh/discovery"          = "t6-on-race-prod-cluster"
-  } 
+    "karpenter.sh/discovery" = "t6-on-race-prod-cluster"
+  }
 }
 
 # 4. Database Subnets (Redis, RDS 용)
@@ -101,7 +101,7 @@ resource "aws_route_table" "private" {
   vpc_id = aws_vpc.this.id
 
   route {
-    cidr_block     = "0.0.0.0/0"
+    cidr_block = "0.0.0.0/0"
     # single_nat_gateway 분기 처리에 따른 NAT 매핑
     nat_gateway_id = var.single_nat_gateway ? aws_nat_gateway.this[0].id : aws_nat_gateway.this[count.index].id
   }
@@ -118,7 +118,7 @@ resource "aws_route_table_association" "private" {
 # 9. Database Route Table & Association (인터넷 차단, Local 통신만 허용)
 resource "aws_route_table" "database" {
   vpc_id = aws_vpc.this.id
-  tags = { Name = "${var.project_name}-${var.environment}-rt-database" }
+  tags   = { Name = "${var.project_name}-${var.environment}-rt-database" }
 }
 
 resource "aws_route_table_association" "database" {
@@ -130,21 +130,21 @@ resource "aws_route_table_association" "database" {
 # 10. VPC Interface Endpoints (비용 절감 핵심 4종 세트)
 locals {
   # 이름을 services로 변경하세요.
-  services = ["sqs", "sts", "logs", "monitoring"] 
+  services = ["sqs", "sts", "logs", "monitoring"]
 }
 
 resource "aws_vpc_endpoint" "interface" {
   # 이제 local.services를 정상적으로 찾을 수 있습니다.
   for_each = toset(local.services)
 
-  vpc_id              = aws_vpc.this.id
-  service_name        = "com.amazonaws.${data.aws_region.current.name}.${each.value}"
-  vpc_endpoint_type   = "Interface"
-  
+  vpc_id            = aws_vpc.this.id
+  service_name      = "com.amazonaws.${data.aws_region.current.name}.${each.value}"
+  vpc_endpoint_type = "Interface"
+
   # 프라이빗 서브넷에 배치하여 파드들이 내부망으로 통신하게 함
-  subnet_ids          = aws_subnet.private[*].id
-  security_group_ids  = [aws_security_group.vpc_endpoint.id]
-  
+  subnet_ids         = aws_subnet.private[*].id
+  security_group_ids = [aws_security_group.vpc_endpoint.id]
+
   # [필수] 앱 코드 수정 없이 자동으로 엔드포인트를 사용하게 함
   private_dns_enabled = true
 
@@ -175,11 +175,11 @@ resource "aws_security_group" "vpc_endpoint" {
   vpc_id      = aws_vpc.this.id
 
   ingress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
+    from_port = 443
+    to_port   = 443
+    protocol  = "tcp"
     # VPC 내부의 모든 통신 허용 (EKS 노드 포함)
-    cidr_blocks = [var.vpc_cidr] 
+    cidr_blocks = [var.vpc_cidr]
   }
 
   egress {

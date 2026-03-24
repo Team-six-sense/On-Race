@@ -16,7 +16,7 @@ terraform {
     key          = "prod/base/terraform.tfstate" # base 전용 경로로 수정
     region       = "ap-northeast-2"
     encrypt      = true
-    use_lockfile = true 
+    use_lockfile = true
   }
 }
 
