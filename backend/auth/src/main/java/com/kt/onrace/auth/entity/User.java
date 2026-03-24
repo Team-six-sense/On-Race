@@ -51,6 +51,13 @@ public class User extends BaseEntity {
 	@Column(nullable = false, columnDefinition = "VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'")
 	private UserStatus status;
 
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false, columnDefinition = "VARCHAR(20) NOT NULL DEFAULT 'NOT_STARTED'")
+	private VerificationStatus verificationStatus;
+
+	@Column(nullable = false, columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
+	private boolean marketingConsent;
+
 	private User(String email, String name, String password, String phoneNumber) {
 		this.email = email;
 		this.name = name;
@@ -59,6 +66,8 @@ public class User extends BaseEntity {
 		this.authProvider = AuthProvider.LOCAL;
 		this.role = USER;
 		this.status = ACTIVE;
+		this.verificationStatus = VerificationStatus.NOT_STARTED;
+		this.marketingConsent = false;
 	}
 
 	private User(String email, String name, AuthProvider authProvider, String providerId) {
@@ -68,6 +77,8 @@ public class User extends BaseEntity {
 		this.providerId = providerId;
 		this.role = USER;
 		this.status = ACTIVE;
+		this.verificationStatus = VerificationStatus.NOT_STARTED;
+		this.marketingConsent = false;
 	}
 
 	public static User createUser(String email, String name, String password, String phoneNumber) {
@@ -96,6 +107,14 @@ public class User extends BaseEntity {
 
 	public void changeName(String name) {
 		this.name = name;
+	}
+
+	public void changeVerificationStatus(VerificationStatus verificationStatus) {
+		this.verificationStatus = verificationStatus;
+	}
+
+	public void changeMarketingConsent(boolean marketingConsent) {
+		this.marketingConsent = marketingConsent;
 	}
 
 }

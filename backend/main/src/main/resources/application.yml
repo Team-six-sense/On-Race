@@ -39,6 +39,10 @@ jwt:
   access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:300000}
   refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:43200000}
 
+api:
+  url:
+    auth: ${AUTH_SERVICE_URI:http://localhost:8081}
+
 management:
   tracing:
     enabled: ${MAIN_TRACING_ENABLED:true}

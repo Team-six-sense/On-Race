@@ -5,7 +5,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.domain.member.repository.MemberRepository;
+import com.kt.onrace.domain.mypage.client.AuthClient;
 import com.kt.onrace.domain.mypage.dto.MyPageAddressResponseDto;
+import com.kt.onrace.domain.mypage.dto.MyPageAccountResponse;
+import com.kt.onrace.domain.mypage.dto.MyPageApplicationHistoryFilter;
+import com.kt.onrace.domain.mypage.dto.MyPageApplicationHistoryResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageEntryListResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageOrderDetailResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageOrderListResponseDto;
@@ -27,15 +31,41 @@ public class MyPageService {
 	private final MyPageQueryService myPageQueryService;
 	private final ApplicationHistoryService applicationHistoryService;
 	private final OrderHistoryService orderHistoryService;
+	private final AuthClient authClient;
 
 	public MyPageOverviewResponseDto getOverview(Long userId) {
 		validateMember(userId);
 		return myPageQueryService.getOverview(userId);
 	}
 
+	public MyPageAccountResponse getAccount(Long userId) {
+		validateMember(userId);
+
+		AuthClient.AuthAccountResponse account = authClient.getAccount(userId);
+
+		return new MyPageAccountResponse(
+			account.name(),
+			account.email(),
+			account.phone(),
+			account.canChangePassword(),
+			account.verificationStatus(),
+			account.marketingConsent()
+		);
+	}
+
 	public MyPageEntryListResponseDto getEntries(Long userId, int page, int size) {
 		validateMember(userId);
 		return applicationHistoryService.getEntries(userId, page, size);
+	}
+
+	public MyPageApplicationHistoryResponseDto getApplicationHistory(
+		Long userId,
+		MyPageApplicationHistoryFilter filter,
+		int page,
+		int size
+	) {
+		validateMember(userId);
+		return applicationHistoryService.getApplicationHistory(userId, filter, page, size);
 	}
 
 	public MyPageEntryListResponseDto getWaitingEntries(Long userId, int page, int size) {

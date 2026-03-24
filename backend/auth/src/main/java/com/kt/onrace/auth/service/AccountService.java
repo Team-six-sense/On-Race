@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.kt.onrace.auth.config.AppProperties;
 import com.kt.onrace.auth.dto.AccountMeResponse;
+import com.kt.onrace.auth.entity.VerificationStatus;
 import com.kt.onrace.auth.entity.AuthProvider;
 import com.kt.onrace.auth.entity.User;
 import com.kt.onrace.auth.repository.UserRepository;
@@ -29,6 +30,10 @@ public class AccountService {
 			user.getId(),
 			user.getEmail(),
 			user.getName(),
+			user.getPhoneNumber(),
+			user.getAuthProvider() == AuthProvider.LOCAL,
+			user.getVerificationStatus() != null ? user.getVerificationStatus() : VerificationStatus.NOT_STARTED,
+			user.isMarketingConsent(),
 			user.getAuthProvider(),
 			user.getStatus()
 		);
@@ -38,6 +43,18 @@ public class AccountService {
 	public void updateName(Long userId, String name) {
 		User user = findActiveUser(userId);
 		user.changeName(name);
+	}
+
+	@Transactional
+	public void updateMarketingConsent(Long userId, boolean marketingConsent) {
+		User user = findActiveUser(userId);
+		user.changeMarketingConsent(marketingConsent);
+	}
+
+	@Transactional
+	public void updateVerificationStatus(Long userId, VerificationStatus verificationStatus) {
+		User user = findActiveUser(userId);
+		user.changeVerificationStatus(verificationStatus);
 	}
 
 	public void requestPasswordChange(Long userId, String currentPassword) {

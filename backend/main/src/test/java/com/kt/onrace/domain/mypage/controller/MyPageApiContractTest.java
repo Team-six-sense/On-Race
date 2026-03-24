@@ -10,35 +10,44 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.domain.address.entity.Address;
 import com.kt.onrace.domain.address.repository.AddressRepository;
 import com.kt.onrace.domain.entry.entity.Entry;
 import com.kt.onrace.domain.entry.entity.EntryStatus;
+import com.kt.onrace.domain.entry.listener.EntryExpListener;
 import com.kt.onrace.domain.entry.repository.EntryRepository;
 import com.kt.onrace.domain.event.entity.Event;
 import com.kt.onrace.domain.event.entity.EventAppType;
 import com.kt.onrace.domain.event.entity.EventCourse;
+import com.kt.onrace.domain.event.entity.EventImage;
+import com.kt.onrace.domain.event.entity.EventImageType;
 import com.kt.onrace.domain.event.entity.EventPace;
 import com.kt.onrace.domain.event.entity.EventRegion;
 import com.kt.onrace.domain.event.entity.EventType;
 import com.kt.onrace.domain.event.repository.EventCourseRepository;
+import com.kt.onrace.domain.event.repository.EventImageRepository;
 import com.kt.onrace.domain.event.repository.EventPaceRepository;
 import com.kt.onrace.domain.event.repository.EventRepository;
 import com.kt.onrace.domain.member.entity.Member;
 import com.kt.onrace.domain.member.repository.MemberRepository;
+import com.kt.onrace.domain.mypage.client.AuthClient;
 import com.kt.onrace.domain.order.entity.Order;
 import com.kt.onrace.domain.order.entity.OrderStatus;
 import com.kt.onrace.domain.order.repository.OrderRepository;
+import org.redisson.api.RedissonClient;
 
 @ActiveProfiles("test")
 @SpringBootTest(
@@ -82,6 +91,9 @@ class MyPageApiContractTest {
 	private OrderRepository orderRepository;
 
 	@Autowired
+	private EventImageRepository eventImageRepository;
+
+	@Autowired
 	private EventPaceRepository eventPaceRepository;
 
 	@Autowired
@@ -90,11 +102,21 @@ class MyPageApiContractTest {
 	@Autowired
 	private EventRepository eventRepository;
 
+	@MockBean
+	private RedissonClient redissonClient;
+
+	@MockBean
+	private EntryExpListener entryExpListener;
+
+	@MockBean
+	private AuthClient authClient;
+
 	@BeforeEach
 	void setUp() {
 		orderRepository.deleteAll();
 		entryRepository.deleteAll();
 		addressRepository.deleteAll();
+		eventImageRepository.deleteAll();
 		eventPaceRepository.deleteAll();
 		eventCourseRepository.deleteAll();
 		eventRepository.deleteAll();
@@ -115,172 +137,149 @@ class MyPageApiContractTest {
 	}
 
 	@Test
-	void callMyPageEndpointsAndVerifyActualResponseShape() throws Exception {
+	void entriesExposeReducedScopeFrontendReadyContract() throws Exception {
 		JsonNode overview = get(MIXED_USER_ID, "/mypage");
 		JsonNode entries = get(MIXED_USER_ID, "/mypage/entries");
-		JsonNode waitingEntries = get(MIXED_USER_ID, "/mypage/waiting-entries");
-		JsonNode orders = get(MIXED_USER_ID, "/mypage/orders");
-		JsonNode orderDetail = get(MIXED_USER_ID, "/mypage/orders/ORD-TEST-0001");
-		JsonNode address = get(MIXED_USER_ID, "/mypage/address");
-
-		JsonNode emptyOverview = get(EMPTY_USER_ID, "/mypage");
-		JsonNode emptyEntries = get(EMPTY_USER_ID, "/mypage/entries");
-		JsonNode emptyWaitingEntries = get(EMPTY_USER_ID, "/mypage/waiting-entries");
-		JsonNode emptyOrders = get(EMPTY_USER_ID, "/mypage/orders");
-		JsonNode emptyAddress = get(EMPTY_USER_ID, "/mypage/address");
+		JsonNode address = get(ADDRESS_ONLY_USER_ID, "/mypage/address");
+		JsonNode addressOnlyEntries = get(ADDRESS_ONLY_USER_ID, "/mypage/entries");
 
 		assertThat(overview.path("data").path("entries").path("totalCount").asInt()).isEqualTo(1);
 		assertThat(overview.path("data").path("waitingEntries").path("totalCount").asInt()).isEqualTo(1);
-		assertThat(overview.path("data").path("orders").path("totalCount").asInt()).isEqualTo(1);
-		assertThat(overview.path("data").path("address").path("hasAddress").asBoolean()).isTrue();
+		assertThat(overview.path("data").path("orders").path("totalCount").asInt()).isEqualTo(2);
 
-		assertThat(entries.path("data").path("items").get(0).path("status").asText()).isEqualTo("응모 완료");
-		assertThat(entries.path("data").path("page").asInt()).isZero();
-		assertThat(entries.path("data").path("size").asInt()).isEqualTo(20);
-		assertThat(entries.path("data").path("hasNext").asBoolean()).isFalse();
-		assertThat(entries.path("data").path("items").get(0).path("actionType").asText()).isEqualTo("NONE");
-		assertThat(entries.path("data").path("items").get(0).path("actionLabel").isNull()).isTrue();
-		assertThat(entries.path("data").path("items").get(0).path("thumbnailUrl").isNull()).isTrue();
+		assertThat(entries.path("data").path("filter").asText()).isEqualTo("ALL");
+		assertThat(entries.path("data").path("empty").asBoolean()).isFalse();
+		assertThat(entries.path("data").path("pagination").path("page").asInt()).isZero();
+		assertThat(entries.path("data").path("pagination").path("size").asInt()).isEqualTo(20);
+		assertThat(entries.path("data").path("pagination").path("totalCount").asInt()).isEqualTo(2);
+		assertThat(entries.path("data").path("pagination").path("hasNext").asBoolean()).isFalse();
+		assertThat(textValues(entries.path("data").path("items"), "eventName"))
+			.containsExactlyInAnyOrder("서울 마라톤 대회 2026", "부산 러닝 페스티벌");
+		assertThat(textValues(entries.path("data").path("items"), "applicationType"))
+			.containsExactlyInAnyOrder("LOTTERY", "FIRST_COME");
 
-		assertThat(waitingEntries.path("data").path("items").get(0).path("status").asText()).isEqualTo("신청 대기");
-		assertThat(waitingEntries.path("data").path("page").asInt()).isZero();
-		assertThat(waitingEntries.path("data").path("size").asInt()).isEqualTo(20);
-		assertThat(waitingEntries.path("data").path("hasNext").asBoolean()).isFalse();
-		assertThat(waitingEntries.path("data").path("items").get(0).path("actionType").asText()).isEqualTo("EDIT");
-		assertThat(waitingEntries.path("data").path("items").get(0).path("actionLabel").asText()).isEqualTo("사전정보 수정");
+		for (JsonNode item : entries.path("data").path("items")) {
+			assertThat(item.path("entryId").asLong()).isPositive();
+			assertThat(item.path("eventId").asLong()).isPositive();
+			assertThat(item.path("displayStatus").asText()).isNotBlank();
+			assertThat(item.path("deepLink").asText()).startsWith("/ticketing/");
+			assertThat(item.path("thumbnailUrl").asText()).startsWith("https://example.com/events/");
+		}
 
-		assertThat(orders.path("data").path("items").get(0).path("status").asText()).isEqualTo("결제 대기");
-		assertThat(orders.path("data").path("page").asInt()).isZero();
-		assertThat(orders.path("data").path("size").asInt()).isEqualTo(20);
-		assertThat(orders.path("data").path("hasNext").asBoolean()).isFalse();
-		assertThat(orders.path("data").path("items").get(0).path("actionType").asText()).isEqualTo("DETAIL");
-		assertThat(orders.path("data").path("items").get(0).path("paymentDeadlineAt").isNull()).isTrue();
-		assertThat(orderDetail.path("data").path("orderNumber").asText()).isEqualTo("ORD-TEST-0001");
-		assertThat(orderDetail.path("data").path("status").asText()).isEqualTo("결제 대기");
-		assertThat(orderDetail.path("data").path("canCancel").asBoolean()).isTrue();
-		assertThat(orderDetail.path("data").path("canRefund").asBoolean()).isFalse();
+		JsonNode appliedItem = findItem(entries.path("data").path("items"), "eventName", "서울 마라톤 대회 2026");
+		assertThat(appliedItem.path("displayStatus").asText()).isEqualTo("응모 완료");
+		assertThat(appliedItem.path("actionType").asText()).isEqualTo("NONE");
 
 		assertThat(address.path("data").path("hasAddress").asBoolean()).isTrue();
-		assertThat(address.path("data").path("defaultAddress").path("label").asText()).isEqualTo("집");
-
-		assertThat(emptyOverview.path("data").path("entries").path("items").isArray()).isTrue();
-		assertThat(emptyOverview.path("data").path("entries").path("page").asInt()).isZero();
-		assertThat(emptyOverview.path("data").path("entries").path("size").asInt()).isEqualTo(3);
-		assertThat(emptyOverview.path("data").path("entries").path("items")).isEmpty();
-		assertThat(emptyOverview.path("data").path("address").path("hasAddress").asBoolean()).isFalse();
-		assertThat(emptyOverview.path("data").path("address").path("defaultAddress").isNull()).isTrue();
-		assertThat(emptyEntries.path("data").path("page").asInt()).isZero();
-		assertThat(emptyEntries.path("data").path("size").asInt()).isEqualTo(20);
-		assertThat(emptyEntries.path("data").path("items")).isEmpty();
-		assertThat(emptyWaitingEntries.path("data").path("page").asInt()).isZero();
-		assertThat(emptyWaitingEntries.path("data").path("size").asInt()).isEqualTo(20);
-		assertThat(emptyWaitingEntries.path("data").path("items")).isEmpty();
-		assertThat(emptyOrders.path("data").path("page").asInt()).isZero();
-		assertThat(emptyOrders.path("data").path("size").asInt()).isEqualTo(20);
-		assertThat(emptyOrders.path("data").path("items")).isEmpty();
-		assertThat(emptyAddress.path("data").path("hasAddress").asBoolean()).isFalse();
-		assertThat(emptyAddress.path("data").path("defaultAddress").isNull()).isTrue();
-
-		System.out.println("--- populated GET /mypage ---");
-		System.out.println(pretty(overview));
-		System.out.println("--- populated GET /mypage/entries ---");
-		System.out.println(pretty(entries));
-		System.out.println("--- populated GET /mypage/waiting-entries ---");
-		System.out.println(pretty(waitingEntries));
-		System.out.println("--- populated GET /mypage/orders ---");
-		System.out.println(pretty(orders));
-		System.out.println("--- populated GET /mypage/orders/{orderNumber} ---");
-		System.out.println(pretty(orderDetail));
-		System.out.println("--- populated GET /mypage/address ---");
-		System.out.println(pretty(address));
-		System.out.println("--- empty GET /mypage ---");
-		System.out.println(pretty(emptyOverview));
-		System.out.println("--- empty GET /mypage/entries ---");
-		System.out.println(pretty(emptyEntries));
-		System.out.println("--- empty GET /mypage/waiting-entries ---");
-		System.out.println(pretty(emptyWaitingEntries));
-		System.out.println("--- empty GET /mypage/orders ---");
-		System.out.println(pretty(emptyOrders));
-		System.out.println("--- empty GET /mypage/address ---");
-		System.out.println(pretty(emptyAddress));
+		assertThat(addressOnlyEntries.path("data").path("empty").asBoolean()).isTrue();
+		assertThat(addressOnlyEntries.path("data").path("pagination").path("totalCount").asInt()).isZero();
 	}
 
 	@Test
-	void prepareRequestedSeedSetsAndVerifyApiResponses() throws Exception {
-		JsonNode entryOverview = get(ENTRY_ONLY_USER_ID, "/mypage");
-		JsonNode entryItems = get(ENTRY_ONLY_USER_ID, "/mypage/entries");
-		JsonNode waitingItems = get(ENTRY_ONLY_USER_ID, "/mypage/waiting-entries");
-		JsonNode entryOrders = get(ENTRY_ONLY_USER_ID, "/mypage/orders");
-		JsonNode entryAddress = get(ENTRY_ONLY_USER_ID, "/mypage/address");
+	void accountReturnsReducedScopeResponse() throws Exception {
+		org.mockito.BDDMockito.given(authClient.getAccount(MIXED_USER_ID))
+			.willReturn(new AuthClient.AuthAccountResponse(
+				MIXED_USER_ID,
+				"mixed@test.com",
+				"혼합유저",
+				"01012345678",
+				true,
+				"PENDING",
+				true
+			));
 
-		assertThat(entryOverview.path("data").path("entries").path("totalCount").asInt()).isEqualTo(3);
-		assertThat(entryOverview.path("data").path("waitingEntries").path("totalCount").asInt()).isEqualTo(1);
-		assertThat(entryOverview.path("data").path("orders").path("totalCount").asInt()).isZero();
-		assertThat(entryOverview.path("data").path("address").path("hasAddress").asBoolean()).isFalse();
-		assertThat(entryItems.path("data").path("page").asInt()).isZero();
-		assertThat(entryItems.path("data").path("size").asInt()).isEqualTo(20);
-		assertThat(textValues(entryItems.path("data").path("items"), "status"))
-			.containsExactlyInAnyOrder("응모 완료", "당첨", "미당첨");
-		assertThat(textValues(entryItems.path("data").path("items"), "actionType"))
-			.containsExactlyInAnyOrder("NONE", "CHECKOUT", "NONE");
-		assertThat(textValues(waitingItems.path("data").path("items"), "status"))
-			.containsExactly("신청 대기");
-		assertThat(entryOrders.path("data").path("items")).isEmpty();
-		assertThat(entryAddress.path("data").path("hasAddress").asBoolean()).isFalse();
+		JsonNode account = get(MIXED_USER_ID, "/mypage/account");
 
-		JsonNode orderOverview = get(ORDER_ONLY_USER_ID, "/mypage");
-		JsonNode orderItems = get(ORDER_ONLY_USER_ID, "/mypage/orders");
-		JsonNode orderEntries = get(ORDER_ONLY_USER_ID, "/mypage/entries");
-		JsonNode orderWaitingEntries = get(ORDER_ONLY_USER_ID, "/mypage/waiting-entries");
-		JsonNode orderAddress = get(ORDER_ONLY_USER_ID, "/mypage/address");
-
-		assertThat(orderOverview.path("data").path("entries").path("totalCount").asInt()).isZero();
-		assertThat(orderOverview.path("data").path("waitingEntries").path("totalCount").asInt()).isZero();
-		assertThat(orderOverview.path("data").path("orders").path("totalCount").asInt()).isEqualTo(3);
-		assertThat(orderItems.path("data").path("page").asInt()).isZero();
-		assertThat(orderItems.path("data").path("size").asInt()).isEqualTo(20);
-		assertThat(textValues(orderItems.path("data").path("items"), "status"))
-			.containsExactlyInAnyOrder("결제 대기", "결제 완료", "주문 취소");
-		assertThat(textValues(orderItems.path("data").path("items"), "actionType"))
-			.containsExactlyInAnyOrder("DETAIL", "DETAIL", "DETAIL");
-		assertThat(orderEntries.path("data").path("items")).isEmpty();
-		assertThat(orderWaitingEntries.path("data").path("items")).isEmpty();
-		assertThat(orderAddress.path("data").path("hasAddress").asBoolean()).isFalse();
-
-		JsonNode addressOverview = get(ADDRESS_ONLY_USER_ID, "/mypage");
-		JsonNode addressOnly = get(ADDRESS_ONLY_USER_ID, "/mypage/address");
-		JsonNode addressEntries = get(ADDRESS_ONLY_USER_ID, "/mypage/entries");
-		JsonNode addressOrders = get(ADDRESS_ONLY_USER_ID, "/mypage/orders");
-
-		assertThat(addressOverview.path("data").path("entries").path("totalCount").asInt()).isZero();
-		assertThat(addressOverview.path("data").path("waitingEntries").path("totalCount").asInt()).isZero();
-		assertThat(addressOverview.path("data").path("orders").path("totalCount").asInt()).isZero();
-		assertThat(addressOverview.path("data").path("address").path("hasAddress").asBoolean()).isTrue();
-		assertThat(addressOnly.path("data").path("defaultAddress").path("label").asText()).isEqualTo("집");
-		assertThat(addressOnly.path("data").path("defaultAddress").path("isDefault").asBoolean()).isTrue();
-		assertThat(addressRepository.countByUserId(ADDRESS_ONLY_USER_ID)).isEqualTo(2L);
-		assertThat(addressEntries.path("data").path("items")).isEmpty();
-		assertThat(addressOrders.path("data").path("items")).isEmpty();
+		assertThat(account.path("data").path("name").asText()).isEqualTo("혼합유저");
+		assertThat(account.path("data").path("email").asText()).isEqualTo("mixed@test.com");
+		assertThat(account.path("data").path("phone").asText()).isEqualTo("01012345678");
+		assertThat(account.path("data").path("canChangePassword").asBoolean()).isTrue();
+		assertThat(account.path("data").path("verificationStatus").asText()).isEqualTo("PENDING");
+		assertThat(account.path("data").path("marketingConsent").asBoolean()).isTrue();
 	}
 
-	private JsonNode get(Long userId, String path) throws Exception {
+	@Test
+	void entriesSupportBackendFilterAndPagination() throws Exception {
+		JsonNode lotteryEntries = get(ENTRY_ONLY_USER_ID, "/mypage/entries?filter=LOTTERY&page=0&size=2");
+		JsonNode firstComeEntries = get(ENTRY_ONLY_USER_ID, "/mypage/entries?filter=FIRST_COME&page=0&size=20");
+
+		assertThat(lotteryEntries.path("data").path("filter").asText()).isEqualTo("LOTTERY");
+		assertThat(lotteryEntries.path("data").path("pagination").path("page").asInt()).isZero();
+		assertThat(lotteryEntries.path("data").path("pagination").path("size").asInt()).isEqualTo(2);
+		assertThat(lotteryEntries.path("data").path("pagination").path("totalCount").asInt()).isEqualTo(3);
+		assertThat(lotteryEntries.path("data").path("pagination").path("hasNext").asBoolean()).isTrue();
+		assertThat(textValues(lotteryEntries.path("data").path("items"), "applicationType"))
+			.containsOnly("LOTTERY");
+
+		assertThat(firstComeEntries.path("data").path("filter").asText()).isEqualTo("FIRST_COME");
+		assertThat(firstComeEntries.path("data").path("pagination").path("totalCount").asInt()).isEqualTo(2);
+		assertThat(firstComeEntries.path("data").path("pagination").path("hasNext").asBoolean()).isFalse();
+		assertThat(textValues(firstComeEntries.path("data").path("items"), "applicationType"))
+			.containsOnly("FIRST_COME");
+	}
+
+	@Test
+	void entriesHideCheckoutActionsForReducedScope() throws Exception {
+		JsonNode entries = get(ENTRY_ONLY_USER_ID, "/mypage/entries");
+		JsonNode waitingEntries = get(ENTRY_ONLY_USER_ID, "/mypage/waiting-entries");
+
+		assertThat(entries.path("data").path("pagination").path("totalCount").asInt()).isEqualTo(5);
+		assertThat(textValues(entries.path("data").path("items"), "actionType")).doesNotContain("CHECKOUT");
+
+		JsonNode wonItem = findItem(entries.path("data").path("items"), "eventName", "세트1 당첨 이벤트");
+		assertThat(wonItem.path("displayStatus").asText()).isEqualTo("당첨");
+		assertThat(wonItem.path("actionType").asText()).isEqualTo("NONE");
+		assertThat(wonItem.path("actionLabel").isNull()).isTrue();
+
+		JsonNode reservedItem = findItem(entries.path("data").path("items"), "eventName", "세트1 예약 이벤트");
+		assertThat(reservedItem.path("displayStatus").asText()).isEqualTo("예약 중");
+		assertThat(reservedItem.path("actionType").asText()).isEqualTo("NONE");
+		assertThat(reservedItem.path("actionLabel").isNull()).isTrue();
+
+		assertThat(waitingEntries.path("data").path("totalCount").asInt()).isEqualTo(2);
+		assertThat(textValues(waitingEntries.path("data").path("items"), "status"))
+			.containsExactlyInAnyOrder("신청 대기", "예약 중");
+	}
+
+	@Test
+	void entriesKeepEmptySuccessContractAndExistingErrorEnvelope() throws Exception {
+		JsonNode emptyEntries = get(EMPTY_USER_ID, "/mypage/entries?filter=ALL&page=0&size=20");
+		ResponseEntity<String> invalidFilterResponse = exchange(EMPTY_USER_ID, "/mypage/entries?filter=INVALID");
+		JsonNode invalidFilterBody = objectMapper.readTree(invalidFilterResponse.getBody());
+
+		assertThat(emptyEntries.path("data").path("filter").asText()).isEqualTo("ALL");
+		assertThat(emptyEntries.path("data").path("empty").asBoolean()).isTrue();
+		assertThat(emptyEntries.path("data").path("pagination").path("page").asInt()).isZero();
+		assertThat(emptyEntries.path("data").path("pagination").path("size").asInt()).isEqualTo(20);
+		assertThat(emptyEntries.path("data").path("pagination").path("totalCount").asInt()).isZero();
+		assertThat(emptyEntries.path("data").path("items")).isEmpty();
+
+		assertThat(invalidFilterResponse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+		assertThat(invalidFilterBody.path("success").asBoolean()).isFalse();
+		assertThat(invalidFilterBody.path("code").asText())
+			.isEqualTo(BusinessErrorCode.COMMON_INVALID_PARAMETER.getCode());
+		assertThat(invalidFilterBody.path("message").asText())
+			.isEqualTo(BusinessErrorCode.COMMON_INVALID_PARAMETER.getMessage());
+	}
+
+	private ResponseEntity<String> exchange(Long userId, String path) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.add("X-User-Id", userId.toString());
 		headers.add("X-Gateway-Token", GATEWAY_TOKEN);
 
-		ResponseEntity<String> response = restTemplate.exchange(
+		return restTemplate.exchange(
 			"http://localhost:" + port + path,
 			HttpMethod.GET,
 			new HttpEntity<>(headers),
 			String.class
 		);
+	}
+
+	private JsonNode get(Long userId, String path) throws Exception {
+		ResponseEntity<String> response = exchange(userId, path);
 
 		assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
 		return objectMapper.readTree(response.getBody());
-	}
-
-	private String pretty(JsonNode body) throws Exception {
-		return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(body);
 	}
 
 	private List<String> textValues(JsonNode items, String fieldName) {
@@ -289,6 +288,15 @@ class MyPageApiContractTest {
 			values.add(item.path(fieldName).asText());
 		}
 		return values;
+	}
+
+	private JsonNode findItem(JsonNode items, String fieldName, String expectedValue) {
+		for (JsonNode item : items) {
+			if (expectedValue.equals(item.path(fieldName).asText())) {
+				return item;
+			}
+		}
+		throw new AssertionError("Item not found: " + expectedValue);
 	}
 
 	private void createMember(Long userId) {
@@ -339,6 +347,7 @@ class MyPageApiContractTest {
 		createEntry(MIXED_USER_ID, waitingBundle, EntryStatus.PRE_SAVED);
 
 		createOrder(MIXED_USER_ID, appliedBundle, OrderStatus.PENDING, "ORD-TEST-0001");
+		createOrder(MIXED_USER_ID, appliedBundle, OrderStatus.PAID, "ORD-TEST-0002");
 	}
 
 	private void seedEntryOnlyUser(LocalDateTime now) {
@@ -361,6 +370,26 @@ class MyPageApiContractTest {
 			200
 		);
 		createEntry(ENTRY_ONLY_USER_ID, preSavedBundle, EntryStatus.PRE_SAVED);
+
+		EventBundle reservedBundle = createEventBundle(
+			"세트1 예약 이벤트",
+			EventType.RUNNING,
+			EventAppType.FIRST_COME,
+			now.plusDays(16),
+			now.minusDays(1),
+			now.plusDays(1),
+			null,
+			EventRegion.SEOUL,
+			"잠실보조경기장",
+			"5K",
+			5000,
+			12000L,
+			"6:30/km",
+			6,
+			30,
+			100
+		);
+		createEntry(ENTRY_ONLY_USER_ID, reservedBundle, EntryStatus.RESERVED);
 
 		EventBundle appliedBundle = createEventBundle(
 			"세트1 응모 완료 이벤트",
@@ -534,6 +563,13 @@ class MyPageApiContractTest {
 			.notice(title + " 안내")
 			.isView(true)
 			.soldOut(false)
+			.build());
+
+		eventImageRepository.saveAndFlush(EventImage.builder()
+			.event(savedEvent)
+			.type(EventImageType.THUMBNAIL)
+			.url("https://example.com/events/" + savedEvent.getId() + "-thumb.png")
+			.sort(0)
 			.build());
 
 		EventCourse savedCourse = eventCourseRepository.saveAndFlush(EventCourse.builder()

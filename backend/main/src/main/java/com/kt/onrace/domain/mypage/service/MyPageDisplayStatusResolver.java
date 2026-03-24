@@ -21,7 +21,6 @@ public class MyPageDisplayStatusResolver {
 	private static final String ACTION_NONE = "NONE";
 	private static final String ACTION_EDIT = "EDIT";
 	private static final String ACTION_APPLY = "APPLY";
-	private static final String ACTION_CHECKOUT = "CHECKOUT";
 	private static final String ACTION_DETAIL = "DETAIL";
 
 	public MyPageStatusDto resolveApplicationStatus(Event currentEvent, Entry currentEntry) {
@@ -43,7 +42,7 @@ public class MyPageDisplayStatusResolver {
 		}
 
 		if (entryStatus == EntryStatus.RESERVED) {
-			return MyPageStatusDto.of("예약 중", ACTION_CHECKOUT, "결제하기", true);
+			return MyPageStatusDto.of("예약 중", ACTION_NONE, null, false);
 		}
 
 		if (entryStatus == EntryStatus.APPLIED) {
@@ -68,7 +67,7 @@ public class MyPageDisplayStatusResolver {
 		}
 
 		if (entryStatus == EntryStatus.WON) {
-			return MyPageStatusDto.of("당첨", ACTION_CHECKOUT, "결제하기", true);
+			return MyPageStatusDto.of("당첨", ACTION_NONE, null, false);
 		}
 
 		if (entryStatus == EntryStatus.LOST) {
