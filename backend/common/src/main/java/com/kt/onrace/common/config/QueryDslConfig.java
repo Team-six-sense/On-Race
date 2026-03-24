@@ -1,5 +1,6 @@
 package com.kt.onrace.common.config;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -10,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 
 @Configuration
 @RequiredArgsConstructor
+@ConditionalOnClass(name = "com.querydsl.jpa.impl.JPAQueryFactory")
 public class QueryDslConfig {
 
 	private final EntityManager entityManager;

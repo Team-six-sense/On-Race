@@ -50,7 +50,11 @@ management:
 
 entry:
   reservation:
-    ttl-seconds: ${MAIN_ENTRY_RESERVATION_TTL:600}
+    ttl-seconds: ${MAIN_ENTRY_RESERVATION_TTL_SECONDS:600}
+
+event:
+  queue-start-minutes: ${MAIN_EVENT_QUEUE_START_MINUTES:60}
+  queue-end-minutes: ${MAIN_EVENT_QUEUE_END_MINUTES:60}
 
 aws:
   region: ${AWS_REGION:ap-northeast-2}

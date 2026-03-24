@@ -85,6 +85,8 @@ public enum BusinessErrorCode implements ErrorCode {
 
 	// STOCK
 	STOCK_NOT_FOUND(HttpStatus.NOT_FOUND, "STK_001", "재고 정보를 찾을 수 없습니다."),
+	STOCK_NOT_INITIALIZED(HttpStatus.BAD_REQUEST, "STK_002", "재고가 초기화되지 않았습니다."),
+	STOCK_CONFIRM_FAILED(HttpStatus.CONFLICT, "STK_003", "재고 확정에 실패했습니다."),
 
 	// SALES_INFO
 	SALES_INFO_NOT_FOUND(HttpStatus.NOT_FOUND, "SLS_001", "판매 정보를 찾을 수 없습니다."),
@@ -94,7 +96,12 @@ public enum BusinessErrorCode implements ErrorCode {
 	ORDER_INVALID_TAB(HttpStatus.BAD_REQUEST, "ORD_002", "유효하지 않은 주문 조회 탭입니다."),
 
 	// MEMBER
-	MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MBR_001", "회원을 찾을 수 없습니다.");
+	MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MBR_001", "회원을 찾을 수 없습니다."),
+
+	// QUEUE
+	QUEUE_NOT_ENABLED(HttpStatus.BAD_REQUEST, "QUE_001", "해당 페이스의 대기열이 활성화되지 않았습니다."),
+	QUEUE_ALREADY_ENTERED(HttpStatus.CONFLICT, "QUE_002", "이미 대기열에 진입한 사용자입니다."),
+	QUEUE_NOT_FOUND(HttpStatus.NOT_FOUND, "QUE_003", "대기열에서 사용자를 찾을 수 없습니다.");
 
 	private final HttpStatus status;
 	private final String code;

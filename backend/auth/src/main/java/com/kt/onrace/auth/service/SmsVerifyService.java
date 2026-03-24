@@ -27,7 +27,6 @@ public class SmsVerifyService {
 	private static final long VERIFIED_TTL_MINUTES = 10;
 
 	private final RedissonClient redissonClient;
-	private final RedisKeyGenerator redisKeyGenerator;
 
 	private final DefaultMessageService messageService;
 	private final SolapiProperties properties;
@@ -53,7 +52,7 @@ public class SmsVerifyService {
 	}
 
 	private void sendSmsCode(String phoneNumber) {
-		RAtomicLong sendAttemptCounter = redissonClient.getAtomicLong(redisKeyGenerator.smsSendAttemptKey(phoneNumber));
+		RAtomicLong sendAttemptCounter = redissonClient.getAtomicLong(RedisKeyGenerator.smsSendAttemptKey(phoneNumber));
 		long currentSendAttempts = sendAttemptCounter.incrementAndGet();
 
 		// 하루 단위로 전송 제한 (자정에 만료되도록 설정하는 것도 좋으나, 여기선 24시간 기준으로 설정)
@@ -66,11 +65,11 @@ public class SmsVerifyService {
 			throw new BusinessException(BusinessErrorCode.AUTH_TOO_MANY_SEND_ATTEMPTS);
 		}
 
-		redissonClient.getAtomicLong(redisKeyGenerator.smsVerifyAttemptKey(phoneNumber)).delete();
+		redissonClient.getAtomicLong(RedisKeyGenerator.smsVerifyAttemptKey(phoneNumber)).delete();
 
 		String code = generateCode();
 
-		RBucket<String> bucket = redissonClient.getBucket(redisKeyGenerator.smsVerifyCodeKey(phoneNumber),
+		RBucket<String> bucket = redissonClient.getBucket(RedisKeyGenerator.smsVerifyCodeKey(phoneNumber),
 				StringCodec.INSTANCE);
 		bucket.set(code, Duration.ofMinutes(CODE_TTL_MINUTES));
 
@@ -89,7 +88,7 @@ public class SmsVerifyService {
 	}
 
 	public void verifyCode(String phoneNumber, String code) {
-		RAtomicLong attemptCounter = redissonClient.getAtomicLong(redisKeyGenerator.smsVerifyAttemptKey(phoneNumber));
+		RAtomicLong attemptCounter = redissonClient.getAtomicLong(RedisKeyGenerator.smsVerifyAttemptKey(phoneNumber));
 		long currentAttempts = attemptCounter.incrementAndGet();
 
 		if (currentAttempts == 1) {
@@ -100,7 +99,7 @@ public class SmsVerifyService {
 			throw new BusinessException(BusinessErrorCode.AUTH_TOO_MANY_VERIFY_ATTEMPTS);
 		}
 
-		RBucket<String> bucket = redissonClient.getBucket(redisKeyGenerator.smsVerifyCodeKey(phoneNumber),
+		RBucket<String> bucket = redissonClient.getBucket(RedisKeyGenerator.smsVerifyCodeKey(phoneNumber),
 				StringCodec.INSTANCE);
 		String stored = bucket.get();
 
@@ -111,16 +110,16 @@ public class SmsVerifyService {
 		attemptCounter.delete();
 		bucket.delete();
 
-		RBucket<String> verifiedBucket = redissonClient.getBucket(redisKeyGenerator.smsVerifiedKey(phoneNumber));
+		RBucket<String> verifiedBucket = redissonClient.getBucket(RedisKeyGenerator.smsVerifiedKey(phoneNumber));
 		verifiedBucket.set("1", Duration.ofMinutes(VERIFIED_TTL_MINUTES));
 	}
 
 	public boolean isVerified(String phoneNumber) {
-		return redissonClient.getBucket(redisKeyGenerator.smsVerifiedKey(phoneNumber)).isExists();
+		return redissonClient.getBucket(RedisKeyGenerator.smsVerifiedKey(phoneNumber)).isExists();
 	}
 
 	public void deleteVerified(String phoneNumber) {
-		redissonClient.getBucket(redisKeyGenerator.smsVerifiedKey(phoneNumber)).delete();
+		redissonClient.getBucket(RedisKeyGenerator.smsVerifiedKey(phoneNumber)).delete();
 	}
 
 	/**
@@ -130,7 +129,7 @@ public class SmsVerifyService {
 	 * @return 인증 상태가 존재했으면 true, 아니면 false
 	 */
 	public boolean consumeVerification(String phoneNumber) {
-		RBucket<String> verifiedBucket = redissonClient.getBucket(redisKeyGenerator.smsVerifiedKey(phoneNumber));
+		RBucket<String> verifiedBucket = redissonClient.getBucket(RedisKeyGenerator.smsVerifiedKey(phoneNumber));
 		return verifiedBucket.getAndDelete() != null;
 	}
 

@@ -1,0 +1,27 @@
+server:
+  port: ${QUEUE_SERVER_PORT:8083}
+
+spring:
+  application:
+    name: queue
+
+  profiles:
+    active: ${QUEUE_PROFILES_ACTIVE:local}
+
+  data:
+    redis:
+      host: ${QUEUE_REDIS_HOST:localhost}
+      port: ${QUEUE_REDIS_PORT:6379}
+      password: ${QUEUE_REDIS_PASSWORD}
+      ssl:
+        enabled: ${QUEUE_REDIS_SSL_ENABLED:false}
+
+gateway:
+  internal:
+    secret: ${GATEWAY_INTERNAL_SECRET}
+
+queue:
+  batch-size: ${QUEUE_BATCH_SIZE:100}
+  interval-ms: ${QUEUE_INTERVAL_MS:3000}
+  pass-ttl-seconds: ${QUEUE_PASS_TTL_SECONDS:600}
+  token-secret: ${QUEUE_TOKEN_SECRET}

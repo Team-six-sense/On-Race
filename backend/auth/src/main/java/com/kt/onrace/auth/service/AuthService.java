@@ -60,7 +60,6 @@ public class AuthService {
 	private final SmsVerifyService smsVerifyService;
 	private final LoginHistoryService loginHistoryService;
 	private final RedissonClient redissonClient;
-	private final RedisKeyGenerator redisKeyGenerator;
 
 	@Transactional
 	public SignupResponse signup(SignupRequest request) {
@@ -146,7 +145,7 @@ public class AuthService {
 	}
 
 	private void checkLoginFailCount(String email) {
-		RAtomicLong counter = redissonClient.getAtomicLong(redisKeyGenerator.loginFailCountKey(email));
+		RAtomicLong counter = redissonClient.getAtomicLong(RedisKeyGenerator.loginFailCountKey(email));
 		long count = counter.get();
 		if (count >= authProperties.getLoginFail().getCaptchaThreshold()) {
 			throw new BusinessException(BusinessErrorCode.AUTH_LOGIN_FAIL_CAPTCHA);
@@ -157,7 +156,7 @@ public class AuthService {
 	}
 
 	private void incrementLoginFailCount(String email) {
-		RAtomicLong counter = redissonClient.getAtomicLong(redisKeyGenerator.loginFailCountKey(email));
+		RAtomicLong counter = redissonClient.getAtomicLong(RedisKeyGenerator.loginFailCountKey(email));
 		long count = counter.incrementAndGet();
 		if (count == 1) {
 			counter.expire(Duration.ofMinutes(authProperties.getLoginFail().getTtlMinutes()));
@@ -165,7 +164,7 @@ public class AuthService {
 	}
 
 	private void resetLoginFailCount(String email) {
-		redissonClient.getAtomicLong(redisKeyGenerator.loginFailCountKey(email)).delete();
+		redissonClient.getAtomicLong(RedisKeyGenerator.loginFailCountKey(email)).delete();
 	}
 
 	@Transactional
