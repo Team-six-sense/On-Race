@@ -44,10 +44,11 @@ public class QueueController {
 	}
 
 	@DeleteMapping("/leave")
-	public ApiResponse<Boolean> leave(
+	public ApiResponse<Void> leave(
 		@RequestHeader("X-User-Id") Long userId,
 		@RequestParam Long paceId
 	) {
-		return ApiResponse.success(queueService.leave(userId, paceId));
+		queueService.leave(userId, paceId);
+		return ApiResponse.success();
 	}
 }

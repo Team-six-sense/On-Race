@@ -33,7 +33,6 @@ public class EmailVerifyService {
 	private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
 	private final RedissonClient redissonClient;
-	private final RedisKeyGenerator redisKeyGenerator;
 	private final JavaMailSender mailSender;
 	private final UserRepository userRepository;
 	private final EmailSendRepository emailSendRepository;
@@ -44,20 +43,20 @@ public class EmailVerifyService {
 		}
 
 		RBucket<String> cooldownBucket = redissonClient.getBucket(
-			redisKeyGenerator.emailSendCooldownKey(email), StringCodec.INSTANCE);
+			RedisKeyGenerator.emailSendCooldownKey(email), StringCodec.INSTANCE);
 		if (cooldownBucket.isExists()) {
 			throw new BusinessException(BusinessErrorCode.AUTH_EMAIL_SEND_COOLDOWN);
 		}
 
 		String today = LocalDate.now().toString();
-		RAtomicLong counter = redissonClient.getAtomicLong(redisKeyGenerator.emailSendCountKey(email, today));
+		RAtomicLong counter = redissonClient.getAtomicLong(RedisKeyGenerator.emailSendCountKey(email, today));
 		if (counter.get() >= MAX_SEND_COUNT) {
 			throw new BusinessException(BusinessErrorCode.AUTH_EMAIL_SEND_LIMIT_EXCEEDED);
 		}
 
 		String code = generateCode();
 
-		RBucket<String> bucket = redissonClient.getBucket(redisKeyGenerator.emailVerifyCodeKey(email),
+		RBucket<String> bucket = redissonClient.getBucket(RedisKeyGenerator.emailVerifyCodeKey(email),
 			StringCodec.INSTANCE);
 		bucket.set(code, Duration.ofMinutes(CODE_TTL_MINUTES));
 
@@ -78,7 +77,7 @@ public class EmailVerifyService {
 	}
 
 	public void verifyCode(String email, String code) {
-		RBucket<String> bucket = redissonClient.getBucket(redisKeyGenerator.emailVerifyCodeKey(email),
+		RBucket<String> bucket = redissonClient.getBucket(RedisKeyGenerator.emailVerifyCodeKey(email),
 			StringCodec.INSTANCE);
 		String stored = bucket.get();
 
@@ -88,16 +87,16 @@ public class EmailVerifyService {
 
 		bucket.delete();
 
-		RBucket<String> verifiedBucket = redissonClient.getBucket(redisKeyGenerator.emailVerifiedKey(email));
+		RBucket<String> verifiedBucket = redissonClient.getBucket(RedisKeyGenerator.emailVerifiedKey(email));
 		verifiedBucket.set("1", Duration.ofMinutes(VERIFIED_TTL_MINUTES));
 	}
 
 	public boolean isVerified(String email) {
-		return redissonClient.getBucket(redisKeyGenerator.emailVerifiedKey(email)).isExists();
+		return redissonClient.getBucket(RedisKeyGenerator.emailVerifiedKey(email)).isExists();
 	}
 
 	public void deleteVerified(String email) {
-		redissonClient.getBucket(redisKeyGenerator.emailVerifiedKey(email)).delete();
+		redissonClient.getBucket(RedisKeyGenerator.emailVerifiedKey(email)).delete();
 	}
 
 	/**
@@ -107,7 +106,7 @@ public class EmailVerifyService {
 	 * @return 인증 상태가 존재했으면 true, 아니면 false
 	 */
 	public boolean consumeVerification(String email) {
-		RBucket<String> verifiedBucket = redissonClient.getBucket(redisKeyGenerator.emailVerifiedKey(email));
+		RBucket<String> verifiedBucket = redissonClient.getBucket(RedisKeyGenerator.emailVerifiedKey(email));
 		return verifiedBucket.getAndDelete() != null;
 	}
 

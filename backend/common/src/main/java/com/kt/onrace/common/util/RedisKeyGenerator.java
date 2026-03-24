@@ -1,8 +1,5 @@
 package com.kt.onrace.common.util;
 
-import org.springframework.stereotype.Component;
-
-@Component
 public class RedisKeyGenerator {
 
 	public static String lockKey(String resource, Long id) {
@@ -91,5 +88,9 @@ public class RedisKeyGenerator {
 
 	public static String queueBatchLock() {
 		return "queue:batch:lock";
+	}
+
+	public static String queueActivePaces() {
+		return "queue:active-paces";
 	}
 }

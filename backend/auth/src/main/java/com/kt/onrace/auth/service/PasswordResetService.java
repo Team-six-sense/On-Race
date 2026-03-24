@@ -35,7 +35,6 @@ public class PasswordResetService {
 	private final UserRepository userRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final RedissonClient redissonClient;
-	private final RedisKeyGenerator redisKeyGenerator;
 	private final JavaMailSender mailSender;
 	private final TokenStoreService tokenStoreService;
 
@@ -51,7 +50,7 @@ public class PasswordResetService {
 
 		String token = UUID.randomUUID().toString();
 
-		RBucket<String> tokenBucket = redissonClient.getBucket(redisKeyGenerator.passwordResetTokenKey(token));
+		RBucket<String> tokenBucket = redissonClient.getBucket(RedisKeyGenerator.passwordResetTokenKey(token));
 		tokenBucket.set(String.valueOf(user.getId()), Duration.ofMinutes(RESET_TOKEN_TTL_MINUTES));
 
 		setCooldown(email);
@@ -65,7 +64,7 @@ public class PasswordResetService {
 	 * 토큰은 유지 (POST /password/reset에서 최종 삭제)
 	 */
 	public void verifyResetToken(String token) {
-		RBucket<String> tokenBucket = redissonClient.getBucket(redisKeyGenerator.passwordResetTokenKey(token));
+		RBucket<String> tokenBucket = redissonClient.getBucket(RedisKeyGenerator.passwordResetTokenKey(token));
 		String userIdStr = tokenBucket.get();
 
 		if (userIdStr == null) {
@@ -74,7 +73,7 @@ public class PasswordResetService {
 
 		Long userId = Long.parseLong(userIdStr);
 
-		RBucket<String> verifiedBucket = redissonClient.getBucket(redisKeyGenerator.passwordResetVerifiedKey(userId));
+		RBucket<String> verifiedBucket = redissonClient.getBucket(RedisKeyGenerator.passwordResetVerifiedKey(userId));
 		verifiedBucket.set("1", Duration.ofMinutes(RESET_VERIFIED_TTL_MINUTES));
 	}
 
@@ -83,7 +82,7 @@ public class PasswordResetService {
 	 */
 	@Transactional
 	public void resetPassword(String token, String newPassword) {
-		RBucket<String> tokenBucket = redissonClient.getBucket(redisKeyGenerator.passwordResetTokenKey(token));
+		RBucket<String> tokenBucket = redissonClient.getBucket(RedisKeyGenerator.passwordResetTokenKey(token));
 		String userIdStr = tokenBucket.get();
 
 		if (userIdStr == null) {
@@ -92,7 +91,7 @@ public class PasswordResetService {
 
 		Long userId = Long.parseLong(userIdStr);
 
-		RBucket<String> verifiedBucket = redissonClient.getBucket(redisKeyGenerator.passwordResetVerifiedKey(userId));
+		RBucket<String> verifiedBucket = redissonClient.getBucket(RedisKeyGenerator.passwordResetVerifiedKey(userId));
 		if (!verifiedBucket.isExists()) {
 			throw new BusinessException(BusinessErrorCode.AUTH_PASSWORD_RESET_NOT_VERIFIED);
 		}
@@ -114,27 +113,27 @@ public class PasswordResetService {
 	}
 
 	private void checkCooldown(String email) {
-		if (redissonClient.getBucket(redisKeyGenerator.passwordResetCooldownKey(email)).isExists()) {
+		if (redissonClient.getBucket(RedisKeyGenerator.passwordResetCooldownKey(email)).isExists()) {
 			throw new BusinessException(BusinessErrorCode.AUTH_PASSWORD_RESET_COOLDOWN);
 		}
 	}
 
 	private void checkDailyLimit(String email) {
 		String today = LocalDate.now().toString();
-		RAtomicLong counter = redissonClient.getAtomicLong(redisKeyGenerator.passwordResetCountKey(email, today));
+		RAtomicLong counter = redissonClient.getAtomicLong(RedisKeyGenerator.passwordResetCountKey(email, today));
 		if (counter.get() >= MAX_DAILY_COUNT) {
 			throw new BusinessException(BusinessErrorCode.AUTH_PASSWORD_RESET_LIMIT_EXCEEDED);
 		}
 	}
 
 	private void setCooldown(String email) {
-		RBucket<String> cooldown = redissonClient.getBucket(redisKeyGenerator.passwordResetCooldownKey(email));
+		RBucket<String> cooldown = redissonClient.getBucket(RedisKeyGenerator.passwordResetCooldownKey(email));
 		cooldown.set("1", Duration.ofSeconds(COOLDOWN_TTL_SECONDS));
 	}
 
 	private void incrementDailyCount(String email) {
 		String today = LocalDate.now().toString();
-		RAtomicLong counter = redissonClient.getAtomicLong(redisKeyGenerator.passwordResetCountKey(email, today));
+		RAtomicLong counter = redissonClient.getAtomicLong(RedisKeyGenerator.passwordResetCountKey(email, today));
 		long newCount = counter.incrementAndGet();
 		if (newCount == 1) {
 			counter.expire(Duration.ofHours(COUNT_TTL_HOURS));

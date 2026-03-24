@@ -18,7 +18,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class EventStockService {
 	private final RedissonClient redissonClient;
-	private final RedisKeyGenerator redisKeyGenerator;
 	private final EntryProperties entryProperties;
 	private static final String RESERVE_SCRIPT =
 		"if redis.call('EXISTS', KEYS[1]) == 1 then return -2 end " +
@@ -30,18 +29,18 @@ public class EventStockService {
 	public void initializeStock(Long paceId, int availableStock) {
 
 		// 재고 카운터 셋팅(이 부분은 추후에 어떻게 할지 고민해봐야할듯)
-		String stockKey = redisKeyGenerator.stockKey(paceId);
+		String stockKey = RedisKeyGenerator.stockKey(paceId);
 		RAtomicLong stock = redissonClient.getAtomicLong(stockKey);
 		stock.set(availableStock);
 
-		String initKey = redisKeyGenerator.stockInitializedKey(paceId);
+		String initKey = RedisKeyGenerator.stockInitializedKey(paceId);
 		RBucket<String> flag = redissonClient.getBucket(initKey, StringCodec.INSTANCE);
 		flag.set("1");
 	}
 
 	public long tryReserveStock(Long paceId, Long userId) {
-		String reservationKey = redisKeyGenerator.reservationKey(paceId, userId);
-		String stockKey = redisKeyGenerator.stockKey(paceId);
+		String reservationKey = RedisKeyGenerator.reservationKey(paceId, userId);
+		String stockKey = RedisKeyGenerator.stockKey(paceId);
 
 		RScript script = redissonClient.getScript(StringCodec.INSTANCE);
 
@@ -60,7 +59,7 @@ public class EventStockService {
 	 * (결제 확정 테스트용 임시 코드입니다 추후에 제가 삭제하겠습니다)
 	 */
 	public void restoreStock(Long paceId) {
-		String stockKey = redisKeyGenerator.stockKey(paceId);
+		String stockKey = RedisKeyGenerator.stockKey(paceId);
 		RAtomicLong stock = redissonClient.getAtomicLong(stockKey);
 		stock.incrementAndGet();
 	}
@@ -69,7 +68,7 @@ public class EventStockService {
 	 * (결제 확정 테스트용 임시 코드입니다 추후에 제가 삭제하겠습니다)
 	 */
 	public boolean hasReservation(Long paceId, Long userId) {
-		String reservationKey = redisKeyGenerator.reservationKey(paceId, userId);
+		String reservationKey = RedisKeyGenerator.reservationKey(paceId, userId);
 		RBucket<String> bucket = redissonClient.getBucket(reservationKey, StringCodec.INSTANCE);
 		return bucket.isExists();
 	}
@@ -78,7 +77,7 @@ public class EventStockService {
 	 * (결제 확정 테스트용 임시 코드입니다 추후에 제가 삭제하겠습니다)
 	 */
 	public boolean deleteReservation(Long paceId, Long userId) {
-		String reservationKey = redisKeyGenerator.reservationKey(paceId, userId);
+		String reservationKey = RedisKeyGenerator.reservationKey(paceId, userId);
 		RBucket<String> bucket = redissonClient.getBucket(reservationKey, StringCodec.INSTANCE);
 		return bucket.delete();
 	}

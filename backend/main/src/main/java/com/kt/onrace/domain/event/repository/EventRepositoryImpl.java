@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.cglib.core.Local;
 import org.springframework.stereotype.Repository;
 
 import com.kt.onrace.domain.event.dto.EventCursorData;
@@ -308,9 +309,7 @@ public class EventRepositoryImpl implements EventRepositoryCustom {
 	}
 
 	@Override
-	public List<Event> findQueueEnabledEvents(long beforeStartMinutes, long afterEndMinutes) {
-		LocalDateTime now = LocalDateTime.now();
-
+	public List<Event> findQueueEnabledEvents(LocalDateTime now, long beforeStartMinutes, long afterEndMinutes) {
 		BooleanBuilder builder = new BooleanBuilder();
 		builder.and(event.isQueue.isTrue());
 		builder.and(event.isDeleted.isFalse());

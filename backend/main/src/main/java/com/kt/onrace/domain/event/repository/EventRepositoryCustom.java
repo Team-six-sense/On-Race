@@ -1,5 +1,6 @@
 package com.kt.onrace.domain.event.repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -30,5 +31,5 @@ public interface EventRepositoryCustom {
 
 	Optional<Event> findVisibleEvent(Long id);
 
-	List<Event> findQueueEnabledEvents(long beforeStartMinutes, long afterEndMinutes);
+	List<Event> findQueueEnabledEvents(LocalDateTime now, long beforeStartMinutes, long afterEndMinutes);
 }

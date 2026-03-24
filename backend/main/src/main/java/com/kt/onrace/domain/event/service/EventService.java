@@ -1,5 +1,6 @@
 package com.kt.onrace.domain.event.service;
 
+import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -72,6 +73,7 @@ public class EventService {
 
 	public Set<Long> getQueueEnabledEventIds() {
 		return eventRepository.findQueueEnabledEvents(
+			LocalDateTime.now(),
 			eventProperties.getQueueStartMinutes(),
 			eventProperties.getQueueEndMinutes()
 		).stream()

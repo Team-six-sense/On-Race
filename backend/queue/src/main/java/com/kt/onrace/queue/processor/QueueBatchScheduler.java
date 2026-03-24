@@ -1,11 +1,13 @@
 package com.kt.onrace.queue.processor;
 
 import java.util.Collection;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.redisson.api.RBucket;
 import org.redisson.api.RLock;
 import org.redisson.api.RScoredSortedSet;
+import org.redisson.api.RSet;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -28,7 +30,6 @@ public class QueueBatchScheduler {
 	private final QueueTokenGenerator queueTokenGenerator;
 
 	private static final long LOCK_LEASE_SECONDS = 30;
-	private static final String WAITING_PREFIX = "queue:waiting:";
 
 	@Scheduled(fixedDelayString = "${queue.interval-ms}")
 	public void processBatch() {
@@ -48,14 +49,15 @@ public class QueueBatchScheduler {
 		}
 
 		try {
-			Iterable<String> waitingKeys = redissonClient.getKeys().getKeysByPattern(WAITING_PREFIX + "*");
+			RSet<String> activePaces = redissonClient.getSet(RedisKeyGenerator.queueActivePaces(), StringCodec.INSTANCE);
+			Set<String> paceIds = activePaces.readAll();
 
-			for (String waitingKey : waitingKeys) {
+			for (String paceIdStr : paceIds) {
 				try {
-					Long paceId = Long.parseLong(waitingKey.substring(WAITING_PREFIX.length()));
-					processPaceQueue(paceId);
+					Long paceId = Long.parseLong(paceIdStr);
+					processPaceQueue(paceId, activePaces);
 				} catch (Exception e) {
-					log.error("배치 처리 오류 - key={}, error={}", waitingKey, e.getMessage());
+					log.error("배치 처리 오류 - paceId={}, error={}", paceIdStr, e.getMessage());
 				}
 			}
 		} finally {
@@ -65,15 +67,19 @@ public class QueueBatchScheduler {
 		}
 	}
 
-	private void processPaceQueue(Long paceId) {
-		RScoredSortedSet<String> waitingSet = redissonClient.getScoredSortedSet(RedisKeyGenerator.queueWaiting(paceId),
-			StringCodec.INSTANCE);
+	private void processPaceQueue(Long paceId, RSet<String> activePaces) {
+		RScoredSortedSet<String> waitingSet = redissonClient.getScoredSortedSet(
+			RedisKeyGenerator.queueWaiting(paceId), StringCodec.INSTANCE);
 		int batchSize = queueProperties.getBatchSize();
 		long passTtl = queueProperties.getPassTtlSeconds();
 
 		Collection<String> popped = waitingSet.pollFirst(batchSize);
 
 		if (popped == null || popped.isEmpty()) {
+			// 대기열이 비었으면 활성 SET에서 제거
+			if (waitingSet.isEmpty()) {
+				activePaces.remove(String.valueOf(paceId));
+			}
 			return;
 		}
 
@@ -87,6 +93,11 @@ public class QueueBatchScheduler {
 			String passToken = queueTokenGenerator.generatePassToken(userId, paceId);
 			RBucket<String> passBucket = redissonClient.getBucket(passKey, StringCodec.INSTANCE);
 			passBucket.set(passToken, passTtl, TimeUnit.SECONDS);
+		}
+
+		// 모든 사용자를 통과시킨 뒤 대기열이 비었으면 활성 SET에서 제거
+		if (waitingSet.isEmpty()) {
+			activePaces.remove(String.valueOf(paceId));
 		}
 	}
 }
