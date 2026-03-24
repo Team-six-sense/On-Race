@@ -158,7 +158,7 @@ public class EntryService {
 			BusinessErrorCode.EVENT_NOT_FOUND);
 
 		LocalDateTime now = LocalDateTime.now();
-		Preconditions.validate(!event.getEventAt().isAfter(now), BusinessErrorCode.ENTRY_EVENT_ALREADY_ENDED);
+		Preconditions.validate(event.getEventAt().isAfter(now), BusinessErrorCode.ENTRY_EVENT_ALREADY_ENDED);
 		Preconditions.validate(!now.isBefore(event.getAppStartAt()) && !now.isAfter(event.getAppEndAt()),
 			BusinessErrorCode.ENTRY_NOT_IN_PERIOD);
 

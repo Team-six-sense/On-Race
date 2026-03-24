@@ -37,13 +37,13 @@ public class EventCourse extends BaseEntity {
 	private int distanceMeter;
 
 	@Column(nullable = false)
-	private Integer timeLimit;
+	private int timeLimit;
 
 	@Column(nullable = false)
-	private Integer waterSource;
+	private int waterSource;
 
 	@Column(nullable = false)
-	private Integer altitude;
+	private int altitude;
 
 	@Column(nullable = false, length = 500)
 	private String courseRoute;
@@ -55,8 +55,8 @@ public class EventCourse extends BaseEntity {
 	private List<EventPace> eventPaces = new ArrayList<>();
 
 	@Builder
-	public EventCourse(Event event, String name, String mapUrl, Integer distanceMeter, Integer timeLimit
-	, Integer waterSource, Integer altitude, String courseRoute, long price) {
+	public EventCourse(Event event, String name, String mapUrl, Integer distanceMeter, Integer timeLimit,
+		Integer waterSource, Integer altitude, String courseRoute, long price) {
 		this.event = event;
 		this.name = name;
 		this.mapUrl = mapUrl;
