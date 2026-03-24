@@ -99,7 +99,6 @@ resource "helm_release" "loki" {
   ]
 
   depends_on = [module.eks, module.loki] 
-  timeout = 600
 }
 
 # 7. Grafana Helm 배포
@@ -316,7 +315,6 @@ resource "helm_release" "prometheus" {
   }
 
   depends_on = [module.eks]
-  timeout = 600
 }
 
 # 16. KEDA 테스트용 샘플 Deployment
@@ -460,4 +458,54 @@ resource "aws_security_group_rule" "eks_to_redis" {
   
   # 출발지: 방금 App에서 만든 EKS 노드 보안 그룹
   source_security_group_id = module.eks.node_security_group_id
+}
+
+# 1. AI팀 전용 S3 접근 정책 (Read/Write)
+resource "aws_iam_policy" "ai_s3_access" {
+  name        = "${var.project_name}-ai-s3-access"
+  description = "Allow AI team to access VQA data bucket"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action   = ["s3:GetObject", "s3:PutObject", "s3:ListBucket"]
+        Effect   = "Allow"
+        Resource = [
+          "arn:aws:s3:::t6-on-race-ai-vqa-data-prod",
+          "arn:aws:s3:::t6-on-race-ai-vqa-data-prod/*"
+        ]
+      }
+    ]
+  })
+}
+
+# 2. AI팀 전용 IRSA 역할 생성 (OIDC 연동)
+module "ai_irsa" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+  version = "~> 5.0"
+
+  role_name = "${var.project_name}-ai-irsa"
+  
+  oidc_providers = {
+    main = {
+      provider_arn               = module.eks.oidc_provider_arn
+      namespace_service_accounts = ["${kubernetes_namespace_v1.app.metadata[0].name}:ai-service-account"]
+    }
+  }
+
+  role_policy_arns = {
+    s3 = aws_iam_policy.ai_s3_access.arn
+  }
+}
+
+# 3. 쿠버네티스 서비스 어카운트 생성 및 역할 연결
+resource "kubernetes_service_account_v1" "ai_sa" {
+  metadata {
+    name      = "ai-service-account"
+    namespace = kubernetes_namespace_v1.app.metadata[0].name
+    annotations = {
+      "eks.amazonaws.com/role-arn" = module.ai_irsa.iam_role_arn
+    }
+  }
 }
