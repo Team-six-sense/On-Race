@@ -40,3 +40,8 @@ resource "kubernetes_namespace_v1" "app" {
   metadata { name = "${var.project_name}-${var.environment}" }
   depends_on = [module.eks]
 }
+
+resource "time_sleep" "wait_for_lb_controller" {
+  depends_on      = [helm_release.lb_controller]
+  create_duration = "90s" # 컨트롤러 파드 초기화 대기
+}

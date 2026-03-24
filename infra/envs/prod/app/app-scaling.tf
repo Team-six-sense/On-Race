@@ -12,7 +12,7 @@ resource "time_sleep" "wait_30_seconds_for_keda" {
   depends_on      = [helm_release.keda]
   create_duration = "30s"
 }
-/*
+
 resource "kubernetes_manifest" "on_race_tps_scaler" {
   manifest = {
     apiVersion = "keda.sh/v1alpha1"
@@ -58,7 +58,7 @@ resource "kubernetes_manifest" "on_race_tps_scaler" {
   }
   depends_on = [time_sleep.wait_30_seconds_for_keda, kubernetes_deployment_v1.on_race_api]
 }
-*/
+
 module "karpenter" {
   source            = "../../../modules/karpenter"
   project_name      = var.project_name

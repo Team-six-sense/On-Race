@@ -75,4 +75,10 @@ resource "kubernetes_service_v1" "on_race_api" {
     # 외부 접속이 가능하도록 타입을 변경합니다.
     type = "LoadBalancer"
   }
+
+  # 테라폼이 로드밸런서 주소 할당을 기다리지 않고 즉시 배포 성공 처리
+  wait_for_load_balancer = false 
+  
+  # 아래 2번 항목에서 생성할 대기 리소스에 의존성 부여
+  depends_on = [time_sleep.wait_for_lb_controller]
 }
