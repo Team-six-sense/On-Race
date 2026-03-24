@@ -32,7 +32,6 @@ import com.kt.onrace.auth.repository.TermVersionRepository;
 import com.kt.onrace.auth.repository.UserRepository;
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
-import com.kt.onrace.auth.config.AuthProperties;
 import com.kt.onrace.common.security.JwtProperties;
 import com.kt.onrace.common.security.JwtTokenProvider;
 import com.kt.onrace.common.util.MaskingType;
@@ -46,7 +45,10 @@ import lombok.RequiredArgsConstructor;
 @Transactional
 public class AuthService {
 
-	private final AuthProperties authProperties;
+	private static final int LOGIN_FAIL_WARNING_THRESHOLD = 5;
+	private static final int LOGIN_FAIL_CAPTCHA_THRESHOLD = 10;
+	private static final long LOGIN_FAIL_TTL_MINUTES = 30;
+
 	private final UserRepository userRepository;
 	private final TermVersionRepository termVersionRepository;
 	private final TermUserRepository termUserRepository;
@@ -147,10 +149,10 @@ public class AuthService {
 	private void checkLoginFailCount(String email) {
 		RAtomicLong counter = redissonClient.getAtomicLong(redisKeyGenerator.loginFailCountKey(email));
 		long count = counter.get();
-		if (count >= authProperties.getLoginFail().getCaptchaThreshold()) {
+		if (count >= LOGIN_FAIL_CAPTCHA_THRESHOLD) {
 			throw new BusinessException(BusinessErrorCode.AUTH_LOGIN_FAIL_CAPTCHA);
 		}
-		if (count >= authProperties.getLoginFail().getWarningThreshold()) {
+		if (count >= LOGIN_FAIL_WARNING_THRESHOLD) {
 			throw new BusinessException(BusinessErrorCode.AUTH_LOGIN_FAIL_WARNING);
 		}
 	}
@@ -159,7 +161,7 @@ public class AuthService {
 		RAtomicLong counter = redissonClient.getAtomicLong(redisKeyGenerator.loginFailCountKey(email));
 		long count = counter.incrementAndGet();
 		if (count == 1) {
-			counter.expire(Duration.ofMinutes(authProperties.getLoginFail().getTtlMinutes()));
+			counter.expire(Duration.ofMinutes(LOGIN_FAIL_TTL_MINUTES));
 		}
 	}
 

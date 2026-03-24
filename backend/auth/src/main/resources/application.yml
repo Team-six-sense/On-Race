@@ -56,8 +56,3 @@ solapi:
   api-secret: ${SOLAPI_API_SECRET:dummy_secret}
   sender: ${SOLAPI_SENDER:01012345678}
 
-auth:
-  login-fail:
-    warning-threshold: ${AUTH_LOGIN_FAIL_WARNING_THRESHOLD:5}
-    captcha-threshold: ${AUTH_LOGIN_FAIL_CAPTCHA_THRESHOLD:10}
-    ttl-minutes: ${AUTH_LOGIN_FAIL_TTL_MINUTES:30}

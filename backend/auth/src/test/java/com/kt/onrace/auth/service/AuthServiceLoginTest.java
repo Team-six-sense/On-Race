@@ -18,7 +18,6 @@ import org.redisson.api.RedissonClient;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import com.kt.onrace.auth.config.AuthProperties;
 import com.kt.onrace.auth.dto.LoginRequest;
 import com.kt.onrace.auth.dto.LoginResponse;
 import com.kt.onrace.auth.dto.TokenRefreshRequest;
@@ -38,9 +37,6 @@ class AuthServiceLoginTest {
 
 	@InjectMocks
 	private AuthService authService;
-
-	@Mock
-	private AuthProperties authProperties;
 
 	@Mock
 	private UserRepository userRepository;
@@ -87,12 +83,6 @@ class AuthServiceLoginTest {
 	void setUp() {
 		testUser = User.createUser("test@test.com", "테스터", "encodedPw", "01012345678");
 		ReflectionTestUtils.setField(testUser, "id", 1L);
-
-		AuthProperties.LoginFail loginFail = new AuthProperties.LoginFail();
-		loginFail.setWarningThreshold(5);
-		loginFail.setCaptchaThreshold(10);
-		loginFail.setTtlMinutes(30);
-		given(authProperties.getLoginFail()).willReturn(loginFail);
 
 		given(redissonClient.getAtomicLong(anyString())).willReturn(rAtomicLong);
 		given(rAtomicLong.get()).willReturn(0L);
