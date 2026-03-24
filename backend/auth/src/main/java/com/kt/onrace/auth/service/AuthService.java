@@ -33,7 +33,7 @@ import com.kt.onrace.auth.repository.TermVersionRepository;
 import com.kt.onrace.auth.repository.UserRepository;
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
-import com.kt.onrace.auth.config.AuthProperties;
+import com.kt.onrace.auth.common.config.AuthProperties;
 import com.kt.onrace.common.security.JwtProperties;
 import com.kt.onrace.common.security.JwtTokenProvider;
 import com.kt.onrace.common.util.MaskingType;

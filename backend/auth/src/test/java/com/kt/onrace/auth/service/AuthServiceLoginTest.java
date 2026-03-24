@@ -18,7 +18,7 @@ import org.redisson.api.RedissonClient;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import com.kt.onrace.auth.config.AuthProperties;
+import com.kt.onrace.auth.common.config.AuthProperties;
 import com.kt.onrace.auth.dto.LoginRequest;
 import com.kt.onrace.auth.dto.LoginResponse;
 import com.kt.onrace.auth.dto.TokenRefreshRequest;

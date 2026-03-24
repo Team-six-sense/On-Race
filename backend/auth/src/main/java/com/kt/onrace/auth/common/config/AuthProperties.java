@@ -1,4 +1,4 @@
-package com.kt.onrace.auth.config;
+package com.kt.onrace.auth.common.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
