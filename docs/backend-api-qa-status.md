@@ -10,6 +10,13 @@
   --tests '*MyPageControllerTest' --tests '*MyPageApiContractTest' --tests '*OrderServiceTest'
 ```
 
+실행 결과:
+
+- 총 103개 테스트 실행
+- 실패 0
+- 에러 0
+- 스킵 0
+
 판정 기준:
 
 - `[x]` 자동 테스트 또는 명확한 코드 검증으로 확인됨
@@ -17,10 +24,6 @@
 
 ## 이상 항목 요약
 
-- [ ] `/address/{id}`의 `PATCH` 의미가 `/addresses/{id}`와 다르다.
-  - canonical `/addresses/{id}`는 주소 수정
-  - compat `/address/{id}`는 기본 배송지 지정
-  - 같은 HTTP method/path 패턴인데 의미가 달라서 프론트가 혼동할 수 있다.
 - [ ] `auth` 컨트롤러 레이어는 서비스 테스트만 있고 HTTP 계약 테스트가 없다.
   - `/account/me`, `/signup`, `/login`, `/password/reset*`, `/email/*`, `/sms/*`, `/oauth/*`
 - [ ] `event`, `entry`, `media` 컨트롤러에 대한 자동 테스트가 없다.
@@ -110,7 +113,6 @@
 - [x] `GET /addresses/{id}`가 단건 조회를 반환한다.
 - [x] `POST /addresses`가 주소를 생성한다.
 - [x] `PUT /addresses/{id}`가 주소를 수정한다.
-- [x] `PATCH /addresses/{id}`가 주소를 수정한다.
 - [x] `PATCH /addresses/{id}/default`가 기본 배송지를 변경한다.
 - [x] `DELETE /addresses/{id}`가 주소를 삭제한다.
 - [x] `/api/account/addresses` 호환 경로가 동작한다.
@@ -123,10 +125,6 @@
 - [x] 기본 배송지를 삭제하면 자동 승격된다.
 - [x] 라벨 정책이 검증된다.
 - [x] 전화번호 형식 검증이 동작한다.
-
-주의:
-
-- [ ] `/address/{id}`의 `PATCH`는 수정이 아니라 기본 배송지 지정이다. canonical 경로와 의미가 달라서 주의가 필요하다.
 
 ## Event
 
@@ -167,4 +165,3 @@
 - [x] `/mypage/address`는 기본 배송지 요약으로만 문서화되어 있다.
 - [x] 내부 전용 `/internal/members/**`는 프론트 비사용 경로로 분리되어 있다.
 - [x] `/events/{eventId}/stock/init`는 프론트 비사용 경로로 분리되어 있다.
-

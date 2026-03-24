@@ -88,7 +88,6 @@
 - [ ] `GET /addresses/{id}`가 단건 조회를 반환한다.
 - [ ] `POST /addresses`가 주소를 생성한다.
 - [ ] `PUT /addresses/{id}`가 주소를 수정한다.
-- [ ] `PATCH /addresses/{id}`가 주소를 수정한다.
 - [ ] `PATCH /addresses/{id}/default`가 기본 배송지를 변경한다.
 - [ ] `DELETE /addresses/{id}`가 주소를 삭제한다.
 
@@ -143,4 +142,3 @@
 - [ ] `/mypage/address`는 기본 배송지 요약으로만 사용한다.
 - [ ] 내부 전용 `/internal/members/**`를 프론트가 호출하지 않는다.
 - [ ] `/events/{eventId}/stock/init`를 프론트가 호출하지 않는다.
-

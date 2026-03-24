@@ -245,7 +245,6 @@ canonical 경로:
 | `GET` | `/addresses/{id}` | `X-User-Id` | path: `id` | `AddressDto.Response` | 배송지 단건 |
 | `POST` | `/addresses` | `X-User-Id` | `AddressDto.SaveRequest` | `AddressDto.Response` | 배송지 추가 |
 | `PUT` | `/addresses/{id}` | `X-User-Id` | `AddressDto.SaveRequest` | `AddressDto.Response` | 배송지 전체 수정 |
-| `PATCH` | `/addresses/{id}` | `X-User-Id` | `AddressDto.SaveRequest` | `AddressDto.Response` | 배송지 수정 |
 | `DELETE` | `/addresses/{id}` | `X-User-Id` | path: `id` | `Void` | 배송지 삭제 |
 | `PATCH` | `/addresses/{id}/default` | `X-User-Id` | path: `id` | `Void` | 기본 배송지 지정 |
 

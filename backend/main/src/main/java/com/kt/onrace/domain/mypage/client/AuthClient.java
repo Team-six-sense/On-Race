@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
+import lombok.extern.slf4j.Slf4j;
 
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
@@ -20,6 +21,7 @@ import com.kt.onrace.common.response.ApiResponse;
  * auth 서비스에서 마이페이지 계정 원천 데이터를 읽어오는 내부 클라이언트이다.
  * 내부 신뢰 구간 호출이므로 X-User-Id 와 X-Gateway-Token 을 함께 전달한다.
  */
+@Slf4j
 @Component
 public class AuthClient {
 
@@ -59,6 +61,7 @@ public class AuthClient {
 
 			return body.getData();
 		} catch (RestClientException exception) {
+			log.error("auth 서비스에서 계정 정보를 가져오는데 실패했습니다. userId: {}", userId, exception);
 			throw new BusinessException(BusinessErrorCode.COMMON_SYSTEM_ERROR);
 		}
 	}

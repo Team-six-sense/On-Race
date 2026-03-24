@@ -32,7 +32,7 @@ public class AccountService {
 			user.getName(),
 			user.getPhoneNumber(),
 			user.getAuthProvider() == AuthProvider.LOCAL,
-			user.getVerificationStatus() != null ? user.getVerificationStatus() : VerificationStatus.NOT_STARTED,
+			user.getVerificationStatus(),
 			user.isMarketingConsent(),
 			user.getAuthProvider(),
 			user.getStatus()

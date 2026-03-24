@@ -176,7 +176,6 @@ legacy compatibility 경로:
 | `GET` | `/addresses/{id}` | - | 주소 단건 | 상세 조회 |
 | `POST` | `/addresses` | `receiverName`, `phone`, `zipcode`, `address1`, `address2`, `memo`, `isDefault`, `label` | 생성 주소 | 배송지 추가 |
 | `PUT` | `/addresses/{id}` | 위와 동일 | 수정 주소 | 전체 수정 |
-| `PATCH` | `/addresses/{id}` | 위와 동일 | 수정 주소 | 부분 수정 용도 |
 | `PATCH` | `/addresses/{id}/default` | - | `Void` | 기본 배송지 지정 |
 | `DELETE` | `/addresses/{id}` | - | `Void` | 배송지 삭제 |
 
@@ -246,4 +245,3 @@ legacy compatibility 경로:
 - `/internal/members/**`
 - `/events/{eventId}/stock/init`
 - `POST /events/{eventId}/entries/confirm` 신규 의존
-

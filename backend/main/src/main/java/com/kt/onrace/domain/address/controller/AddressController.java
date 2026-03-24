@@ -66,15 +66,6 @@ public class AddressController {
 		return ApiResponse.success(addressService.update(userId, id, request));
 	}
 
-	@PatchMapping("/{id}")
-	public ApiResponse<AddressDto.Response> patchUpdate(
-		@RequestHeader("X-User-Id") Long userId,
-		@PathVariable Long id,
-		@Valid @RequestBody AddressDto.SaveRequest request
-	) {
-		return ApiResponse.success(addressService.update(userId, id, request));
-	}
-
 	@DeleteMapping("/{id}")
 	public ApiResponse<Void> delete(
 		@RequestHeader("X-User-Id") Long userId,

@@ -198,28 +198,6 @@ class AddressApiControllerTest {
 
 	@ParameterizedTest
 	@MethodSource("routeSpecs")
-	void patchUpdateReturnsUpdatedAddressForCanonicalRoutes(String basePath, String defaultPath) throws Exception {
-		if ("/address".equals(basePath)) {
-			return;
-		}
-
-		given(addressService.update(eq(USER_ID), eq(2L), any(AddressDto.SaveRequest.class))).willReturn(latestAddress());
-
-		mockMvc.perform(patch(basePath + "/{id}", 2L)
-				.header(USER_ID_HEADER, USER_ID)
-				.contentType(APPLICATION_JSON)
-				.content(objectMapper.writeValueAsString(saveRequest())))
-			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.success").value(true))
-			.andExpect(jsonPath("$.code").value("SUCCESS"))
-			.andExpect(jsonPath("$.data.id").value(2L))
-			.andExpect(jsonPath("$.data.label").value("회사"));
-
-		verify(addressService).update(eq(USER_ID), eq(2L), any(AddressDto.SaveRequest.class));
-	}
-
-	@ParameterizedTest
-	@MethodSource("routeSpecs")
 	void deleteReturnsSuccess(String basePath, String defaultPath) throws Exception {
 		doNothing().when(addressService).delete(USER_ID, 2L);
 
