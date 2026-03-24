@@ -19,7 +19,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.kt.onrace.auth.common.client.MainServiceClient;
-import com.kt.onrace.auth.config.AuthProperties;
+import com.kt.onrace.auth.common.config.AuthProperties;
 import com.kt.onrace.auth.dto.WithdrawRequest;
 import com.kt.onrace.auth.entity.User;
 import com.kt.onrace.auth.repository.TermUserRepository;
