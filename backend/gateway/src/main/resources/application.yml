@@ -48,7 +48,7 @@ spring:
                     redis-rate-limiter.requestedTokens: 1
                     key-resolver: "#{@userOrIpKeyResolver}"
             - id: queue-route
-              uri: ${QUEUE_SERVICE_URI:http://localhost:8084}
+              uri: ${QUEUE_SERVICE_URI:http://localhost:8083}
               predicates:
                 - Path=/queue/**
               filters:
