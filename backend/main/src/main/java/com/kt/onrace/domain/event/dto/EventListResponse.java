@@ -1,5 +1,6 @@
 package com.kt.onrace.domain.event.dto;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
@@ -27,9 +28,12 @@ public record EventListResponse(
 	LocalDateTime appEndAt,
 	EventRegion region,
 	String venue,
+	LocalDateTime resultAt,
+	BigDecimal discountRate,
 	List<CourseDto> courses,
 	ImageDto thumbnailImg,
-	Long minPrice
+	Long minPrice,
+	Long maxPrice
 ) {
 
 	@Builder
@@ -68,6 +72,11 @@ public record EventListResponse(
 			.min()
 			.orElse(0L);
 
+		Long maxPrice = event.getCourses().stream()
+			.mapToLong(EventCourse::getPrice)
+			.max()
+			.orElse(0L);
+
 		return EventListResponse.builder()
 			.id(event.getId())
 			.title(event.getTitle())
@@ -79,9 +88,12 @@ public record EventListResponse(
 			.appEndAt(event.getAppEndAt())
 			.region(event.getRegion())
 			.venue(event.getVenue())
+			.resultAt(event.getLotteryAnnouncedAt())
+			.discountRate(event.getDiscountRate())
 			.courses(courses)
 			.thumbnailImg(thumbnailImg)
 			.minPrice(minPrice)
+			.maxPrice(maxPrice)
 			.build();
 	}
 }

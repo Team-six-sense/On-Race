@@ -1,5 +1,6 @@
 package com.kt.onrace.domain.event.service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -9,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.logging.annotation.ServiceLog;
+import com.kt.onrace.common.util.Preconditions;
 import com.kt.onrace.common.response.CursorResponse;
 import com.kt.onrace.domain.event.config.EventProperties;
 import com.kt.onrace.domain.event.dto.EventCursorData;
@@ -54,7 +56,11 @@ public class EventService {
 	public EventDetailResponse getEventDetail(Long eventId) {
 		Event event = eventRepository.findVisibleEventDetailOrThrow(eventId, BusinessErrorCode.EVENT_NOT_FOUND);
 
-		return EventDetailResponse.from(event);
+		Preconditions.validate(!event.getEventAt().isBefore(LocalDate.now().atStartOfDay()), BusinessErrorCode.EVENT_ENDED);
+
+		EventSalesInfo salesInfo = eventSalesInfoRepository.findByEventIdOrThrow(eventId, BusinessErrorCode.SALES_INFO_NOT_FOUND);
+
+		return EventDetailResponse.from(event, salesInfo.getDeliveryInfo(), salesInfo.getDeliveryFee());
 	}
 
 	public EventSalesInfoResponse getEventSalesInfo(Long eventId) {

@@ -76,6 +76,10 @@ public class EventSalesInfo extends BaseEntity {
 	@Column(length = 200)
 	private String deliveryArea;
 
+	// 배송 정보
+	@Column(length = 200)
+	private String deliveryInfo;
+
 	// 배송지 변경 가능 기간
 	private LocalDateTime addressChangePeriod;
 
@@ -113,7 +117,7 @@ public class EventSalesInfo extends BaseEntity {
 		String cancellationFee, String refundPolicy, String weatherRefund,
 		String deliveryTarget, String deliveryMethod,
 		LocalDateTime deliveryStartAt, LocalDateTime deliveryEndAt,
-		String deliveryFee, String deliveryArea, LocalDateTime addressChangePeriod,
+		String deliveryFee, String deliveryArea, String deliveryInfo, LocalDateTime addressChangePeriod,
 		String deliveryCompensation, String sellerName, String businessNo, String ecommerceNo,
 		boolean isEcommerceMediator, String customerService, String sellerAddress) {
 		this.event = event;
@@ -131,6 +135,7 @@ public class EventSalesInfo extends BaseEntity {
 		this.deliveryEndAt = deliveryEndAt;
 		this.deliveryFee = deliveryFee;
 		this.deliveryArea = deliveryArea;
+		this.deliveryInfo = deliveryInfo;
 		this.addressChangePeriod = addressChangePeriod;
 		this.deliveryCompensation = deliveryCompensation;
 		this.sellerName = sellerName;
