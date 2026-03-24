@@ -47,6 +47,17 @@ spring:
                     redis-rate-limiter.burstCapacity: 100
                     redis-rate-limiter.requestedTokens: 1
                     key-resolver: "#{@userOrIpKeyResolver}"
+            - id: queue-route
+              uri: ${QUEUE_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/queue/**
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    redis-rate-limiter.replenishRate: 50
+                    redis-rate-limiter.burstCapacity: 100
+                    redis-rate-limiter.requestedTokens: 1
+                    key-resolver: "#{@userOrIpKeyResolver}"
             - id: ticketing-route
               uri: ${MAIN_SERVICE_URI:http://localhost:8082}
               predicates:
@@ -67,6 +78,22 @@ spring:
                 - name: WaitingRoomFilter
                   args:
                     queueUrl: ${WAITING_ROOM_URI:http://localhost:3000/queue}
+            - id: entry-apply-route
+              uri: ${MAIN_SERVICE_URI:http://localhost:8082}
+              predicates:
+                - Path=/main/events/*/entries/apply
+              filters:
+                - StripPrefix=1
+                - SetRequestHeader=X-Forwarded-Prefix, /main
+                - name: RequestRateLimiter
+                  args:
+                    redis-rate-limiter.replenishRate: 10
+                    redis-rate-limiter.burstCapacity: 20
+                    redis-rate-limiter.requestedTokens: 1
+                    key-resolver: "#{@userOrIpKeyResolver}"
+                - name: WaitingRoomFilter
+                  args:
+                    queueUrl: ${WAITING_ROOM_URI:http://localhost:3000/queue}
             - id: public-route
               uri: ${MAIN_SERVICE_URI:http://localhost:8082}
               predicates:
@@ -82,6 +109,15 @@ spring:
                     key-resolver: "#{@userOrIpKeyResolver}"
           default-filters:
             - AddRequestHeader=X-Gateway-Token, ${GATEWAY_INTERNAL_SECRET:onrace-super-secret-key}
+gateway:
+  internal:
+    secret: ${GATEWAY_INTERNAL_SECRET}
+  queue-cache:
+    service-uri: ${MAIN_SERVICE_URI:http://localhost:8082}
+    poll-interval-ms: ${QUEUE_CACHE_POLL_INTERVAL_MS:5000}
+    enabled-events-path: ${QUEUE_CACHE_ENABLED_EVENTS_PATH:/events/queue-enabled}
+  queue-token-secret: ${QUEUE_TOKEN_SECRET}
+
 jwt:
   secret: ${JWT_SECRET}
   access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:300000}

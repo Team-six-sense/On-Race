@@ -32,7 +32,9 @@ import com.kt.onrace.domain.event.service.EventStockService;
 import com.kt.onrace.domain.member.repository.MemberRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -216,29 +218,24 @@ public class EntryService {
 	@ServiceLog(slowMs = 2000)
 	@Transactional
 	public void confirmReservation(Long userId, Long eventId, Long paceId) {
+		log.info("[TEMP-LOG] confirmReservation 시작 - userId={}, paceId={}", userId, paceId);
 		Entry entry = entryRepository.findByUserIdAndEventPaceId(userId, paceId)
 			.orElseThrow(() -> new BusinessException(BusinessErrorCode.ENTRY_NOT_FOUND));
 
 		if (entry.getStatus() == EntryStatus.APPLIED) {
+			log.info("[TEMP-LOG] 이미 APPLIED 상태, 즉시 반환 - userId={}", userId);
 			return;
 		}
 
 		Preconditions.validate(entry.isReserved(), BusinessErrorCode.ENTRY_CANNOT_APPLY);
 
-		// 원자적 DEL — 성공하면 TTL 리스너가 이 키를 처리할 수 없음
-		Preconditions.validate(
-			eventStockService.hasReservation(paceId, userId),
-			BusinessErrorCode.ENTRY_RESERVATION_EXPIRED
-		);
+		boolean deleted = eventStockService.deleteReservation(paceId, userId);
+		log.info("[TEMP-LOG] Redis 예약 키 삭제 결과 - deleted={}", deleted);
+		Preconditions.validate(deleted, BusinessErrorCode.ENTRY_RESERVATION_EXPIRED);
 
-		// RESERVED → APPLIED
 		entry.confirmPayment();
-
-		// DB 재고 확정 — confirmedStock++ (@Version 낙관적 락)
 		eventStockRepository.findByEventPaceIdOrThrow(paceId).confirmStock();
-
-		// DB 실패 시 보상: Redis 재고 복원 (키는 이미 삭제됨 → 리스너가 복원 불가하므로 직접 복원)
-		eventStockService.restoreStock(paceId);
+		log.info("[TEMP-LOG] confirmReservation 완료 - userId={}, status=APPLIED, confirmedStock++", userId);
 	}
 
 }

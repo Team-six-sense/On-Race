@@ -306,4 +306,20 @@ public class EventRepositoryImpl implements EventRepositoryCustom {
 
 		return Optional.of(foundEvent);
 	}
+
+	@Override
+	public List<Event> findQueueEnabledEvents(long beforeStartMinutes, long afterEndMinutes) {
+		LocalDateTime now = LocalDateTime.now();
+
+		BooleanBuilder builder = new BooleanBuilder();
+		builder.and(event.isQueue.isTrue());
+		builder.and(event.isDeleted.isFalse());
+		builder.and(event.appStartAt.loe(now.plusMinutes(beforeStartMinutes)));
+		builder.and(event.appEndAt.goe(now.minusMinutes(afterEndMinutes)));
+
+		return queryFactory
+			.selectFrom(event)
+			.where(builder)
+			.fetch();
+	}
 }

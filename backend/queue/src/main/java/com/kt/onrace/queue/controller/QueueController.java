@@ -1,0 +1,53 @@
+package com.kt.onrace.queue.controller;
+
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.kt.onrace.common.logging.annotation.ApiLog;
+import com.kt.onrace.common.response.ApiResponse;
+import com.kt.onrace.queue.dto.QueueEnterRequest;
+import com.kt.onrace.queue.dto.QueueEnterResponse;
+import com.kt.onrace.queue.dto.QueueStatusResponse;
+import com.kt.onrace.queue.service.QueueService;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+
+@ApiLog
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/queue")
+public class QueueController {
+
+	private final QueueService queueService;
+
+	@PostMapping("/enter")
+	public ApiResponse<QueueEnterResponse> enter(
+		@RequestHeader("X-User-Id") Long userId,
+		@Valid @RequestBody QueueEnterRequest request
+	) {
+		return ApiResponse.success(queueService.enter(userId, request.paceId()));
+	}
+
+	@GetMapping("/status")
+	public ApiResponse<QueueStatusResponse> getStatus(
+		@RequestHeader("X-User-Id") Long userId,
+		@RequestParam Long paceId
+	) {
+		return ApiResponse.success(queueService.getStatus(userId, paceId));
+	}
+
+	@DeleteMapping("/leave")
+	public ApiResponse<Boolean> leave(
+		@RequestHeader("X-User-Id") Long userId,
+		@RequestParam Long paceId
+	) {
+		return ApiResponse.success(queueService.leave(userId, paceId));
+	}
+}
