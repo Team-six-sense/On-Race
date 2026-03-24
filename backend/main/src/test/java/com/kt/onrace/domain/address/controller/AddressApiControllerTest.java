@@ -15,6 +15,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -61,7 +62,8 @@ class AddressApiControllerTest {
 	private static Stream<Arguments> routeSpecs() {
 		return Stream.of(
 			Arguments.of("/addresses", "/addresses/{id}/default"),
-			Arguments.of("/address", "/address/{id}")
+			Arguments.of("/address", "/address/{id}"),
+			Arguments.of("/api/account/addresses", "/api/account/addresses/{id}/default")
 		);
 	}
 
@@ -177,6 +179,47 @@ class AddressApiControllerTest {
 
 	@ParameterizedTest
 	@MethodSource("routeSpecs")
+	void accountListResponseExposesRequestedAliases(String basePath, String defaultPath) throws Exception {
+		given(addressService.list(USER_ID)).willReturn(List.of(defaultAddress()));
+
+		mockMvc.perform(get(basePath).header(USER_ID_HEADER, USER_ID))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data[0].addressId").value(1L))
+			.andExpect(jsonPath("$.data[0].receiverName").value("홍길동"))
+			.andExpect(jsonPath("$.data[0].label").value("집"))
+			.andExpect(jsonPath("$.data[0].roadAddress").value("서울시 강남구"))
+			.andExpect(jsonPath("$.data[0].detailAddress").value("101동"))
+			.andExpect(jsonPath("$.data[0].phoneNumber").value("01012345678"))
+			.andExpect(jsonPath("$.data[0].isDefault").value(true))
+			.andExpect(jsonPath("$.data[0].createdAt").value("2026-03-17T10:00:00"));
+
+		verify(addressService).list(USER_ID);
+	}
+
+	@ParameterizedTest
+	@MethodSource("routeSpecs")
+	void patchUpdateReturnsUpdatedAddressForCanonicalRoutes(String basePath, String defaultPath) throws Exception {
+		if ("/address".equals(basePath)) {
+			return;
+		}
+
+		given(addressService.update(eq(USER_ID), eq(2L), any(AddressDto.SaveRequest.class))).willReturn(latestAddress());
+
+		mockMvc.perform(patch(basePath + "/{id}", 2L)
+				.header(USER_ID_HEADER, USER_ID)
+				.contentType(APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(saveRequest())))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.code").value("SUCCESS"))
+			.andExpect(jsonPath("$.data.id").value(2L))
+			.andExpect(jsonPath("$.data.label").value("회사"));
+
+		verify(addressService).update(eq(USER_ID), eq(2L), any(AddressDto.SaveRequest.class));
+	}
+
+	@ParameterizedTest
+	@MethodSource("routeSpecs")
 	void deleteReturnsSuccess(String basePath, String defaultPath) throws Exception {
 		doNothing().when(addressService).delete(USER_ID, 2L);
 
@@ -240,7 +283,8 @@ class AddressApiControllerTest {
 			"서울시 강남구",
 			"101동",
 			"문앞",
-			true
+			true,
+			LocalDateTime.of(2026, 3, 17, 10, 0)
 		);
 	}
 
@@ -254,7 +298,8 @@ class AddressApiControllerTest {
 			"서울시 서초구",
 			"202동",
 			"경비실",
-			false
+			false,
+			LocalDateTime.of(2026, 3, 18, 10, 0)
 		);
 	}
 }

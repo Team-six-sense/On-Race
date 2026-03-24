@@ -22,7 +22,7 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/addresses")
+@RequestMapping({"/addresses", "/api/account/addresses"})
 public class AddressController {
 
 	private final AddressService addressService;
@@ -59,6 +59,15 @@ public class AddressController {
 
 	@PutMapping("/{id}")
 	public ApiResponse<AddressDto.Response> update(
+		@RequestHeader("X-User-Id") Long userId,
+		@PathVariable Long id,
+		@Valid @RequestBody AddressDto.SaveRequest request
+	) {
+		return ApiResponse.success(addressService.update(userId, id, request));
+	}
+
+	@PatchMapping("/{id}")
+	public ApiResponse<AddressDto.Response> patchUpdate(
 		@RequestHeader("X-User-Id") Long userId,
 		@PathVariable Long id,
 		@Valid @RequestBody AddressDto.SaveRequest request

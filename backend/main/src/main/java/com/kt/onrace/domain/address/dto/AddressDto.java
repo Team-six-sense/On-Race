@@ -1,5 +1,9 @@
 package com.kt.onrace.domain.address.dto;
 
+import java.time.LocalDateTime;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import jakarta.validation.constraints.NotBlank;
 
 public class AddressDto {
@@ -25,7 +29,8 @@ public class AddressDto {
 		String address1,
 		String address2,
 		String memo,
-		boolean isDefault
+		boolean isDefault,
+		LocalDateTime createdAt
 	) {
 		public static Response from(com.kt.onrace.domain.address.entity.Address address) {
 			return new Response(
@@ -37,8 +42,29 @@ public class AddressDto {
 				address.getAddress1(),
 				address.getAddress2(),
 				address.getMemo(),
-				address.isDefault()
+				address.isDefault(),
+				address.getCreatedAt()
 			);
+		}
+
+		@JsonProperty("addressId")
+		public Long accountAddressId() {
+			return id;
+		}
+
+		@JsonProperty("roadAddress")
+		public String roadAddressAlias() {
+			return address1;
+		}
+
+		@JsonProperty("detailAddress")
+		public String detailAddressAlias() {
+			return address2;
+		}
+
+		@JsonProperty("phoneNumber")
+		public String phoneNumberAlias() {
+			return phone;
 		}
 	}
 
