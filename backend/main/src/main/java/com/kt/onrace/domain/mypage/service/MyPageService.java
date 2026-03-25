@@ -5,6 +5,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.domain.member.repository.MemberRepository;
+import com.kt.onrace.domain.mypage.dto.MyPageAccountResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageAddressResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageEntryListResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageOrderDetailResponseDto;
@@ -24,9 +25,15 @@ import lombok.RequiredArgsConstructor;
 public class MyPageService {
 
 	private final MemberRepository memberRepository;
+	private final MyPageAccountQueryService myPageAccountQueryService;
 	private final MyPageQueryService myPageQueryService;
 	private final ApplicationHistoryService applicationHistoryService;
 	private final OrderHistoryService orderHistoryService;
+
+	public MyPageAccountResponseDto getAccount(Long userId) {
+		validateMember(userId);
+		return myPageAccountQueryService.getAccount(userId);
+	}
 
 	public MyPageOverviewResponseDto getOverview(Long userId) {
 		validateMember(userId);

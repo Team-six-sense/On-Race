@@ -1,6 +1,7 @@
 package com.kt.onrace.domain.mypage.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.BDDMockito.given;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -12,16 +13,20 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
+import org.redisson.api.RedissonClient;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kt.onrace.domain.address.entity.Address;
 import com.kt.onrace.domain.address.repository.AddressRepository;
+import com.kt.onrace.domain.mypage.client.AuthAccountClient;
+import com.kt.onrace.domain.entry.listener.EntryExpListener;
 import com.kt.onrace.domain.entry.entity.Entry;
 import com.kt.onrace.domain.entry.entity.EntryStatus;
 import com.kt.onrace.domain.entry.repository.EntryRepository;
@@ -90,6 +95,15 @@ class MyPageApiContractTest {
 	@Autowired
 	private EventRepository eventRepository;
 
+	@MockBean
+	private AuthAccountClient authAccountClient;
+
+	@MockBean
+	private RedissonClient redissonClient;
+
+	@MockBean
+	private EntryExpListener entryExpListener;
+
 	@BeforeEach
 	void setUp() {
 		orderRepository.deleteAll();
@@ -106,6 +120,12 @@ class MyPageApiContractTest {
 		createMember(ORDER_ONLY_USER_ID);
 		createMember(ADDRESS_ONLY_USER_ID);
 
+		stubAuthAccount(MIXED_USER_ID, "홍길동", "01012345678", "LOCAL", "VERIFIED", true);
+		stubAuthAccount(EMPTY_USER_ID, "빈사용자", "01000000000", "LOCAL", "UNVERIFIED", false);
+		stubAuthAccount(ENTRY_ONLY_USER_ID, "신청사용자", "01011112222", "KAKAO", "UNVERIFIED", false);
+		stubAuthAccount(ORDER_ONLY_USER_ID, "주문사용자", "01033334444", "NAVER", "VERIFIED", true);
+		stubAuthAccount(ADDRESS_ONLY_USER_ID, "주소사용자", "01022223333", "LOCAL", "UNVERIFIED", false);
+
 		LocalDateTime now = LocalDateTime.now();
 
 		seedMixedUser(now);
@@ -116,6 +136,7 @@ class MyPageApiContractTest {
 
 	@Test
 	void callMyPageEndpointsAndVerifyActualResponseShape() throws Exception {
+		JsonNode account = get(MIXED_USER_ID, "/mypage/account");
 		JsonNode overview = get(MIXED_USER_ID, "/mypage");
 		JsonNode entries = get(MIXED_USER_ID, "/mypage/entries");
 		JsonNode waitingEntries = get(MIXED_USER_ID, "/mypage/waiting-entries");
@@ -123,11 +144,19 @@ class MyPageApiContractTest {
 		JsonNode orderDetail = get(MIXED_USER_ID, "/mypage/orders/ORD-TEST-0001");
 		JsonNode address = get(MIXED_USER_ID, "/mypage/address");
 
+		JsonNode emptyAccount = get(EMPTY_USER_ID, "/mypage/account");
 		JsonNode emptyOverview = get(EMPTY_USER_ID, "/mypage");
 		JsonNode emptyEntries = get(EMPTY_USER_ID, "/mypage/entries");
 		JsonNode emptyWaitingEntries = get(EMPTY_USER_ID, "/mypage/waiting-entries");
 		JsonNode emptyOrders = get(EMPTY_USER_ID, "/mypage/orders");
 		JsonNode emptyAddress = get(EMPTY_USER_ID, "/mypage/address");
+
+		assertThat(account.path("data").path("name").asText()).isEqualTo("홍길동");
+		assertThat(account.path("data").path("authProvider").asText()).isEqualTo("LOCAL");
+		assertThat(account.path("data").path("verificationStatus").asText()).isEqualTo("VERIFIED");
+		assertThat(account.path("data").path("marketingConsent").asBoolean()).isTrue();
+		assertThat(account.path("data").path("address").path("hasAddress").asBoolean()).isTrue();
+		assertThat(account.path("data").path("address").path("defaultAddress").path("label").asText()).isEqualTo("집");
 
 		assertThat(overview.path("data").path("entries").path("totalCount").asInt()).isEqualTo(1);
 		assertThat(overview.path("data").path("waitingEntries").path("totalCount").asInt()).isEqualTo(1);
@@ -163,6 +192,9 @@ class MyPageApiContractTest {
 		assertThat(address.path("data").path("hasAddress").asBoolean()).isTrue();
 		assertThat(address.path("data").path("defaultAddress").path("label").asText()).isEqualTo("집");
 
+		assertThat(emptyAccount.path("data").path("name").asText()).isEqualTo("빈사용자");
+		assertThat(emptyAccount.path("data").path("verificationStatus").asText()).isEqualTo("UNVERIFIED");
+		assertThat(emptyAccount.path("data").path("address").path("hasAddress").asBoolean()).isFalse();
 		assertThat(emptyOverview.path("data").path("entries").path("items").isArray()).isTrue();
 		assertThat(emptyOverview.path("data").path("entries").path("page").asInt()).isZero();
 		assertThat(emptyOverview.path("data").path("entries").path("size").asInt()).isEqualTo(3);
@@ -181,6 +213,8 @@ class MyPageApiContractTest {
 		assertThat(emptyAddress.path("data").path("hasAddress").asBoolean()).isFalse();
 		assertThat(emptyAddress.path("data").path("defaultAddress").isNull()).isTrue();
 
+		System.out.println("--- populated GET /mypage/account ---");
+		System.out.println(pretty(account));
 		System.out.println("--- populated GET /mypage ---");
 		System.out.println(pretty(overview));
 		System.out.println("--- populated GET /mypage/entries ---");
@@ -193,6 +227,8 @@ class MyPageApiContractTest {
 		System.out.println(pretty(orderDetail));
 		System.out.println("--- populated GET /mypage/address ---");
 		System.out.println(pretty(address));
+		System.out.println("--- empty GET /mypage/account ---");
+		System.out.println(pretty(emptyAccount));
 		System.out.println("--- empty GET /mypage ---");
 		System.out.println(pretty(emptyOverview));
 		System.out.println("--- empty GET /mypage/entries ---");
@@ -207,12 +243,14 @@ class MyPageApiContractTest {
 
 	@Test
 	void prepareRequestedSeedSetsAndVerifyApiResponses() throws Exception {
+		JsonNode entryAccount = get(ENTRY_ONLY_USER_ID, "/mypage/account");
 		JsonNode entryOverview = get(ENTRY_ONLY_USER_ID, "/mypage");
 		JsonNode entryItems = get(ENTRY_ONLY_USER_ID, "/mypage/entries");
 		JsonNode waitingItems = get(ENTRY_ONLY_USER_ID, "/mypage/waiting-entries");
 		JsonNode entryOrders = get(ENTRY_ONLY_USER_ID, "/mypage/orders");
 		JsonNode entryAddress = get(ENTRY_ONLY_USER_ID, "/mypage/address");
 
+		assertThat(entryAccount.path("data").path("authProvider").asText()).isEqualTo("KAKAO");
 		assertThat(entryOverview.path("data").path("entries").path("totalCount").asInt()).isEqualTo(3);
 		assertThat(entryOverview.path("data").path("waitingEntries").path("totalCount").asInt()).isEqualTo(1);
 		assertThat(entryOverview.path("data").path("orders").path("totalCount").asInt()).isZero();
@@ -228,12 +266,14 @@ class MyPageApiContractTest {
 		assertThat(entryOrders.path("data").path("items")).isEmpty();
 		assertThat(entryAddress.path("data").path("hasAddress").asBoolean()).isFalse();
 
+		JsonNode orderAccount = get(ORDER_ONLY_USER_ID, "/mypage/account");
 		JsonNode orderOverview = get(ORDER_ONLY_USER_ID, "/mypage");
 		JsonNode orderItems = get(ORDER_ONLY_USER_ID, "/mypage/orders");
 		JsonNode orderEntries = get(ORDER_ONLY_USER_ID, "/mypage/entries");
 		JsonNode orderWaitingEntries = get(ORDER_ONLY_USER_ID, "/mypage/waiting-entries");
 		JsonNode orderAddress = get(ORDER_ONLY_USER_ID, "/mypage/address");
 
+		assertThat(orderAccount.path("data").path("authProvider").asText()).isEqualTo("NAVER");
 		assertThat(orderOverview.path("data").path("entries").path("totalCount").asInt()).isZero();
 		assertThat(orderOverview.path("data").path("waitingEntries").path("totalCount").asInt()).isZero();
 		assertThat(orderOverview.path("data").path("orders").path("totalCount").asInt()).isEqualTo(3);
@@ -247,11 +287,13 @@ class MyPageApiContractTest {
 		assertThat(orderWaitingEntries.path("data").path("items")).isEmpty();
 		assertThat(orderAddress.path("data").path("hasAddress").asBoolean()).isFalse();
 
+		JsonNode addressAccount = get(ADDRESS_ONLY_USER_ID, "/mypage/account");
 		JsonNode addressOverview = get(ADDRESS_ONLY_USER_ID, "/mypage");
 		JsonNode addressOnly = get(ADDRESS_ONLY_USER_ID, "/mypage/address");
 		JsonNode addressEntries = get(ADDRESS_ONLY_USER_ID, "/mypage/entries");
 		JsonNode addressOrders = get(ADDRESS_ONLY_USER_ID, "/mypage/orders");
 
+		assertThat(addressAccount.path("data").path("name").asText()).isEqualTo("주소사용자");
 		assertThat(addressOverview.path("data").path("entries").path("totalCount").asInt()).isZero();
 		assertThat(addressOverview.path("data").path("waitingEntries").path("totalCount").asInt()).isZero();
 		assertThat(addressOverview.path("data").path("orders").path("totalCount").asInt()).isZero();
@@ -289,6 +331,19 @@ class MyPageApiContractTest {
 			values.add(item.path(fieldName).asText());
 		}
 		return values;
+	}
+
+	private void stubAuthAccount(
+		Long userId,
+		String name,
+		String phone,
+		String authProvider,
+		String verificationStatus,
+		boolean marketingConsent
+	) {
+		given(authAccountClient.getMyInfo(userId)).willReturn(
+			new AuthAccountClient.AccountSummary(name, phone, authProvider, verificationStatus, marketingConsent)
+		);
 	}
 
 	private void createMember(Long userId) {
@@ -541,6 +596,10 @@ class MyPageApiContractTest {
 			.name(courseName)
 			.mapUrl(null)
 			.distanceMeter(distanceMeter)
+			.timeLimit(180)
+			.waterSource(10)
+			.altitude(100)
+			.courseRoute(courseName + " 코스")
 			.price(price)
 			.build());
 

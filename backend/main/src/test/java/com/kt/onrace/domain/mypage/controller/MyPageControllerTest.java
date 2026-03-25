@@ -23,6 +23,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.GlobalExceptionHandler;
 import com.kt.onrace.common.filter.GatewayAccessFilter;
+import com.kt.onrace.domain.mypage.dto.MyPageAccountResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageAddressDto;
 import com.kt.onrace.domain.mypage.dto.MyPageAddressResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageEntryItemDto;
@@ -49,6 +50,25 @@ class MyPageControllerTest {
 
 	@MockBean
 	private MyPageService myPageService;
+
+	@Test
+	void getAccountReturnsAccountSummary() throws Exception {
+		given(myPageService.getAccount(USER_ID)).willReturn(sampleAccount());
+
+		mockMvc.perform(get("/mypage/account").header(USER_ID_HEADER, USER_ID))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.code").value("SUCCESS"))
+			.andExpect(jsonPath("$.data.name").value("홍길동"))
+			.andExpect(jsonPath("$.data.phone").value("01012345678"))
+			.andExpect(jsonPath("$.data.authProvider").value("LOCAL"))
+			.andExpect(jsonPath("$.data.verificationStatus").value("VERIFIED"))
+			.andExpect(jsonPath("$.data.marketingConsent").value(true))
+			.andExpect(jsonPath("$.data.address.hasAddress").value(true))
+			.andExpect(jsonPath("$.data.address.defaultAddress.label").value("집"));
+
+		verify(myPageService).getAccount(USER_ID);
+	}
 
 	@Test
 	void getOverviewReturnsAggregatedResponse() throws Exception {
@@ -204,6 +224,17 @@ class MyPageControllerTest {
 			MyPageEntryListResponseDto.empty(0, 3),
 			new MyPageOrderListResponseDto(0, 3, 1, false, List.of(orderItem)),
 			new MyPageAddressResponseDto(true, address)
+		);
+	}
+
+	private MyPageAccountResponseDto sampleAccount() {
+		return new MyPageAccountResponseDto(
+			"홍길동",
+			"01012345678",
+			"LOCAL",
+			"VERIFIED",
+			true,
+			sampleOverview().address()
 		);
 	}
 
