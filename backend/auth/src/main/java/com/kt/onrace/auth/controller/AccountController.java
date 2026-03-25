@@ -10,7 +10,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.kt.onrace.auth.dto.AccountMeResponse;
 import com.kt.onrace.auth.dto.PasswordChangeRequest;
+import com.kt.onrace.auth.dto.UpdateMarketingConsentRequest;
 import com.kt.onrace.auth.dto.UpdateNameRequest;
+import com.kt.onrace.auth.dto.UpdateVerificationStatusRequest;
 import com.kt.onrace.auth.service.AccountService;
 import com.kt.onrace.common.logging.annotation.ApiLog;
 import com.kt.onrace.common.response.ApiResponse;
@@ -45,6 +47,26 @@ public class AccountController extends SwaggerAssistance {
 		@Valid @RequestBody UpdateNameRequest request) {
 
 		accountService.updateName(userId, request.name());
+		return ApiResponse.success();
+	}
+
+	@Operation(summary = "마케팅 수신 동의 변경", description = "로그인한 사용자의 마케팅 수신 동의 상태 변경")
+	@PatchMapping("/me/marketing-consent")
+	public ApiResponse<Void> updateMarketingConsent(
+		@RequestHeader("X-User-Id") Long userId,
+		@Valid @RequestBody UpdateMarketingConsentRequest request) {
+
+		accountService.updateMarketingConsent(userId, request.marketingConsent());
+		return ApiResponse.success();
+	}
+
+	@Operation(summary = "본인인증 상태 변경 (MVP)", description = "MVP 단계에서 로그인한 사용자의 본인인증 상태를 내부 상태값으로 변경")
+	@PatchMapping("/me/verification-status")
+	public ApiResponse<Void> updateVerificationStatus(
+		@RequestHeader("X-User-Id") Long userId,
+		@Valid @RequestBody UpdateVerificationStatusRequest request) {
+
+		accountService.updateVerificationStatus(userId, request.verificationStatus());
 		return ApiResponse.success();
 	}
 
