@@ -12,7 +12,6 @@ import com.kt.onrace.domain.event.entity.EventImage;
 import com.kt.onrace.domain.event.entity.EventImageType;
 import com.kt.onrace.domain.event.entity.EventPace;
 
-import jakarta.persistence.Column;
 import lombok.Builder;
 
 @Builder
@@ -21,7 +20,6 @@ public record EventDetailResponse(
 	LocalDateTime lotteryAnnouncedAt,
 	String notice,
 	List<CourseDto> courses,
-	List<PackageDto> packages,
 	List<ImageDto> thumbnailImg,
 	List<ImageDto> detailImg,
 	DeliveryDto delivery
@@ -50,15 +48,6 @@ public record EventDetailResponse(
 		int hour,
 		int minutes,
 		int capacity
-	) {
-	}
-
-	@Builder
-	public record PackageDto(
-		Long id,
-		String name,
-		long price,
-		String description
 	) {
 	}
 
@@ -103,14 +92,37 @@ public record EventDetailResponse(
 				.build())
 			.toList();
 
-		List<PackageDto> packages = event.getPackages().stream()
-			.map(pkg -> PackageDto.builder()
-				.id(pkg.getId())
-				.name(pkg.getName())
-				.price(pkg.getPrice())
-				.description(pkg.getDescription())
+		// 와이어 프레임에는 패키지 정보가 노출이 되었으나 해당 부분은 상세 이미지에서 노출이 되는 것으로 변경되어 패키지 정보는 제외하였습니다.
+		/*List<PackageDto> packages = event.getPackages().stream()
+			.collect(Collectors.groupingBy(
+				EventPackage::getItemType,
+				Collectors.mapping(
+					eventPackage -> {
+						EventItem item = eventPackage.getItem();
+						List<OptionDto> sizes = item.getSizes().stream()
+							.map(size -> OptionDto.builder()
+								.id(size.getId())
+								.option(size.getOption())
+								.build())
+							.toList();
+
+						return ItemDto.builder()
+							.id(item.getId())
+							.name(item.getName())
+							.price(item.getPrice())
+							.description(item.getDescription())
+							.sizes(sizes)
+							.build();
+					},
+					Collectors.toList()
+				)
+			))
+			.entrySet().stream()
+			.map(entry -> PackageDto.builder()
+				.itemType(entry.getKey().name())
+				.items(entry.getValue())
 				.build())
-			.toList();
+			.toList();*/
 
 		Map<EventImageType, List<ImageDto>> imagesByType = event.getImages().stream()
 			.sorted(Comparator.comparingInt(EventImage::getSort))
@@ -138,7 +150,6 @@ public record EventDetailResponse(
 			.lotteryAnnouncedAt(event.getLotteryAnnouncedAt())
 			.notice(event.getNotice())
 			.courses(courses)
-			.packages(packages)
 			.thumbnailImg(thumbnailImg)
 			.detailImg(detailImg)
 			.delivery(delivery)

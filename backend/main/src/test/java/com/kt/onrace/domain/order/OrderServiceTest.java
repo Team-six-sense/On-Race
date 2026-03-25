@@ -479,9 +479,9 @@ class OrderServiceTest {
 
 		EventPackage eventPackage = EventPackage.builder()
 			.event(event)
-			.name("기념 티셔츠")
-			.price(10000L)
-			.description("기본 옵션")
+			//.name("기념 티셔츠")   // 아이템 구조 변경 으로 인한 임시 주석
+			//.price(10000L)   // 아이템 구조 변경 으로 인한 임시 주석
+			//.description("기본 옵션")   // 아이템 구조 변경 으로 인한 임시 주석
 			.build();
 		setId(eventPackage, 30L);
 
