@@ -29,3 +29,8 @@ spec:
         - name: stunnel-conf
           configMap:
             name: redis-stunnel-conf # 테라폼이 생성한 ConfigMap 참조
+
+      initContainers:
+        - name: wait-for-stunnel
+          image: busybox:1.28
+          command: ['sh', '-c', "until nc -z localhost 6379; do echo waiting for stunnel; sleep 2; done;"]

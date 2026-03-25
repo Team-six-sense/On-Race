@@ -1,25 +1,27 @@
-# [Redis 영역] -----------------------------------------------------------
+# ==========================================================================
+# 1. Redis 계층 (ElastiCache)
+# ==========================================================================
 
-# Redis용 서브넷 그룹
-resource "aws_elasticache_subnet_group" "this" {
-  name       = "${var.project_name}-redis-subnet-group"
-  subnet_ids = var.database_subnets
-}
-
-# Redis 보안 그룹 (내용 수정됨: 인라인 ingress 제거)
+# Redis 보안 그룹
 resource "aws_security_group" "redis" {
   name   = "${var.project_name}-redis-sg"
   vpc_id = var.vpc_id
 
-  # [수정] ingress 블록 삭제: EKS가 아직 없어 null 에러가 발생하므로, 
-  # 나중에 app 계층에서 aws_security_group_rule로 따로 추가합니다.
-
+  # Ingress는 app 계층에서 별도 규칙으로 추가 (EKS 노드 허용)
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  tags = { Name = "${var.project_name}-redis-sg" }
+}
+
+# Redis 서브넷 그룹
+resource "aws_elasticache_subnet_group" "this" {
+  name       = "${var.project_name}-redis-subnet-group"
+  subnet_ids = var.database_subnets
 }
 
 # Redis 파라미터 그룹
@@ -33,49 +35,35 @@ resource "aws_elasticache_parameter_group" "this" {
   }
 }
 
-# Redis 클러스터
+# Redis 클러스터 (Replication Group)
 resource "aws_elasticache_replication_group" "this" {
   replication_group_id = "${var.project_name}-redis"
   description          = "Redis for On-Race TPS control and session"
 
   node_type            = var.redis_node_type
   port                 = 6379
+  engine               = "redis"
+  engine_version       = "7.0"
+  
   parameter_group_name = aws_elasticache_parameter_group.this.name
+  subnet_group_name    = aws_elasticache_subnet_group.this.name
+  security_group_ids   = [aws_security_group.redis.id]
 
   automatic_failover_enabled = var.automatic_failover_enabled
   num_cache_clusters         = var.num_cache_clusters
-  subnet_group_name          = aws_elasticache_subnet_group.this.name
-  security_group_ids         = [aws_security_group.redis.id]
-
-  engine         = "redis"
-  engine_version = "7.0"
-
+  multi_az_enabled           = true
+  
   at_rest_encryption_enabled = true
   transit_encryption_enabled = true
-  multi_az_enabled           = true
   apply_immediately          = true
 }
 
-# [RDS 영역] -------------------------------------------------------------
 
-# 1. DB 비밀번호 관리
-resource "aws_secretsmanager_secret" "db_password" {
-  name                    = "${var.project_name}-db-password-${var.environment}"
-  recovery_window_in_days = 0
-}
+# ==========================================================================
+# 2. RDS 데이터베이스 계층
+# ==========================================================================
 
-resource "aws_secretsmanager_secret_version" "db_password" {
-  secret_id = aws_secretsmanager_secret.db_password.id
-  secret_string = jsonencode({
-    username = "admin"
-    password = "ktcloudteam6!"
-    engine   = "mysql"
-    host     = aws_db_instance.this.address
-    port     = 3306
-  })
-}
-
-# 2. RDS 보안 그룹 (Proxy 통해서만 접속)
+# RDS 보안 그룹 (Proxy로부터의 접속만 허용)
 resource "aws_security_group" "rds" {
   name   = "${var.project_name}-rds-sg"
   vpc_id = var.vpc_id
@@ -86,9 +74,19 @@ resource "aws_security_group" "rds" {
     protocol        = "tcp"
     security_groups = [aws_security_group.rds_proxy.id]
   }
+
+  tags = { Name = "${var.project_name}-rds-sg" }
 }
 
-# 3. RDS 인스턴스
+# RDS 서브넷 그룹
+resource "aws_db_subnet_group" "this" {
+  name       = "${var.project_name}-db-subnet-group"
+  subnet_ids = var.database_subnets
+
+  tags = { Name = "${var.project_name}-db-subnet-group" }
+}
+
+# RDS 인스턴스
 resource "aws_db_instance" "this" {
   identifier        = "${var.project_name}-db"
   engine            = "mysql"
@@ -97,38 +95,38 @@ resource "aws_db_instance" "this" {
   allocated_storage = 20
 
   username = "admin"
-  password = "ktcloudteam6!"
+  password = var.db_password # base에서 주입받은 암호 사용
   db_name  = "onrace"
 
   db_subnet_group_name   = aws_db_subnet_group.this.name
   vpc_security_group_ids = [aws_security_group.rds.id]
 
-  skip_final_snapshot = true
   multi_az            = true
+  skip_final_snapshot = true
 }
 
-resource "aws_db_subnet_group" "this" {
-  name       = "${var.project_name}-db-subnet-group"
-  subnet_ids = var.database_subnets
-}
 
-# 4. RDS Proxy 보안 그룹 (내용 수정됨: 인라인 ingress 제거)
+# ==========================================================================
+# 3. RDS Proxy 계층
+# ==========================================================================
+
+# RDS Proxy 보안 그룹
 resource "aws_security_group" "rds_proxy" {
   name   = "${var.project_name}-rds-proxy-sg"
   vpc_id = var.vpc_id
 
-  # [수정] ingress 블록 삭제: EKS가 아직 없어 null 에러가 발생하므로, 
-  # 나중에 app 계층에서 aws_security_group_rule로 따로 추가합니다.
-
+  # Ingress는 app 계층에서 별도 규칙으로 추가 (EKS 노드 허용)
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  tags = { Name = "${var.project_name}-rds-proxy-sg" }
 }
 
-# 5. RDS Proxy
+# RDS Proxy 설정
 resource "aws_db_proxy" "this" {
   name                   = "${var.project_name}-rds-proxy"
   engine_family          = "MYSQL"
@@ -142,10 +140,11 @@ resource "aws_db_proxy" "this" {
   auth {
     auth_scheme = "SECRETS"
     iam_auth    = "DISABLED"
-    secret_arn  = aws_secretsmanager_secret.db_password.arn
+    secret_arn  = var.db_secret_arn # base에서 주입받은 ARN 사용
   }
 }
 
+# RDS Proxy 타겟 그룹 (기본값)
 resource "aws_db_proxy_default_target_group" "this" {
   db_proxy_name = aws_db_proxy.this.name
 
@@ -156,13 +155,19 @@ resource "aws_db_proxy_default_target_group" "this" {
   }
 }
 
+# RDS Proxy와 실제 DB 인스턴스 연결
 resource "aws_db_proxy_target" "this" {
   db_proxy_name          = aws_db_proxy.this.name
   target_group_name      = aws_db_proxy_default_target_group.this.name
   db_instance_identifier = aws_db_instance.this.identifier
 }
 
-# 6, 7. IAM 관련 설정 (변동 없음)
+
+# ==========================================================================
+# 4. IAM 권한 설정 (RDS Proxy용)
+# ==========================================================================
+
+# Proxy가 Assume할 IAM Role
 resource "aws_iam_role" "rds_proxy_role" {
   name = "${var.project_name}-rds-proxy-role"
   assume_role_policy = jsonencode({
@@ -175,6 +180,7 @@ resource "aws_iam_role" "rds_proxy_role" {
   })
 }
 
+# Secrets Manager 접근 정책
 resource "aws_iam_policy" "rds_proxy_policy" {
   name = "${var.project_name}-rds-proxy-policy"
   policy = jsonencode({
@@ -186,12 +192,13 @@ resource "aws_iam_policy" "rds_proxy_policy" {
           "secretsmanager:DescribeSecret"
         ]
         Effect   = "Allow"
-        Resource = [aws_secretsmanager_secret.db_password.arn]
+        Resource = [var.db_secret_arn]
       }
     ]
   })
 }
 
+# 역할에 정책 연결
 resource "aws_iam_role_policy_attachment" "rds_proxy_attach" {
   role       = aws_iam_role.rds_proxy_role.name
   policy_arn = aws_iam_policy.rds_proxy_policy.arn

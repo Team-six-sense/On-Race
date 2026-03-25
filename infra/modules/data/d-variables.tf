@@ -10,3 +10,14 @@ variable "eks_node_security_group_id" {
   type        = string
   default     = null
 }
+
+variable "db_password" {
+  description = "RDS 마스터 암호"
+  type        = string
+  sensitive   = true # 플랜 출력 시 암호 숨김
+}
+
+variable "db_secret_arn" {
+  description = "Secrets Manager ARN (RDS Proxy용)"
+  type        = string
+}

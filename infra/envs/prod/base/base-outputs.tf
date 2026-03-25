@@ -26,13 +26,18 @@ output "redis_endpoint" {
 }
 
 output "redis_security_group_id" {
-  description = "Redis 보안 그룹 ID (나중에 EKS 노드 허용 규칙 추가용)"
+  description = "Redis 보안 그룹 ID"
   value       = module.data.redis_security_group_id
 }
 
 output "rds_proxy_endpoint" {
   description = "DB Connection String for Backend Application (RDS Proxy)"
   value       = try(module.data.rds_proxy_endpoint, "pending")
+}
+
+output "rds_proxy_security_group_id" {
+  description = "RDS Proxy 보안 그룹 ID"
+  value       = module.data.rds_proxy_security_group_id
 }
 
 output "queue_url" {
@@ -43,10 +48,4 @@ output "queue_url" {
 output "ai_vqa_bucket_name" {
   description = "AI 팀용 VQA S3 버킷 이름"
   value       = aws_s3_bucket.ai_vqa_data.id
-}
-
-# RDS Proxy 보안 그룹 ID 추가 (나중에 EKS -> RDS Proxy 통신용)
-output "rds_proxy_security_group_id" {
-  description = "RDS Proxy 보안 그룹 ID"
-  value       = module.data.rds_proxy_security_group_id
 }

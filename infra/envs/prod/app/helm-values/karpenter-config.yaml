@@ -16,6 +16,9 @@ spec:
         - key: "karpenter.k8s.aws/instance-generation"
           operator: Gt
           values: ["2"] # 너무 오래된 인스턴스는 제외
+        - key: "topology.kubernetes.io/zone"
+          operator: In
+          values: ["ap-northeast-2a", "ap-northeast-2c"]
       nodeClassRef:
         group: karpenter.k8s.aws
         kind: EC2NodeClass

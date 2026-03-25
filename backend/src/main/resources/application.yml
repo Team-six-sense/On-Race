@@ -1,0 +1,32 @@
+spring:
+  data:
+    redis:
+      # [Stunnel 연동] Deployment에서 설정한 사이드카(localhost)를 통해 통신
+      host: ${SPRING_REDIS_HOST:localhost}
+      port: ${SPRING_REDIS_PORT:6379}
+      lettuce:
+        pool:
+          # TPS 폭증 대응을 위한 커넥션 풀 확장
+          max-active: 64
+          max-idle: 32
+          min-idle: 16
+
+  datasource:
+    # [RDS Proxy 연동] Base 계층에서 생성한 RDS Proxy 주입
+    url: jdbc:mysql://${DB_ENDPOINT}:3306/onrace?useSSL=false&characterEncoding=UTF-8
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # [KEDA 연동] Prometheus가 TPS 메트릭을 수집할 수 있도록 개방
+        include: prometheus, health
+  metrics:
+    tags:
+      application: on-race-api
+
+tps:
+  limit: ${TPS_LIMIT:100}

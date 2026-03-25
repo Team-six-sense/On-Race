@@ -14,24 +14,58 @@ module "vpc" {
   single_nat_gateway = true
 }
 
-# 2. 데이터 계층 모듈 호출 (Redis)
-# 이 계층은 '기초 인프라'이므로 아직 생성되지 않은 EKS에 대한 의존성을 제거합니다.
+# 1. 무작위 보안 암호 생성 (16자, 특수문자 포함)
+resource "random_password" "db_password" {
+  length           = 16
+  special          = true
+  # DB 연결 시 이슈가 될 수 있는 일부 특수문자 제외 가능
+  override_special = "!#$%&*()-_=+[]{}<>:?"
+}
+
+# 2. Secrets Manager 시크릿 생성
+resource "aws_secretsmanager_secret" "db_secret" {
+  name        = "${var.project_name}-${var.environment}-db-password-v3"
+  description = "On-Race RDS Root Password Managed by Terraform"
+  
+  # 테스트 환경이므로 삭제 시 대기 기간 없이 즉시 삭제 허용 (운영 시 주의)
+  recovery_window_in_days = 0 
+
+  tags = {
+    Project = var.project_name
+    Usage   = "Database-Credentials"
+  }
+}
+
+# 3. 생성된 암호를 JSON 형태로 시크릿에 저장
+resource "aws_secretsmanager_secret_version" "db_secret_val" {
+  secret_id     = aws_secretsmanager_secret.db_secret.id
+  secret_string = jsonencode({
+    username = "admin"
+    password = random_password.db_password.result
+    engine   = "mysql"
+    port     = 3306
+  })
+}
+
+# 4. [수정] 데이터 계층 모듈 호출 시 동적 암호 주입
+# [통합] 데이터 계층 모듈 호출
 module "data" {
   source = "../../../modules/data"
 
-  project_name     = var.project_name
-  environment      = var.environment
-  vpc_id           = module.vpc.vpc_id
-  database_subnets = module.vpc.database_subnets
+  project_name      = var.project_name
+  environment       = var.environment
+  vpc_id            = module.vpc.vpc_id
+  database_subnets  = module.vpc.database_subnets
 
-  redis_node_type = "cache.m7g.large"
+  # Secrets Manager에서 생성된 암호 주입
+  db_password       = random_password.db_password.result
+  
+  # RDS Proxy가 참조할 시크릿 ARN 전달 (이게 있어야 Proxy가 DB에 접속함)
+  db_secret_arn     = aws_secretsmanager_secret.db_secret.arn
 
+  redis_node_type            = "cache.m7g.large"
   automatic_failover_enabled = true
   num_cache_clusters         = 2
-
-  # [수정] EKS 모듈 참조 제거
-  # base 계층에서는 EKS가 없으므로 이 줄은 삭제하거나 주석 처리해야 배포가 가능합니다.
-  # eks_node_security_group_id = module.eks.node_security_group_id 
 }
 
 # 3. SQS 대기열 모듈 호출 

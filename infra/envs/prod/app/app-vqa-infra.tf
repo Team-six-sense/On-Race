@@ -1,3 +1,4 @@
+# 1. S3 접근 정책 (기존 유지)
 resource "aws_iam_policy" "ai_s3_access" {
   name = "${var.project_name}-ai-s3-access"
   policy = jsonencode({
@@ -10,27 +11,37 @@ resource "aws_iam_policy" "ai_s3_access" {
   })
 }
 
-module "ai_irsa" {
-  source    = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version   = "~> 5.0"
-  role_name = "${var.project_name}-ai-irsa"
-  oidc_providers = {
-    main = {
-      provider_arn               = module.eks.oidc_provider_arn
-      namespace_service_accounts = ["${kubernetes_namespace_v1.app.metadata[0].name}:ai-service-account"]
-    }
-  }
-  role_policy_arns = { s3 = aws_iam_policy.ai_s3_access.arn }
+# 2. EC2용 IAM 역할 생성 (IRSA 대체)
+resource "aws_iam_role" "ai_ec2_role" {
+  name = "${var.project_name}-ai-ec2-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "ec2.amazonaws.com"
+      }
+    }]
+  })
 }
 
-resource "kubernetes_service_account_v1" "ai_sa" {
-  metadata {
-    name        = "ai-service-account"
-    namespace   = kubernetes_namespace_v1.app.metadata[0].name
-    annotations = { "eks.amazonaws.com/role-arn" = module.ai_irsa.iam_role_arn }
-  }
+# 3. 역할에 S3 정책 연결
+resource "aws_iam_role_policy_attachment" "ai_s3_attach" {
+  role       = aws_iam_role.ai_ec2_role.name
+  policy_arn = aws_iam_policy.ai_s3_access.arn
 }
 
+# 4. EC2에 연결할 인스턴스 프로파일 생성
+resource "aws_iam_instance_profile" "ai_ec2_profile" {
+  name = "${var.project_name}-ai-ec2-profile"
+  role = aws_iam_role.ai_ec2_role.name
+}
+
+# ==========================================
+# 아래 CloudFront 관련 리소스는 기존 코드 유지
+# ==========================================
 resource "aws_cloudfront_origin_access_control" "ai_vqa_oac" {
   name                              = "${var.project_name}-ai-vqa-oac"
   origin_access_control_origin_type = "s3"

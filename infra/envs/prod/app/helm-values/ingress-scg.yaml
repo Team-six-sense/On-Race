@@ -1,8 +1,8 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: t6-on-race-scg-ingress # [수정] t6- 접두어 추가
-  namespace: on-race-prod
+  name: t6-on-race-scg-ingress
+  namespace: t6-on-race-prod
   annotations:
     # AWS ALB 설정
     alb.ingress.kubernetes.io/scheme: internet-facing

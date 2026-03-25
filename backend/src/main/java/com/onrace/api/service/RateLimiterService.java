@@ -1,15 +1,14 @@
 package com.onrace.api.service;
 
 import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value; // 추가
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
-import java.util.List;
 
 @Slf4j
 @Service
@@ -22,30 +21,47 @@ public class RateLimiterService {
     private RedisScript<Long> tpsLimitScript;
 
     @Autowired
-    private MeterRegistry meterRegistry; // Prometheus 메트릭 기록용
+    private MeterRegistry meterRegistry;
 
-    public boolean isAllowed(String groupId, int maxTps) {
+    // [수정] application.yml에서 기본값 100을 읽어옴
+    @Value("${tps.limit:100}")
+    private int defaultTpsLimit;
+
+    // Redis에 저장할 설정 키 이름
+    private static final String CONFIG_KEY = "onrace:config:tps-limit";
+
+    /**
+     * @param groupId 그룹 ID (g1, g2 등)
+     * 인자에서 maxTps를 제거하여 내부적으로 동적 결정하도록 변경
+     */
+    public boolean isAllowed(String groupId) {
+        // 1. Redis에서 실시간 TPS 제한 설정값 조회
+        String dynamicLimitStr = redisTemplate.opsForValue().get(CONFIG_KEY);
+        
+        // 2. Redis 값이 있으면 우선 적용, 없으면 yml 설정(100) 적용
+        int currentLimit = (dynamicLimitStr != null) ? Integer.parseInt(dynamicLimitStr) : defaultTpsLimit;
+
         String key = "tps:" + groupId + ":" + (System.currentTimeMillis() / 1000);
         
         try {
-            // Lua 스크립트 실행 (키, 최대TPS, 만료시간 2초)
+            // 3. 결정된 currentLimit으로 Lua 스크립트 실행
             Long result = redisTemplate.execute(tpsLimitScript, 
                     Collections.singletonList(key), 
-                    String.valueOf(maxTps), "2");
+                    String.valueOf(currentLimit), "2");
             
             boolean allowed = (result != null && result == 1L);
 
-            // [핵심] KEDA와 Prometheus가 읽어갈 메트릭 기록
-            // result="allowed" 또는 "rejected" 태그를 붙여서 카운팅
+            // 4. Prometheus 메트릭 기록 (KEDA 스케일링 소스)
             String statusTag = allowed ? "allowed" : "rejected";
-            meterRegistry.counter("onrace_tps_requests_total", "group", groupId, "result", statusTag).increment();
+            meterRegistry.counter("onrace_tps_requests_total", 
+                    "group", groupId, 
+                    "result", statusTag).increment();
 
             return allowed;
 
         } catch (Exception e) {
-            // Fail-Open: Redis 장애 시 일단 통과시키고 에러 로그 남김
             log.error("[RateLimiter] Redis 연결 오류 - 유입 제어 일시 해제 (Group: {})", groupId, e);
-            return true; 
+            return true; // Fail-Open
         }
     }
 }

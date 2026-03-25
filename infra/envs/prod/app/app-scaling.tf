@@ -1,3 +1,40 @@
+# 현재 AWS 계정 ID 조회를 위한 데이터 소스
+data "aws_caller_identity" "current" {}
+
+# 1. KEDA의 SQS 조회 권한 정책
+resource "aws_iam_policy" "keda_sqs_policy" {
+  name = "${var.project_name}-keda-sqs-policy"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action   = ["sqs:GetQueueAttributes", "sqs:GetQueueUrl"]
+      Effect   = "Allow"
+      # SQS ARN 조합 (계정 ID 동적 할당)
+      Resource = "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:${var.project_name}-waiting-queue.fifo"
+    }]
+  })
+}
+
+# 2. KEDA Operator용 IRSA 생성
+module "keda_irsa" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+  version = "~> 5.0"
+  
+  role_name = "${var.project_name}-keda-operator-role"
+  
+  oidc_providers = {
+    main = {
+      provider_arn               = module.eks.oidc_provider_arn
+      # KEDA가 기본적으로 사용하는 Service Account 이름 지정
+      namespace_service_accounts = ["keda:keda-operator"] 
+    }
+  }
+  
+  role_policy_arns = { 
+    sqs = aws_iam_policy.keda_sqs_policy.arn 
+  }
+}
+
 resource "helm_release" "keda" {
   name             = "keda"
   repository       = "https://kedacore.github.io/charts"
@@ -5,7 +42,14 @@ resource "helm_release" "keda" {
   namespace        = "keda"
   version          = "2.14.0"
   create_namespace = true
-  depends_on       = [module.eks]
+
+  # KEDA Operator 서비스 어카운트에 생성한 IRSA 주입
+  set {
+    name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+    value = module.keda_irsa.iam_role_arn
+  }
+
+  depends_on       = [module.eks, module.keda_irsa]
 }
 
 resource "time_sleep" "wait_30_seconds_for_keda" {
@@ -146,12 +190,13 @@ resource "kubernetes_manifest" "karpenter_node_pool" {
           requirements = [
             { key = "karpenter.sh/capacity-type", operator = "In", values = ["spot", "on-demand"] },
             { key = "k8s.amazonaws.com/instance-category", operator = "In", values = ["c", "m", "r"] },
-            { key = "kubernetes.io/arch", operator = "In", values = ["amd64"] }
+            { key = "kubernetes.io/arch", operator = "In", values = ["amd64"] },
+            # [최적화 5] 멀티 AZ 가용성 보장을 위한 가용 영역 명시
+            { key = "topology.kubernetes.io/zone", operator = "In", values = ["ap-northeast-2a", "ap-northeast-2c"] }
           ]
         }
       }
       disruption = {
-        # 노드가 비었거나 자원이 낭비될 때 자동으로 정리하는 정책
         consolidationPolicy = "WhenEmptyOrUnderutilized"
         consolidateAfter    = "1m"
       }
