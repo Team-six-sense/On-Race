@@ -1,18 +1,20 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Event } from '@/features/event/types';
+import { ThumbnailImg } from '@/features/event/types';
 import { useEffect, useState } from 'react';
 import { MdChevronLeft, MdChevronRight, MdImage } from 'react-icons/md';
 
-export function EventThumbnail({ event }: { event: Event }) {
+export function EventThumbnail({
+  thumbnailImg,
+}: {
+  thumbnailImg: ThumbnailImg[];
+}) {
   // 하이드레이션 오류 방지를 위한 마운트 상태 관리
   const [mounted, setMounted] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  const images = (event.thumbnailImg.images || [event.thumbnailImg.url])
-    .filter(Boolean)
-    .slice(0, 3);
+  const images = thumbnailImg.map((item) => item.url);
   const hasMultipleImages = images.length > 1;
 
   const handlePrev = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -49,7 +51,7 @@ export function EventThumbnail({ event }: { event: Event }) {
                 <img
                   key={index}
                   src={img}
-                  alt={`${event.title}-${index}`}
+                  alt={`thumbnailImg-${index}`}
                   className="w-full h-full object-cover flex-shrink-0"
                 />
               ))}

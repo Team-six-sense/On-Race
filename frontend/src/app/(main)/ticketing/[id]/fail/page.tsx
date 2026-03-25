@@ -1,11 +1,12 @@
 // app/login/success/page.tsx
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { HiMiniXCircle } from 'react-icons/hi2';
 
 export default function LoginSuccess() {
+  const params = useParams();
   const router = useRouter();
 
   return (
@@ -26,21 +27,21 @@ export default function LoginSuccess() {
 
       <div className="max-w-md w-full flex gap-2 items-center justify-center">
         <Button
-          variant="outline"
+          variant="secondary"
           rounded="full"
           size="lg"
           onClick={() => router.push('/')}
         >
-          메인 페이지로 이동
+          홈으로 이동
         </Button>
 
         <Button
           variant="primary1"
           rounded="full"
           size="lg"
-          onClick={() => router.push('/')}
+          onClick={() => router.push(`/ticketing/${params.id}`)}
         >
-          주문내역 보기
+          상세페이지로 돌아가기
         </Button>
       </div>
     </div>

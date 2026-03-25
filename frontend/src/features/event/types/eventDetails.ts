@@ -10,14 +10,18 @@ interface Pace {
   capacity: number;
 }
 
-interface Course {
+export interface CourseDetails {
   id: number;
   name: string;
-  mapUrl: string;
+  mapImg: string;
   distanceMeter: number;
   price: number;
   courseCapacity: number;
   paces: Pace[];
+  timeLimit: number;
+  waterSource: number;
+  altitude: number;
+  courseRoute: string;
 }
 
 interface Package {
@@ -27,7 +31,7 @@ interface Package {
   description: string;
 }
 
-interface ThumbnailImg {
+export interface ThumbnailImg {
   id: number;
   type: string;
   url: string;
@@ -44,7 +48,7 @@ export interface EventDetails {
   id: number;
   lotteryAnnouncedAt: string;
   notice: string;
-  courses: Course[];
+  courses: CourseDetails[];
   packages: Package[];
   thumbnailImg: ThumbnailImg[];
   detailImg: DetailImg[];

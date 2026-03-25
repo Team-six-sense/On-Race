@@ -3,7 +3,7 @@
 import { Label } from '@/components/shadcn/label';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LuInfo, LuX } from 'react-icons/lu';
 
 interface AgreementModalProps {
@@ -17,7 +17,7 @@ export const AgreeConfirmModal = ({
   onClose,
   onConfirm,
 }: AgreementModalProps) => {
-  // 체크박스 상태 관리
+  const modalRef = useRef<HTMLDivElement>(null);
   const [agreements, setAgreements] = useState({
     terms: false,
     privacy: false,
@@ -26,12 +26,28 @@ export const AgreeConfirmModal = ({
   // 전체 동의 체크 여부 확인
   const isAllChecked = agreements.terms && agreements.privacy;
 
+  useEffect(() => {
+    if (isOpen) {
+      setAgreements({
+        terms: false,
+        privacy: false,
+      });
+      modalRef.current?.focus();
+    }
+  }, [isOpen]);
+
   // 체크박스 핸들러
   const handleCheckboxChange = (id: keyof typeof agreements) => {
     setAgreements((prev) => ({
       ...prev,
       [id]: !prev[id],
     }));
+  };
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Tab' || e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault(); // 브라우저 기본 동작 방지
+      e.stopPropagation(); // 이벤트 전파 방지
+    }
   };
 
   // 모달이 닫혀있으면 아무것도 렌더링하지 않음
@@ -43,14 +59,24 @@ export const AgreeConfirmModal = ({
       <div className="absolute inset-0 bg-black/50 transition-opacity" />
 
       {/* 모달 본체 */}
-      <div className="relative w-full max-w-lg px-8 py-6 transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all animate-in fade-in zoom-in duration-300">
+      <div
+        ref={modalRef}
+        onKeyDown={handleKeyDown}
+        tabIndex={-1}
+        className="relative w-full max-w-lg px-8 py-6 transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all animate-in fade-in zoom-in duration-300"
+      >
         {/* 헤더 부분: 제목과 X 버튼 */}
         <div className="flex w-full items-center justify-between">
           <div className="flex-1 text-2xl font-bold text-gray-900">
             이벤트 참가 약관 동의
           </div>
           <div>
-            <Button variant="ghost" size="iconSm" onClick={onClose}>
+            <Button
+              variant="ghost"
+              size="iconSm"
+              onClick={onClose}
+              tabIndex={-1}
+            >
               <LuX />
             </Button>
           </div>
@@ -67,6 +93,7 @@ export const AgreeConfirmModal = ({
                 variant="primary"
                 checked={agreements.terms}
                 onCheckedChange={() => handleCheckboxChange('terms')}
+                tabIndex={-1}
               />
               <Label
                 htmlFor="terms"
@@ -101,6 +128,7 @@ export const AgreeConfirmModal = ({
                 variant="primary"
                 checked={agreements.privacy}
                 onCheckedChange={() => handleCheckboxChange('privacy')}
+                tabIndex={-1}
               />
               <Label
                 htmlFor="privacy"
@@ -137,6 +165,7 @@ export const AgreeConfirmModal = ({
             rounded="full"
             disabled={!isAllChecked}
             onClick={onConfirm}
+            tabIndex={-1}
           >
             확인
           </Button>

@@ -2,10 +2,10 @@
 
 import * as React from 'react';
 import * as CheckboxPrimitive from '@radix-ui/react-checkbox';
-import { Check as CheckIcon } from 'lucide-react';
 import { cva, type VariantProps } from 'class-variance-authority';
 
 import { cn } from '@/lib/utils';
+import { LuCheck } from 'react-icons/lu';
 
 // CVA를 사용하여 스타일 변종(Variants) 정의
 const checkboxVariants = cva(
@@ -53,7 +53,7 @@ const Checkbox = React.forwardRef<
     <CheckboxPrimitive.Indicator
       className={cn('flex items-center justify-center text-current')}
     >
-      <CheckIcon
+      <LuCheck
         className={cn(
           size === 'lg' ? 'h-4 w-4' : size === 'sm' ? 'h-2 w-2' : 'h-3.5 w-3.5',
         )}

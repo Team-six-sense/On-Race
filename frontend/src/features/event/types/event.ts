@@ -42,12 +42,15 @@ export interface Event {
   thumbnailImg: {
     id: number;
     url: string;
-    images?: string[];
   };
   minPrice: number;
-
-  // 임시로 추가
+  maxPrice: number;
+  discountRate: number;
   resultAt: string; // ISO 8601
+  delivery: {
+    schedule: string;
+    feePolicy: string;
+  };
 }
 
 /**

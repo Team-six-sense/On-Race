@@ -1,45 +1,64 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
+import { CourseDetails } from '@/features/event/types';
 import { useEffect, useState } from 'react';
-import { LuDroplet, LuFlag, LuMountain, LuRoute } from 'react-icons/lu';
+import {
+  LuDroplet,
+  LuFlag,
+  LuMountain,
+  LuRoute,
+  LuArrowLeft,
+  LuArrowRight,
+} from 'react-icons/lu';
 import { MdAccessTime } from 'react-icons/md';
 
-export function EventCourse() {
-  // 하이드레이션 오류 방지를 위한 마운트 상태 관리
+export function EventCourse({ courses }: { courses: CourseDetails[] }) {
   const [mounted, setMounted] = useState(false);
+  // 현재 선택된 코스의 인덱스 상태 추가
+  const [currentIndex, setCurrentIndex] = useState(0);
 
-  // 컴포넌트가 마운트된 후에만 렌더링을 허용
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // 아직 마운트되지 않았다면 껍데기(Skeleton) 혹은 null 반환
   if (!mounted) {
-    return <div className="mb-6 min-h-[100px]" />; // 레이아웃 시프트를 방지하기 위해 최소 높이 설정
+    return <div className="mb-6 min-h-[100px]" />;
+  }
+
+  // 코스가 없을 경우 예외 처리
+  if (!courses || courses.length === 0) return null;
+
+  const currentCourse = courses[currentIndex];
+
+  const handlePrev = () => {
+    setCurrentIndex((prev) => (prev === 0 ? courses.length - 1 : prev - 1));
+  };
+
+  const handleNext = () => {
+    setCurrentIndex((prev) => (prev === courses.length - 1 ? 0 : prev + 1));
+  };
+
+  function formatTime(totalMinutes: number) {
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return `${hours}시간 ${minutes}분`;
   }
 
   return (
     <section>
-      {/* <div>
-        <h2 className="text-xl font-bold mb-2 flex items-center">코스 안내</h2>
-        <div className="relative w-full overflow-hidden bg-gray-100 border-2 rounded">
-          <img
-            src="/image/course.png"
-            alt="코스 안내"
-            className="w-full h-auto block" // h-[300px] 제거, h-auto 추가
-          />
-        </div>
-      </div> */}
       <div>
-        <h2 className="text-xl font-bold mb-4 flex items-center">코스 안내</h2>
+        {/* 헤더 영역: 코스 안내 타이틀과 화살표 버튼 */}
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold flex items-center">코스 안내</h2>
+        </div>
 
-        {/* 컨테이너: 모바일은 세로(flex-col), 데스크탑은 가로(md:flex-row) */}
         <div className="flex flex-col md:flex-row gap-4">
-          {/* 좌측: 이미지 영역 (기존 높이 300px 유지) */}
-          <div className="w-full md:w-3/5 h-[300px] overflow-hidden">
+          {/* 좌측: 이미지 영역 */}
+          <div className="w-full md:w-3/5 h-[300px] overflow-hidden bg-gray-100 rounded-sm">
             <img
-              src="/image/course.png"
-              alt="코스 안내"
+              src={currentCourse.mapImg}
+              alt={`${currentIndex + 1}번 코스 안내도`}
               className="w-full h-full object-fill"
             />
           </div>
@@ -51,7 +70,12 @@ export function EventCourse() {
               <span className="text-lime-600 text-sm inline-flex items-center gap-1">
                 <LuFlag />총 거리
               </span>
-              <span className="text-white">5km</span>
+              <span className="text-white">
+                {currentCourse.distanceMeter > 10000
+                  ? (currentCourse.distanceMeter / 1000).toFixed(3)
+                  : currentCourse.distanceMeter / 1000}
+                km
+              </span>
             </div>
 
             {/* 카드 2 */}
@@ -60,7 +84,9 @@ export function EventCourse() {
                 <MdAccessTime />
                 제한 시간
               </span>
-              <span className="text-white">1시간 30분</span>
+              <span className="text-white">
+                {formatTime(currentCourse.timeLimit)}
+              </span>
             </div>
 
             {/* 카드 3 */}
@@ -69,7 +95,9 @@ export function EventCourse() {
                 <LuDroplet />
                 급수처
               </span>
-              <span className="text-white">총 3곳</span>
+              <span className="text-white">
+                총 {currentCourse.waterSource}곳
+              </span>
             </div>
 
             {/* 카드 4 */}
@@ -78,7 +106,9 @@ export function EventCourse() {
                 <LuMountain />
                 고도 변화
               </span>
-              <span className="text-white">±1,500m</span>
+              <span className="text-white">
+                ±{currentCourse.altitude.toLocaleString('ko-KR')}m
+              </span>
             </div>
 
             {/* 카드 5 */}
@@ -88,12 +118,23 @@ export function EventCourse() {
                 상세 코스
               </span>
               <span className="text-white text-sm leading-relaxed">
-                지역명 → 지역명 → 지역명(급수처) → 지역명 → 지역명 →
-                지역명(급수처) → 지역명 → 지역명 → 지역명(급수처) → 지역명
+                {currentCourse.courseRoute}
               </span>
             </div>
           </div>
         </div>
+        {courses.length > 1 && (
+          <div className="flex items-center py-2">
+            <div className="flex gap-2">
+              <Button variant="ghost" onClick={handlePrev}>
+                <LuArrowLeft size={20} />
+              </Button>
+              <Button variant="ghost" onClick={handleNext}>
+                <LuArrowRight size={20} />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );

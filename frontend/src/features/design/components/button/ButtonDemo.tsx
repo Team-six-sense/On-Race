@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { Mail } from 'lucide-react'; // 아이콘 예시용
+import { LuMail } from 'react-icons/lu';
 
 export default function ButtonDemo() {
   const variants = [
@@ -41,7 +41,9 @@ export default function ButtonDemo() {
         <div className="flex flex-wrap gap-6 items-end bg-white p-6 rounded-xl shadow-sm">
           {sizes.map((s) => (
             <div key={s} className="flex flex-col items-center gap-2">
-              <Button size={s}>{s === 'icon' ? <Mail /> : `Size ${s}`}</Button>
+              <Button size={s}>
+                {s === 'icon' ? <LuMail /> : `Size ${s}`}
+              </Button>
               <span className="text-xs text-gray-400">{s}</span>
             </div>
           ))}

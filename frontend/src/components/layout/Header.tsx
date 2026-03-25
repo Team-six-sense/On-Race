@@ -156,7 +156,7 @@ export default function Header() {
         </div>
       </header>
 
-      {/* --- 2. BANNER SECTION (메인 페이지에서만 렌더링) --- */}
+      {/* BANNER SECTION */}
       {isHome && (
         <section className="relative h-[700px] w-full bg-black overflow-hidden">
           <Image

@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { ApiResponse } from '@/types/api';
-import { EventDetails, EventList } from '../types';
+import { EventDetails, EventList, SalesInfo } from '../types';
 import { IEventService } from './interface';
 
 // Next.js API Route를 호출하기 위한 인스턴스
@@ -21,6 +21,10 @@ export const eventApi: IEventService = {
   },
   getEventDetails: async (id) => {
     const response = await apiClient.get<ApiResponse<EventDetails>>('/events');
+    return response.data;
+  },
+  getSalesInfo: async (id) => {
+    const response = await apiClient.get<ApiResponse<SalesInfo>>('/events');
     return response.data;
   },
 };

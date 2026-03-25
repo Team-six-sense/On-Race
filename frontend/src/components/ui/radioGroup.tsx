@@ -2,10 +2,10 @@
 
 import * as React from 'react';
 import * as RadioGroupPrimitive from '@radix-ui/react-radio-group';
-import { Circle } from 'lucide-react';
 import { cva, type VariantProps } from 'class-variance-authority';
 
 import { cn } from '@/lib/utils';
+import { LuCircle } from 'react-icons/lu';
 
 const RadioGroup = React.forwardRef<
   React.ElementRef<typeof RadioGroupPrimitive.Root>,
@@ -70,7 +70,7 @@ const RadioGroupItem = React.forwardRef<
     >
       <RadioGroupPrimitive.Indicator className="flex items-center justify-center">
         {/* 선택되었을 때 나타나는 내부 점의 크기도 size에 맞춰 조절 */}
-        <Circle
+        <LuCircle
           className={cn(
             'fill-current',
             size === 'lg'
