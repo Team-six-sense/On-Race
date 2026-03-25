@@ -67,7 +67,7 @@ export function EventCourse({ courses }: { courses: CourseDetails[] }) {
           <div className="w-full md:w-2/5 grid grid-cols-2 grid-rows-[auto_auto_1fr] gap-2 h-[300px]">
             {/* 카드 1 */}
             <div className="bg-gray-800 p-3 flex flex-col rounded-sm">
-              <span className="text-lime-600 text-sm inline-flex items-center gap-1">
+              <span className="text-font-accent text-sm inline-flex items-center gap-1">
                 <LuFlag />총 거리
               </span>
               <span className="text-white">
@@ -80,7 +80,7 @@ export function EventCourse({ courses }: { courses: CourseDetails[] }) {
 
             {/* 카드 2 */}
             <div className="bg-gray-800 p-3 flex flex-col rounded-sm">
-              <span className="text-lime-600 text-sm inline-flex items-center gap-1">
+              <span className="text-font-accent text-sm inline-flex items-center gap-1">
                 <MdAccessTime />
                 제한 시간
               </span>
@@ -91,7 +91,7 @@ export function EventCourse({ courses }: { courses: CourseDetails[] }) {
 
             {/* 카드 3 */}
             <div className="bg-gray-800 p-3 flex flex-col rounded-sm">
-              <span className="text-lime-600 text-sm inline-flex items-center gap-1">
+              <span className="text-font-accent text-sm inline-flex items-center gap-1">
                 <LuDroplet />
                 급수처
               </span>
@@ -102,7 +102,7 @@ export function EventCourse({ courses }: { courses: CourseDetails[] }) {
 
             {/* 카드 4 */}
             <div className="bg-gray-800 p-3 flex flex-col rounded-sm">
-              <span className="text-lime-600 text-sm inline-flex items-center gap-1">
+              <span className="text-font-accent text-sm inline-flex items-center gap-1">
                 <LuMountain />
                 고도 변화
               </span>
@@ -113,7 +113,7 @@ export function EventCourse({ courses }: { courses: CourseDetails[] }) {
 
             {/* 카드 5 */}
             <div className="bg-gray-800 p-3 flex flex-col rounded-sm col-span-2 overflow-y-auto">
-              <span className="text-lime-600 text-sm inline-flex items-center gap-1">
+              <span className="text-font-accent text-sm inline-flex items-center gap-1">
                 <LuRoute />
                 상세 코스
               </span>

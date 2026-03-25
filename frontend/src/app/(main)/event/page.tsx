@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { EventFilter } from '@/features/event/components';
 import { useMarathonFilter } from '@/features/event/hooks';
 import { Course, Event } from '@/features/event/types';
 import { eventService } from '@/features/event/services';
 import { Button } from '@/components/ui/button';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   TYPE,
   getAppTypeLabel,
@@ -18,7 +18,8 @@ import { useEventStore } from '@/features/event/store/useEventStore';
 import { cn } from '@/lib/utils';
 import { LuSearch } from 'react-icons/lu';
 
-export default function EventPage() {
+function EventContent() {
+  const searchParams = useSearchParams();
   const router = useRouter();
   const [events, setEvents] = useState<Event[]>([]);
   const { setEvent } = useEventStore();
@@ -45,7 +46,15 @@ export default function EventPage() {
     };
 
     fetchData();
+    setCategoryType();
   }, []);
+
+  const setCategoryType = () => {
+    const category = searchParams.get('category');
+    if (category) {
+      setSearchType(category);
+    }
+  };
 
   const discountPrice = (price: number, discountRate: number) => {
     const discountPrice = price * (1 - discountRate / 100);
@@ -150,7 +159,7 @@ export default function EventPage() {
 
                 {/* 상태 칩 (예: 접수중, 마감, 예정) */}
                 <div className="absolute top-2 left-2">
-                  <span className="px-2 py-1 rounded-sm  bg-black text-lime-500 text-xs">
+                  <span className="px-2 py-1 rounded-sm  bg-black text-font-accent text-xs">
                     {getTypeLabel(event.type)}
                   </span>
                 </div>
@@ -230,5 +239,13 @@ export default function EventPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function EventPage() {
+  return (
+    <Suspense fallback={null}>
+      <EventContent />
+    </Suspense>
   );
 }

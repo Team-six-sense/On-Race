@@ -56,11 +56,11 @@ const STATUS_MAP: Record<string, string> = {
 };
 
 const STATUS_CONFIG_MAP: Record<string, string> = {
-  READY: 'bg-yellow-50 text-yellow-500',
+  READY: 'bg-yellow-50 text-font-warning',
   IN_PROGRESS: 'bg-blue-50 text-blue-500',
-  CLOSING_SOON: 'bg-red-50 text-red-500',
-  END: 'bg-gray-100 text-gray-400',
-  DRAW_COMPLETED: 'bg-gray-100 text-gray-400',
+  CLOSING_SOON: 'bg-red-50 text-font-error',
+  END: 'bg-gray-300 text-font-disabled',
+  DRAW_COMPLETED: 'bg-gray-300 text-font-disabled',
 };
 
 const TYPE_MAP: Record<string, string> = {

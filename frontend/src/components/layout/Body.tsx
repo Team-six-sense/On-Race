@@ -14,11 +14,9 @@ import {
 } from '@/types/constants';
 import { useEventStore } from '@/features/event/store/useEventStore';
 import { cn } from '@/lib/utils';
-
-import Content1 from './contents/Content1';
-import Content2 from './contents/Content2';
-import Content3 from './contents/Content3';
-import Platform from './contents/Platform';
+import MilestonesContent from './contents/MilestonesContent';
+import CategoryContent from './contents/CategoryContent';
+import SystemInfoContent from './contents/SystemInfoContent';
 
 export default function Body() {
   const router = useRouter();
@@ -78,12 +76,12 @@ export default function Body() {
   return (
     <main className="py-4 flex flex-col ">
       {/* --- 이벤트 목록 (Event List) --- */}
-      <section className="pt-20 bg-white">
+      <section className="p-20 bg-white">
         <div className="max-w-[1200px] mx-auto px-6">
           {/* 섹션 타이틀 */}
           <div className="mb-12 flex justify-between items-end">
             <div>
-              <h2 className="text-4xl font-bold text-black tracking-tighter">
+              <h2 className="text-5xl font-bold text-black tracking-tighter">
                 다가오는 러닝 이벤트
               </h2>
             </div>
@@ -95,12 +93,12 @@ export default function Body() {
               events.map((event) => (
                 <div
                   key={event.id}
-                  className="flex flex-row items-center justify-between px-4 py-8 my-4 bg-gray-50 transition-colors group"
+                  className="flex flex-row items-center justify-between p-6 py-8 mb-4 bg-gray-50"
                 >
                   <div className="flex items-center w-full md:w-auto mb-4 md:mb-0">
                     {/* 날짜 영역 (왼쪽) */}
                     <div className="flex flex-col items-center justify-center min-w-[80px] border-r border-gray-200 pr-6 mr-8">
-                      <span className="text-sm font-bold text-black">
+                      <span className="text-base font-bold text-black">
                         {new Date(event.eventAt).getMonth() + 1}월
                       </span>
                       <span className="text-3xl font-black text-black">
@@ -111,22 +109,22 @@ export default function Body() {
                     {/* 상태/타이틀/지역 영역 (중앙) */}
                     <div className="flex flex-col gap-2">
                       <div className="flex items-center gap-1">
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-sm bg-black text-lime-500">
+                        <span className="text-xs font-bold px-2 py-1 rounded-sm bg-black text-font-accent">
                           {getTypeLabel(event.type)}
                         </span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-sm bg-gray-200">
+                        <span className="text-xs font-bold px-2 py-1 rounded-sm bg-gray-100 text-font-medium">
                           {getAppTypeLabel(event.appType)}
                         </span>
                         <span
                           className={cn(
-                            'text-[10px] font-bold px-2 py-0.5 rounded-sm bg-gray-200',
+                            'text-xs font-bold px-2 py-1 rounded-sm bg-gray-200',
                             getStatusConfig(event.status),
                           )}
                         >
                           {displayStatusLabel(event.status)}
                         </span>
                       </div>
-                      <h3 className="text-xl font-bold text-black transition-colors">
+                      <h3 className="text-base font-bold text-black transition-colors">
                         {event.title}
                       </h3>
                       <div className="text-sm text-gray-500">
@@ -140,11 +138,11 @@ export default function Body() {
                   </div>
 
                   {/* 신청 버튼 영역 (우측 끝) */}
-                  <div className="w-full md:w-auto">
+                  <div className="">
                     <Button
                       variant="primary1"
                       rounded="full"
-                      size="lg"
+                      size="default"
                       // disabled={event.status !== '신청중'}
                       onClick={() => handleEventDetail(event)}
                     >
@@ -154,37 +152,37 @@ export default function Body() {
                 </div>
               ))
             ) : (
-              <div className="flex flex-col items-center justify-center py-10 my-4 bg-gray-50 transition-colors">
-                <div className="py-2 text-gray-400">
+              <div className="flex flex-col items-center justify-center transition-colors">
+                <div className="text-gray-300">
                   <LuCircleAlert size={40} />
                 </div>
 
                 {/* 이벤트가 없을 경우 */}
-                <div className="py-2 text-gray-600">
+                <div className="py-4 text-font-medium">
                   <p>다가오는 이벤트가 없습니다.</p>
                 </div>
               </div>
             )}
 
-            <div className="max-w-md mx-auto flex items-center justify-center">
+            <div className="flex items-center justify-center">
               <Button
                 variant="outline"
                 rounded="full"
-                className="border-gray-300 text-gray-500"
+                size="fit"
+                className="border-font-medium text-font-medium"
                 onClick={() => router.push('/event')}
               >
-                전체 보기
+                이벤트 전체보기
               </Button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* --- 플랫폼 소개 (Platform Features) --- */}
-      <Platform />
-      {/* <Content1 />
-      <Content2 />
-      <Content3 /> */}
+      {/* --- 플랫폼 소개 --- */}
+      <MilestonesContent />
+      <CategoryContent />
+      <SystemInfoContent />
     </main>
   );
 }

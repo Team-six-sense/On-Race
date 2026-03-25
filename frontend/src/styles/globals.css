@@ -124,16 +124,38 @@
   }
 }
 
+@keyframes rolling {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.rolling-container {
+  display: flex;
+  width: max-content;
+  animation: rolling 20s linear infinite;
+}
+
+/* 마우스를 올리면 멈추게 하는 옵션 */
+.rolling-container:hover {
+  animation-play-state: paused;
+}
+
 @theme {
   /* Font Colors */
   --color-font-high: #000000;
   --color-font-medium: #525252;
   --color-font-low: #a3a3a3;
   --color-font-extralow: #d4d4d4;
+  --color-font-accent: #b8f023;
   --color-font-white: #ffffff;
   --color-font-disabled: rgba(0, 0, 0, 0.24);
   /* --color-font-disabled: color-mix(in srgb, #ffffff, #000000 24%); */
   --color-font-success: #22c55e;
+  --color-font-warning: #eab308;
   --color-font-error: #ef4444;
 
   /* CTA Background */
