@@ -12,6 +12,7 @@ import com.kt.onrace.auth.dto.AccountMeResponse;
 import com.kt.onrace.auth.dto.PasswordChangeRequest;
 import com.kt.onrace.auth.dto.UpdateMarketingConsentRequest;
 import com.kt.onrace.auth.dto.UpdateNameRequest;
+import com.kt.onrace.auth.dto.UpdateVerificationStatusRequest;
 import com.kt.onrace.auth.service.AccountService;
 import com.kt.onrace.common.logging.annotation.ApiLog;
 import com.kt.onrace.common.response.ApiResponse;

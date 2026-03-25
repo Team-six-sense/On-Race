@@ -8,6 +8,7 @@ import com.kt.onrace.auth.config.AppProperties;
 import com.kt.onrace.auth.dto.AccountMeResponse;
 import com.kt.onrace.auth.entity.AuthProvider;
 import com.kt.onrace.auth.entity.User;
+import com.kt.onrace.auth.entity.VerificationStatus;
 import com.kt.onrace.auth.repository.UserRepository;
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
