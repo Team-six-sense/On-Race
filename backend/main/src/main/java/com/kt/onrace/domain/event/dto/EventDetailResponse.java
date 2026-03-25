@@ -1,15 +1,18 @@
 package com.kt.onrace.domain.event.dto;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import com.kt.onrace.domain.event.entity.Event;
 import com.kt.onrace.domain.event.entity.EventImage;
 import com.kt.onrace.domain.event.entity.EventImageType;
 import com.kt.onrace.domain.event.entity.EventPace;
 
+import jakarta.persistence.Column;
 import lombok.Builder;
 
 @Builder
@@ -20,15 +23,20 @@ public record EventDetailResponse(
 	List<CourseDto> courses,
 	List<PackageDto> packages,
 	List<ImageDto> thumbnailImg,
-	List<ImageDto> detailImg
+	List<ImageDto> detailImg,
+	DeliveryDto delivery
 ) {
 
 	@Builder
 	public record CourseDto(
 		Long id,
 		String name,
-		String mapUrl,
+		String mapImg,
 		int distanceMeter,
+		Integer timeLimit,
+		Integer waterSource,
+		Integer altitude,
+		String courseRoute,
 		long price,
 		int courseCapacity,
 		List<PaceDto> paces
@@ -57,19 +65,28 @@ public record EventDetailResponse(
 	@Builder
 	public record ImageDto(
 		Long id,
-		EventImageType type,
-		String url,
-		Integer sort
+		String url
 	) {
 	}
 
-	public static EventDetailResponse from(Event event) {
+	@Builder
+	public record DeliveryDto(
+		String schedule,
+		String feePolicy
+	) {
+	}
+
+	public static EventDetailResponse from(Event event, String deliverySchedule, String deliveryFeePolicy) {
 		List<CourseDto> courses = event.getCourses().stream()
 			.map(course -> CourseDto.builder()
 				.id(course.getId())
 				.name(course.getName())
-				.mapUrl(course.getMapUrl())
+				.mapImg(course.getMapUrl())
 				.distanceMeter(course.getDistanceMeter())
+				.timeLimit(course.getTimeLimit())
+				.waterSource(course.getWaterSource())
+				.altitude(course.getAltitude())
+				.courseRoute(course.getCourseRoute())
 				.price(course.getPrice())
 				.courseCapacity(course.getEventPaces().stream()
 					.mapToInt(EventPace::getCapacity)
@@ -97,16 +114,24 @@ public record EventDetailResponse(
 
 		Map<EventImageType, List<ImageDto>> imagesByType = event.getImages().stream()
 			.sorted(Comparator.comparingInt(EventImage::getSort))
-			.map(image -> ImageDto.builder()
-				.id(image.getId())
-				.type(image.getType())
-				.url(image.getUrl())
-				.sort(image.getSort())
-				.build())
-			.collect(java.util.stream.Collectors.groupingBy(ImageDto::type));
+			.collect(Collectors.groupingBy(
+				EventImage::getType,
+				Collectors.mapping(
+					image -> ImageDto.builder()
+						.id(image.getId())
+						.url(image.getUrl())
+						.build(),
+					Collectors.toList()
+				)
+			));
 
-		List<ImageDto> thumbnailImg = imagesByType.getOrDefault(EventImageType.THUMBNAIL, java.util.Collections.emptyList());
-		List<ImageDto> detailImg = imagesByType.getOrDefault(EventImageType.DETAIL, java.util.Collections.emptyList());
+		List<ImageDto> thumbnailImg = imagesByType.getOrDefault(EventImageType.THUMBNAIL, Collections.emptyList());
+		List<ImageDto> detailImg = imagesByType.getOrDefault(EventImageType.DETAIL, Collections.emptyList());
+
+		DeliveryDto delivery = DeliveryDto.builder()
+			.schedule(deliverySchedule)
+			.feePolicy(deliveryFeePolicy)
+			.build();
 
 		return EventDetailResponse.builder()
 			.id(event.getId())
@@ -116,6 +141,7 @@ public record EventDetailResponse(
 			.packages(packages)
 			.thumbnailImg(thumbnailImg)
 			.detailImg(detailImg)
+			.delivery(delivery)
 			.build();
 	}
 }

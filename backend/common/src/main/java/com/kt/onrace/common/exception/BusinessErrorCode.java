@@ -62,6 +62,7 @@ public enum BusinessErrorCode implements ErrorCode {
 	EVENT_PACE_NOT_FOUND(HttpStatus.NOT_FOUND, "EVT_004", "해당 코스의 페이스를 찾을 수 없습니다."),
 	EVENT_PRE_SAVE_NOT_FOUND(HttpStatus.NOT_FOUND, "EVT_005", "사전정보를 찾을 수 없습니다."),
 	EVENT_NOT_IN_PROGRESS(HttpStatus.BAD_REQUEST, "EVT_006", "진행중인 이벤트가 아닙니다."),
+	EVENT_ENDED(HttpStatus.BAD_REQUEST, "EVT_007", "종료된 이벤트입니다."),
 
 	// ADDRESS
 	ADDRESS_NOT_FOUND(HttpStatus.NOT_FOUND, "ADR_001", "배송지를 찾을 수 없습니다."),
@@ -82,6 +83,7 @@ public enum BusinessErrorCode implements ErrorCode {
 	ENTRY_SOLD_OUT(HttpStatus.CONFLICT, "ENT_008", "신청이 마감되었습니다."),
 	ENTRY_RESERVATION_EXPIRED(HttpStatus.BAD_REQUEST, "ENT_009", "만료되었습니다. 다시 신청해주세요."),
 	ENTRY_ALREADY_RESERVED(HttpStatus.CONFLICT, "ENT_010", "이미 선점한 이벤트입니다."),
+	ENTRY_EVENT_ALREADY_ENDED(HttpStatus.BAD_REQUEST, "ENT_011", "종료된 이벤트입니다."),
 
 	// STOCK
 	STOCK_NOT_FOUND(HttpStatus.NOT_FOUND, "STK_001", "재고 정보를 찾을 수 없습니다."),

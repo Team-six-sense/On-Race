@@ -1,5 +1,6 @@
 package com.kt.onrace.domain.event.entity;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -52,6 +53,8 @@ public class Event extends BaseEntity {
 
 	private LocalDateTime lotteryAnnouncedAt;
 
+	private BigDecimal discountRate;
+
 	@Column(columnDefinition = "TEXT")
 	private String notice;
 
@@ -84,7 +87,7 @@ public class Event extends BaseEntity {
 	@Builder
 	public Event(String title, EventType type, EventAppType appType, LocalDateTime eventAt,
 		LocalDateTime appStartAt, LocalDateTime appEndAt, EventRegion region, String venue,
-		LocalDateTime lotteryAnnouncedAt, String notice, Boolean isView, Boolean soldOut) {
+		LocalDateTime lotteryAnnouncedAt, BigDecimal discountRate, String notice, Boolean isView, Boolean soldOut) {
 		this.title = title;
 		this.type = type;
 		this.appType = appType;
@@ -93,6 +96,7 @@ public class Event extends BaseEntity {
 		this.appEndAt = appEndAt;
 		this.region = region;
 		this.venue = venue;
+		this.discountRate = discountRate;
 		this.lotteryAnnouncedAt = lotteryAnnouncedAt;
 		this.notice = notice;
 		this.isView = isView != null ? isView : false;
@@ -102,7 +106,7 @@ public class Event extends BaseEntity {
 
 	public void update(String title, EventType type, EventAppType appType, LocalDateTime eventAt,
 		LocalDateTime appStartAt, LocalDateTime appEndAt, EventRegion region, String venue,
-		LocalDateTime lotteryAnnouncedAt, String notice, Boolean isView, Boolean soldOut) {
+		LocalDateTime lotteryAnnouncedAt, BigDecimal discountRate, String notice, Boolean isView, Boolean soldOut) {
 		this.title = title;
 		this.type = type;
 		this.appType = appType;
@@ -112,13 +116,10 @@ public class Event extends BaseEntity {
 		this.region = region;
 		this.venue = venue;
 		this.lotteryAnnouncedAt = lotteryAnnouncedAt;
+		this.discountRate = discountRate;
 		this.notice = notice;
 		this.isView = isView != null ? isView : this.isView;
 		this.soldOut = soldOut != null ? soldOut : this.soldOut;
-	}
-
-	public void delete() {
-		this.isDeleted = true;
 	}
 
 	public void enableQueue() {
