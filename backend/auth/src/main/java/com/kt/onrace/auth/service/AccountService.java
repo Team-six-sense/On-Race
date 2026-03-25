@@ -65,12 +65,6 @@ public class AccountService {
 		user.changeMarketingConsent(marketingConsent);
 	}
 
-	@Transactional
-	public void updateVerificationStatus(Long userId, VerificationStatus verificationStatus) {
-		User user = findActiveUser(userId);
-		user.changeVerificationStatus(verificationStatus);
-	}
-
 	private User findActiveUser(Long userId) {
 		return userRepository.findById(userId)
 			.filter(User::isActive)

@@ -60,16 +60,6 @@ public class AccountController extends SwaggerAssistance {
 		return ApiResponse.success();
 	}
 
-	@Operation(summary = "본인인증 상태 변경 (MVP)", description = "MVP 단계에서 로그인한 사용자의 본인인증 상태를 내부 상태값으로 변경")
-	@PatchMapping("/me/verification-status")
-	public ApiResponse<Void> updateVerificationStatus(
-		@RequestHeader("X-User-Id") Long userId,
-		@Valid @RequestBody UpdateVerificationStatusRequest request) {
-
-		accountService.updateVerificationStatus(userId, request.verificationStatus());
-		return ApiResponse.success();
-	}
-
 	@Operation(summary = "비밀번호 변경 요청", description = "현재 비밀번호 확인 후 재설정 링크를 이메일로 발송 (LOCAL 계정 전용)")
 	@PostMapping("/password/change-request")
 	public ApiResponse<Void> requestPasswordChange(
