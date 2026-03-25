@@ -10,6 +10,7 @@ import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
 import com.kt.onrace.common.logging.annotation.ServiceLog;
 import com.kt.onrace.common.util.Preconditions;
+import com.kt.onrace.domain.entry.config.EntryProperties;
 import com.kt.onrace.domain.entry.dto.EntryApplyResponse;
 import com.kt.onrace.domain.entry.dto.EntryOverviewResponse;
 import com.kt.onrace.domain.entry.dto.EntryCoursePaceRequest;
@@ -20,27 +21,33 @@ import com.kt.onrace.domain.entry.entity.EntryStatus;
 import com.kt.onrace.domain.entry.dto.EntryCountResult;
 import com.kt.onrace.domain.entry.repository.EntryRepository;
 import com.kt.onrace.domain.event.entity.Event;
-import com.kt.onrace.domain.event.entity.EventAppType;
 import com.kt.onrace.domain.event.entity.EventCourse;
 import com.kt.onrace.domain.event.entity.EventPace;
 import com.kt.onrace.domain.event.entity.EventStatus;
 import com.kt.onrace.domain.event.repository.EventCourseRepository;
 import com.kt.onrace.domain.event.repository.EventPaceRepository;
 import com.kt.onrace.domain.event.repository.EventRepository;
+import com.kt.onrace.domain.event.repository.EventStockRepository;
+import com.kt.onrace.domain.event.service.EventStockService;
 import com.kt.onrace.domain.member.repository.MemberRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class EntryService {
 
+	private final EntryProperties entryProperties;
 	private final EventRepository eventRepository;
 	private final EventCourseRepository eventCourseRepository;
 	private final EntryRepository entryRepository;
 	private final EventPaceRepository eventPaceRepository;
 	private final MemberRepository memberRepository;
+	private final EventStockService eventStockService;
+	private final EventStockRepository eventStockRepository;
 
 	@ServiceLog(slowMs = 2000)
 	@Transactional
@@ -162,39 +169,73 @@ public class EntryService {
 
 		return switch (event.getAppType()) {
 			case LOTTERY -> applyLottery(userId, event, course, pace);
-			case FIRST_COME -> applyFirstCome();
+			case FIRST_COME -> applyFirstCome(userId, event, course, pace);
 		};
 	}
 
 	private EntryApplyResponse applyLottery(Long userId, Event event, EventCourse course, EventPace pace) {
-
-		Entry entry = entryRepository.findByUserIdAndEventId(userId, event.getId())
-			.map(e -> {
-				// 이미 신청한 결과가 있을 경우에 분기처리!(상태값 추후에 재점검 필요)
-				switch (e.getStatus()) {
-					case APPLIED -> throw new BusinessException(BusinessErrorCode.ENTRY_ALREADY_APPLIED);
-					case PRE_SAVED -> e.apply(course, pace);
-					default -> throw new BusinessException(BusinessErrorCode.ENTRY_CANNOT_APPLY);
-				}
-
-				return e;
-			})
-			.orElseGet(() -> Entry.builder()
-				.userId(userId)
-				.event(event)
-				.eventCourse(course)
-				.eventPace(pace)
-				.status(EntryStatus.APPLIED)
-				.build()
-			);
-
+		Entry entry = getCreateEntry(userId, event);
+		entry.apply(course, pace);
 		entryRepository.save(entry);
 
 		return EntryApplyResponse.from(entry);
 	}
 
-	private EntryApplyResponse applyFirstCome() {
-		return null;
+	private EntryApplyResponse applyFirstCome(Long userId, Event event, EventCourse course, EventPace pace) {
+		Entry entry = getCreateEntry(userId, event);
+
+		long result = eventStockService.tryReserveStock(pace.getId(), userId);
+		Preconditions.validate(result != -2, BusinessErrorCode.ENTRY_ALREADY_RESERVED);
+		Preconditions.validate(result != -1, BusinessErrorCode.ENTRY_SOLD_OUT);
+
+		entry.reserve(course, pace);
+		entryRepository.save(entry);
+
+		return EntryApplyResponse.fromReserved(entry, LocalDateTime.now().plusSeconds(entryProperties.getTtlSeconds()));
+	}
+
+	private Entry getCreateEntry(Long userId, Event event) {
+		return entryRepository.findByUserIdAndEventId(userId, event.getId())
+			.map(e -> {
+				switch (e.getStatus()) {
+					case APPLIED -> throw new BusinessException(BusinessErrorCode.ENTRY_ALREADY_APPLIED);
+					case RESERVED -> throw new BusinessException(BusinessErrorCode.ENTRY_ALREADY_RESERVED);
+					case PRE_SAVED -> {} // 그대로 반환함
+					default -> throw new BusinessException(BusinessErrorCode.ENTRY_CANNOT_APPLY);
+				}
+				return e;
+			})
+			.orElseGet(() -> Entry.builder()
+				.userId(userId)
+				.event(event)
+				.build()
+			);
+	}
+
+	/**
+	 * 결제 확정 — (테스트용 임시 코드입니다 추후에 제가 삭제하겠습니다)
+	 */
+	@ServiceLog(slowMs = 2000)
+	@Transactional
+	public void confirmReservation(Long userId, Long eventId, Long paceId) {
+		log.info("[TEMP-LOG] confirmReservation 시작 - userId={}, paceId={}", userId, paceId);
+		Entry entry = entryRepository.findByUserIdAndEventPaceId(userId, paceId)
+			.orElseThrow(() -> new BusinessException(BusinessErrorCode.ENTRY_NOT_FOUND));
+
+		if (entry.getStatus() == EntryStatus.APPLIED) {
+			log.info("[TEMP-LOG] 이미 APPLIED 상태, 즉시 반환 - userId={}", userId);
+			return;
+		}
+
+		Preconditions.validate(entry.isReserved(), BusinessErrorCode.ENTRY_CANNOT_APPLY);
+
+		boolean deleted = eventStockService.deleteReservation(paceId, userId);
+		log.info("[TEMP-LOG] Redis 예약 키 삭제 결과 - deleted={}", deleted);
+		Preconditions.validate(deleted, BusinessErrorCode.ENTRY_RESERVATION_EXPIRED);
+
+		entry.confirmPayment();
+		eventStockRepository.findByEventPaceIdOrThrow(paceId).confirmStock();
+		log.info("[TEMP-LOG] confirmReservation 완료 - userId={}, status=APPLIED, confirmedStock++", userId);
 	}
 
 }

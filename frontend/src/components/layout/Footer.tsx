@@ -3,7 +3,7 @@ import Link from 'next/link';
 export default function Footer() {
   return (
     <footer className="border-t border-gray-100">
-      <div className="max-w-7xl mx-auto px-4 py-12 md:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 py-4 md:px-6 md:py-6 lg:px-8 lg:py-8">
         <div className="flex flex-col md:flex-row justify-between gap-10">
           {/* 왼쪽: 로고 및 설명 */}
           <div className="md:w-2/3">
@@ -36,7 +36,7 @@ export default function Footer() {
               <ul className="space-y-2">
                 <li>
                   <Link
-                    href="/schedule"
+                    href="/event"
                     className="text-sm text-gray-600 hover:text-black transition-colors"
                   >
                     이벤트

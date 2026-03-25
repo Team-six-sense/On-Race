@@ -1,12 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import {
-  getStatusLabel,
-  getCategoryLabel,
-  getTypeLabel,
-} from '@/types/constants';
-import { MarathonEvent } from '@/features/schedule/types';
+import { getStatusConfig, getStatusLabel } from '@/types/constants';
+import { Event } from '@/features/event/types';
 import { Button } from '@/components/ui/button';
 import { LuChevronLeft, LuShare } from 'react-icons/lu';
 import {
@@ -15,16 +11,31 @@ import {
   EntryNotice,
   EntryParticipationInfo,
 } from './details/entry';
+import { cn } from '@/lib/utils';
+import { useSession } from 'next-auth/react';
+import {
+  Modal,
+  ModalClose,
+  ModalContent,
+  ModalDescription,
+  ModalFooter,
+  ModalHeader,
+  ModalTitle,
+} from '@/components/ui/modal';
+import { useRouter } from 'next/navigation';
 
 export function EventEntryInfo({
   event,
   setIsUserModalOpen,
 }: {
-  event: MarathonEvent;
+  event: Event;
   setIsUserModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
   // 하이드레이션 오류 방지를 위한 마운트 상태 관리
+  const { status } = useSession();
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [openModal, setOpenModal] = useState(false);
   const [actionCard, setActionCard] = useState<Boolean>(false);
   const [resultCard, setResultCard] = useState<Boolean>(false);
 
@@ -32,31 +43,77 @@ export function EventEntryInfo({
   const [selectedCourse, setSelectedCourse] = useState('');
   const [selectedPace, setSelectedPace] = useState('');
 
-  const isClosed = event.status === 'CLOSED';
-  const isEntry = event.type === 'LOTTERY' && isClosed;
-
-  const getHeaderText = () => {
-    if (event.status === 'UPCOMING') return '빠른 신청 준비하기';
-    if (event.type === 'LOTTERY') return '응모하기';
-    if (event.type === 'FIRST_COME') return '신청하기';
-    return '신청하기';
-  };
-
-  const getButtonText = () => {
-    if (event.status === 'UPCOMING') return '저장하기';
-    return '다음 단계로';
-  };
+  const isClosed = event.status === 'DRAW_COMPLETED';
+  const isEntry = event.appType === 'LOTTERY' && isClosed;
 
   // 컴포넌트가 마운트된 후에만 렌더링을 허용
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  const displayStatusLabel = (status: string) => {
+    let displayLabel = '';
+
+    switch (status) {
+      case 'READY':
+        const dateStr = '2026-03-15T09:00:00';
+        const date = new Date(dateStr);
+
+        const formattedDate = new Intl.DateTimeFormat('ko-KR', {
+          month: 'long', // "3월"
+          day: 'numeric', // "15일"
+          hour: 'numeric', // "9시"
+          minute: 'numeric',
+          hour12: false, // 24시간 형식
+        }).format(date);
+
+        displayLabel = `${formattedDate} ${getStatusLabel(status)}`;
+        break;
+      case 'CLOSING_SOON':
+        displayLabel = `내일 ${getStatusLabel(status)}`;
+        break;
+      case 'DRAW_COMPLETED':
+        displayLabel = getStatusLabel('END');
+        break;
+      default:
+        displayLabel = getStatusLabel(status);
+    }
+
+    return displayLabel;
+  };
+
+  const getHeaderText = () => {
+    if (event.status === 'READY') return '빠른 신청 준비하기';
+    if (event.appType === 'LOTTERY') return '응모하기';
+    if (event.appType === 'FIRST_COME') return '신청하기';
+    return '신청하기';
+  };
+
+  const getButtonText = () => {
+    if (event.status === 'READY') return '저장하기';
+    return '다음 단계로';
+  };
+
+  const handelShowActionCard = () => {
+    if (status === 'unauthenticated') {
+      setOpenModal(true);
+      return;
+    }
+    setActionCard((prev) => !prev);
+  };
+  const handelShowResultCard = () => {
+    if (status === 'unauthenticated') {
+      setOpenModal(true);
+      return;
+    }
+    setResultCard((prev) => !prev);
+  };
+
   const handleAction = () => {
     if (!selectedCourse) return alert('코스를 선택해주세요.');
     if (!selectedPace) return alert('목표 페이스를 선택해주세요.');
 
-    if (event.status === 'UPCOMING') {
+    if (event.status === 'READY') {
       alert('사전 정보가 저장되었습니다.');
     } else {
       setIsUserModalOpen(true);
@@ -71,8 +128,13 @@ export function EventEntryInfo({
   return (
     <div className="flex flex-col">
       <div className="flex gap-2">
-        <div className="text-sm font-semibold bg-gray-100 text-gray-600 px-2 py-0.5 rounded-sm">
-          {getStatusLabel(event.status)}
+        <div
+          className={cn(
+            'text-sm font-semibold bg-gray-100 text-gray-600 px-2 py-0.5 rounded-sm',
+            getStatusConfig(event.status),
+          )}
+        >
+          {displayStatusLabel(event.status)}
         </div>
       </div>
       <div className="flex flex-row items-center justify-between mb-8">
@@ -109,7 +171,7 @@ export function EventEntryInfo({
               setSelectedPace={setSelectedPace}
             />
 
-            {event.status !== 'UPCOMING' && (
+            {event.status !== 'READY' && (
               <div className="flex">
                 <span className="w-28 text-sm font-semibold text-gray-700">
                   예상 경쟁률
@@ -303,7 +365,7 @@ export function EventEntryInfo({
               disabled={isClosed}
               variant="primary1"
               rounded="full"
-              onClick={() => setActionCard((prev) => !prev)}
+              onClick={handelShowActionCard}
             >
               {getHeaderText()}
             </Button>
@@ -315,12 +377,42 @@ export function EventEntryInfo({
             <Button
               variant="primary1"
               rounded="full"
-              onClick={() => setResultCard((prev) => !prev)}
+              onClick={handelShowResultCard}
             >
               결과보기
             </Button>
           </div>
         )}
+      </div>
+      <div>
+        <Modal open={openModal} onOpenChange={setOpenModal}>
+          {/* cva를 통해 정의한 size="lg" 적용 */}
+          <ModalContent size="md" className="">
+            <ModalHeader className="py-2">
+              <ModalTitle>로그인이 필요합니다</ModalTitle>
+              <ModalDescription>
+                이벤트 참가 신청은 로그인 회원만 가능합니다.
+                <br />
+                로그인 후 다시 진행해 주세요.
+              </ModalDescription>
+            </ModalHeader>
+
+            <ModalFooter>
+              <ModalClose asChild>
+                <Button variant="secondary" rounded="full">
+                  취소
+                </Button>
+              </ModalClose>
+              <Button
+                variant="primary1"
+                rounded="full"
+                onClick={() => router.push('/login')}
+              >
+                로그인 하기
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
       </div>
     </div>
   );

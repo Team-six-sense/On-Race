@@ -19,7 +19,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.kt.onrace.auth.common.client.MainServiceClient;
-import com.kt.onrace.auth.config.AuthProperties;
+import com.kt.onrace.auth.common.config.AuthProperties;
 import com.kt.onrace.auth.dto.WithdrawRequest;
 import com.kt.onrace.auth.entity.User;
 import com.kt.onrace.auth.repository.TermUserRepository;
@@ -139,7 +139,7 @@ class AuthServiceLogoutWithdrawTest {
 		authService.withdraw(1L, "access-token", request);
 
 		// then
-		assertThat(testUser.isDeleted()).isTrue();
+		assertThat(testUser.isInactive()).isTrue();
 		then(tokenStoreService).should().blacklistJti(eq("test-jti"), longThat(ttl -> ttl > 0));
 		then(tokenStoreService).should().deleteRefreshToken(1L);
 	}
@@ -165,7 +165,7 @@ class AuthServiceLogoutWithdrawTest {
 		// given
 		WithdrawRequest request = new WithdrawRequest("password123!");
 
-		testUser.markDeleted();
+		testUser.deactivate();
 		given(userRepository.findById(1L)).willReturn(Optional.of(testUser));
 
 		// when & then

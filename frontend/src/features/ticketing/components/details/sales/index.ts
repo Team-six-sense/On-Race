@@ -1,4 +1,5 @@
-export * from './RefundPolicy';
+export * from './RefundPolicyInfo';
 export * from './SalesShippingInfo';
 export * from './SellerInfo';
-export * from './ShippingDetails';
+export * from './DeliveryInfo';
+export * from './OperatingPolicy';

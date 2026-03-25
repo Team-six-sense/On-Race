@@ -17,7 +17,7 @@ export default function Header() {
 
   const navItems = [
     { name: '홈', href: '/' },
-    { name: '이벤트', href: '/schedule' },
+    { name: '이벤트', href: '/event' },
     { name: '마우스이벤트(테스트용)', href: '/mouse-event' },
   ];
 
@@ -99,17 +99,26 @@ export default function Header() {
                 </p>
                 <Button
                   className={cn(
-                    'flex items-center font-bold text-xs p-0 transition-colors duration-500 cursor-pointer',
+                    'flex items-center font-bold text-xs p-0 mr-4 transition-colors duration-500 cursor-pointer',
                     isHome
                       ? 'text-white/80 hover:text-white'
                       : 'text-gray-600 hover:text-black',
                   )}
                   variant="text"
                   size="fit"
-                  onClick={() => signOut()}
+                  onClick={() => signOut({ callbackUrl: '/login' })}
                 >
                   로그아웃
                 </Button>
+                <Link
+                  href="/mypage"
+                  className={cn(
+                    'flex items-center transition-colors duration-500',
+                    isHome ? 'hover:text-white' : 'hover:text-black',
+                  )}
+                >
+                  <span className=""> 마이페이지 </span>
+                </Link>
               </div>
             ) : (
               <>
@@ -123,7 +132,7 @@ export default function Header() {
                   로그인
                 </Link>
                 <Link
-                  href="/signup/agree"
+                  href="/signup/email/agree"
                   className={cn(
                     'flex items-center transition-colors duration-500',
                     isHome ? 'hover:text-white' : 'hover:text-black',
@@ -147,7 +156,7 @@ export default function Header() {
         </div>
       </header>
 
-      {/* --- 2. BANNER SECTION (메인 페이지에서만 렌더링) --- */}
+      {/* BANNER SECTION */}
       {isHome && (
         <section className="relative h-[700px] w-full bg-black overflow-hidden">
           <Image
@@ -173,7 +182,7 @@ export default function Header() {
                 rounded="full"
                 size="fit"
                 className="p-6 mb-6"
-                onClick={() => router.push('/schedule')}
+                onClick={() => router.push('/event')}
               >
                 진행 중인 이벤트 보러가기
               </Button>

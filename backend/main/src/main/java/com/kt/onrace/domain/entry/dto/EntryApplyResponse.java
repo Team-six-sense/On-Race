@@ -8,6 +8,7 @@ public record EntryApplyResponse(
 	Long entryId,
 	Long eventId,
 	String status,
+	LocalDateTime reservedUntil,
 	LocalDateTime createdAt,
 	LocalDateTime updatedAt
 ) {
@@ -16,6 +17,18 @@ public record EntryApplyResponse(
 			entry.getId(),
 			entry.getEvent().getId(),
 			entry.getStatus().getDescription(),
+			null,
+			entry.getCreatedAt(),
+			entry.getUpdatedAt()
+		);
+	}
+
+	public static EntryApplyResponse fromReserved(Entry entry, LocalDateTime reservedUntil) {
+		return new EntryApplyResponse(
+			entry.getId(),
+			entry.getEvent().getId(),
+			entry.getStatus().getDescription(),
+			reservedUntil,
 			entry.getCreatedAt(),
 			entry.getUpdatedAt()
 		);

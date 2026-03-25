@@ -1,11 +1,10 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { useRouter } from 'next/navigation';
 
 import { useEffect, useState } from 'react';
-import { LuChevronRight } from 'react-icons/lu';
+import { HiOutlineDotsCircleHorizontal } from 'react-icons/hi';
 
 export function AccountSettings() {
   // 하이드레이션 오류 방지를 위한 마운트 상태 관리
@@ -31,224 +30,115 @@ export function AccountSettings() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* 회원정보 카드 */}
-        <div className="bg-white rounded-sm border border-gray-400 overflow-hidden">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <h2 className="text-xl font-semibold text-gray-800">
-                  회원 정보
-                </h2>
-              </div>
-              <button className="text-sm bg-gray-100 p-3 border border-gray-300">
-                계정 유형: 이메일 계정
-              </button>
-            </div>
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <h2 className="text-sm font-semibold text-gray-800">
-                  본인인증 여부
-                </h2>
-              </div>
-              <div className="flex items-center">
-                <div className="text-sm bg-yellow-100 px-2 py-0.5 border border-yellow-300">
-                  미인증
-                </div>
-                <div className="text-sm bg-yellow-100 px-2 py-0.5 border border-yellow-300">
-                  인증대기
-                </div>
-                <div className="text-sm bg-yellow-100 px-2 py-0.5 border border-yellow-300">
-                  미인증
-                </div>
-                <LuChevronRight />
-              </div>
-            </div>
-
-            <div className="flex flex-col items-center gap-8">
-              <div className="flex-1 grid grid-cols-2 gap-4 w-full">
-                <div>
-                  <label className="text-sm text-gray-500">이름</label>
-                  <p className="font-medium text-gray-900">홍길동</p>
-                </div>
-                <div>
-                  <label className="text-sm text-gray-500">이메일</label>
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium text-gray-900">
-                      example@email.com
-                    </p>
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm text-gray-500">휴대폰 번호</label>
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium text-gray-900">010-1234-5678</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="text-right">
-              <Button variant="primary1" size="fit" rounded="sm">
-                회원 정보 변경
-              </Button>
-            </div>
+    <div className="min-h-screen bg-white space-y-8">
+      {/* 회원정보 카드 */}
+      <section>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-bold text-gray-800">회원 정보</h2>
           </div>
         </div>
 
-        {/* 비밀번호 변경 카드 */}
-        <div className="bg-white rounded-sm border border-gray-400 overflow-hidden">
-          <div className="p-6">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="ftext-xl font-semibold text-gray-800">
-                비밀번호 변경
-              </h2>
-              <Button variant="primary1" size="fit" rounded="sm">
-                비밀번호 변경
+        <div className="flex flex-col gap-4">
+          <div className="flex">
+            <span className="w-30 font-semibold text-gray-500">이름</span>
+            <span className="flex-1">-</span>
+          </div>
+          <div className="flex">
+            <span className="w-30 font-semibold text-gray-500">
+              휴대폰 번호
+            </span>
+            <span className="flex-1">010-1234-5678</span>
+          </div>
+          <div className="flex">
+            <span className="w-30 font-semibold text-gray-500">이메일(ID)</span>
+            <span className="flex-1">u***@email.com</span>
+          </div>
+          <div className="flex items-center">
+            <span className="w-30 font-semibold text-gray-500">비밀번호</span>
+            <span className="flex mr-4">******</span>
+            <div>
+              <Button
+                variant="outline"
+                size="xs"
+                rounded="sm"
+                className="text-gray-500"
+              >
+                변경하기
               </Button>
             </div>
           </div>
+          <div className="flex">
+            <span className="w-30 font-semibold text-gray-500">
+              본인인증 상태
+            </span>
+            <span className="flex-1 font-bold">인증대기</span>
+          </div>
+
+          <div className="p-4 bg-gray-100 border-1 border-gray-100 text-gray-500 rounded-sm">
+            <div className="flex items-center">
+              <HiOutlineDotsCircleHorizontal size={24} className="mr-2" />
+              <span>
+                본인인증 정보를 확인하고 있습니다. 잠시만 기다려주시면
+                본인인증이 완료됩니다.
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-bold text-gray-800">배송지 정보</h2>
+          </div>
         </div>
 
-        {/* 비밀번호 변경 카드(이메일) */}
-        <div className="bg-white rounded-sm border border-gray-400 overflow-hidden">
-          <div className="p-6">
-            <div className="flex flex-col gap-3">
-              <h2 className="ftext-xl font-semibold text-gray-800">
-                비밀번호 변경
-              </h2>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-center text-gray-400">
+            등록된 배송지가 없습니다
+          </div>
+          <div className="max-w-2xl mx-auto flex items-center justify-center">
+            <Button
+              variant="outline"
+              rounded="full"
+              className="border-gray-300 text-gray-500"
+            >
+              신규 배송지 추가
+            </Button>
+          </div>
+        </div>
+      </section>
 
-              <div className="p-4 bg-blue-100 border-2 border-blue-400">
-                <p> example@email.com 으로 인증 메일이 발송되었습니다. </p>
-                <p> 메일함을 확인하시고 인증 링크를 클릭해주세요. </p>
-              </div>
+      {/* 마케팅 및 광고 알림 설정 카드 */}
+      <section>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-bold text-gray-800">
+              마케팅 및 알림 설정
+            </h2>
+          </div>
+        </div>
 
-              <div className="p-4 bg-gray-100 border-1 border-gray-400">
-                <p> 인증 메일 유효 시간: 15분 </p>
-                <p>
-                  * 인증 메일은 1분 간격, 하루 최대5회까지 재발송할 수 있습니다.
+        <div className="flex flex-col gap-4">
+          <div className="p-4 bg-gray-100 border-1 border-gray-300">
+            {/* 이메일 알림 */}
+            <div className="flex items-center justify-between">
+              <div>
+                <p>[선택] 마케팅 정보 수신 동의</p>
+                <p className="text-sm text-gray-500">
+                  동의하시면 이벤트 알람, 프로모션 메시지 등의 마케팅 정보를
+                  받아보실 수 있습니다.
                 </p>
               </div>
-
-              <div className="text-right">
-                <Button variant="primary1" size="fit" rounded="sm">
-                  비밀번호 변경
-                </Button>
-              </div>
+              <Toggle
+                enabled={marketingSettings.email}
+                onToggle={() => toggleSetting('email')}
+              />
             </div>
           </div>
         </div>
-
-        {/* 배송지 정보 카드 */}
-        <div className="bg-white rounded-sm border border-gray-400 overflow-hidden">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <h2 className="text-xl font-semibold text-gray-800">
-                  배송지 정보
-                </h2>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2 mb-4">
-              <div>
-                <span className="text-xs bg-gray-100 px-2 py-0.5 ">
-                  기본배송지
-                </span>
-              </div>
-              <div className="flex flex-col items-center gap-2 mb-1">
-                <Input label="수령인" />
-                <Input label="주소 별칭" />
-                <Input label="배송지" />
-                <Input label="전화번호" />
-              </div>
-            </div>
-            <div className="text-right">
-              <Button variant="outline" size="fit" rounded="sm">
-                변경
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-sm border border-gray-400 overflow-hidden">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <h2 className="text-xl font-semibold text-gray-800">
-                  배송지 정보
-                </h2>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2 mb-4">
-              <div>
-                <span>등록된 배송지 정보가 없습니다.</span>
-              </div>
-            </div>
-            <div className="text-right">
-              <Button variant="primary1" size="fit" rounded="sm">
-                등록하기
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* 마케팅 및 광고 알림 설정 카드 */}
-        <div className="bg-white rounded-sm border border-gray-400 overflow-hidden">
-          <div className="p-6">
-            <div className="flex items-center gap-3 mb-6">
-              <h2 className="text-xl font-semibold text-gray-800">
-                마케팅 및 알림 설정
-              </h2>
-            </div>
-
-            <div className="p-4 bg-gray-100 border-1 border-gray-300 mb-6">
-              <p>
-                마케팅 정보 수신 동의는 선택 항목이며, 미동의 상태에서도
-                서비스를 이용하실 수 있습니다.
-              </p>
-            </div>
-
-            <div className="p-4 bg-gray-100 border-1 border-gray-300">
-              {/* 이메일 알림 */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-gray-900">
-                    마케팅 정보 수신 동의 (선택)
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    이벤트 알림, 프로모션 메시지 등의 마케팅 정보를 받습니다.
-                  </p>
-                </div>
-                <Toggle
-                  enabled={marketingSettings.email}
-                  onToggle={() => toggleSetting('email')}
-                />
-              </div>
-            </div>
-
-            <div>
-              <p className="text-xs text-gray-400">
-                • SMS, 이메일을 통해 이벤트 및 프로모션 정보를 제공합니다
-              </p>
-              <p className="text-xs text-gray-400">
-                • 설정 변경은 즉시 반영됩니다
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="text-right">
-          <Button
-            variant="outline"
-            size="fit"
-            rounded="sm"
-            onClick={() => router.push('/mypage/withdraw/')}
-          >
-            회원탈퇴
-          </Button>
-        </div>
-      </div>
+      </section>
     </div>
   );
 }
@@ -265,7 +155,7 @@ const Toggle = ({
     <button
       onClick={onToggle}
       className={`${
-        enabled ? 'bg-blue-600' : 'bg-gray-200'
+        enabled ? 'bg-black' : 'bg-gray-200'
       } relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none`}
     >
       <span

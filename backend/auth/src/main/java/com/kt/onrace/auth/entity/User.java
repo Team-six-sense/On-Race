@@ -1,6 +1,7 @@
 package com.kt.onrace.auth.entity;
 
 import static com.kt.onrace.auth.entity.Role.*;
+import static com.kt.onrace.auth.entity.UserStatus.*;
 
 import com.kt.onrace.common.entity.BaseEntity;
 
@@ -10,10 +11,11 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.AccessLevel;
 
 @Getter
 @Entity
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User extends BaseEntity {
 
 	@Column(nullable = false, length = 100)
@@ -22,41 +24,78 @@ public class User extends BaseEntity {
 	@Column(nullable = false, length = 50)
 	private String name;
 
-	@Column(nullable = false, length = 20)
+	// OAuth 사용자는 전화번호 없이 가입 가능
+	@Column(length = 20)
 	private String phoneNumber;
 
 	@Column(length = 20)
 	private String mobile;
 
-	@Column(nullable = false, length = 255)
+	// OAuth 사용자는 비밀번호 없음
+	@Column(length = 255)
 	private String password;
+
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false)
+	private AuthProvider authProvider;
+
+	// OAuth 제공자의 고유 사용자 ID
+	@Column(length = 100)
+	private String providerId;
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false)
 	private Role role;
 
-	@Column(nullable = false)
-	private boolean isDeleted;
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false, columnDefinition = "VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'")
+	private UserStatus status;
 
 	private User(String email, String name, String password, String phoneNumber) {
 		this.email = email;
 		this.name = name;
 		this.password = password;
 		this.phoneNumber = phoneNumber;
+		this.authProvider = AuthProvider.LOCAL;
 		this.role = USER;
-		this.isDeleted = false;
+		this.status = ACTIVE;
+	}
+
+	private User(String email, String name, AuthProvider authProvider, String providerId) {
+		this.email = email;
+		this.name = name;
+		this.authProvider = authProvider;
+		this.providerId = providerId;
+		this.role = USER;
+		this.status = ACTIVE;
 	}
 
 	public static User createUser(String email, String name, String password, String phoneNumber) {
 		return new User(email, name, password, phoneNumber);
 	}
 
-	public void markDeleted() {
-		this.isDeleted = true;
+	public static User createOAuthUser(String email, String name, AuthProvider authProvider, String providerId) {
+		return new User(email, name, authProvider, providerId);
+	}
+
+	public void deactivate() {
+		this.status = INACTIVE;
+	}
+
+	public boolean isActive() {
+		return this.status == ACTIVE;
+	}
+
+	public boolean isInactive() {
+		return this.status == INACTIVE;
 	}
 
 	public void changePassword(String encodedPassword) {
 		this.password = encodedPassword;
+	}
+
+	public void changeName(String name) {
+		this.name = name;
 	}
 
 }

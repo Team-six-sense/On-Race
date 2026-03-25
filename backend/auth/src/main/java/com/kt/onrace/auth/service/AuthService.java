@@ -27,6 +27,7 @@ import com.kt.onrace.auth.dto.WithdrawRequest;
 import com.kt.onrace.auth.entity.TermUser;
 import com.kt.onrace.auth.entity.TermVersion;
 import com.kt.onrace.auth.entity.User;
+import com.kt.onrace.auth.entity.UserStatus;
 import com.kt.onrace.auth.repository.TermUserRepository;
 import com.kt.onrace.auth.repository.TermVersionRepository;
 import com.kt.onrace.auth.repository.UserRepository;
@@ -61,7 +62,6 @@ public class AuthService {
 	private final SmsVerifyService smsVerifyService;
 	private final LoginHistoryService loginHistoryService;
 	private final RedissonClient redissonClient;
-	private final RedisKeyGenerator redisKeyGenerator;
 
 	@Transactional
 	public SignupResponse signup(SignupRequest request) {
@@ -117,7 +117,7 @@ public class AuthService {
 		checkLoginFailCount(request.email());
 
 		try {
-			User user = userRepository.findByEmailAndIsDeletedFalse(request.email())
+			User user = userRepository.findByEmailAndStatus(request.email(), UserStatus.ACTIVE)
 					.orElseThrow(() -> new BusinessException(BusinessErrorCode.AUTH_NOT_FOUND_USER));
 
 			if (!passwordEncoder.matches(request.password(), user.getPassword())) {
@@ -147,7 +147,7 @@ public class AuthService {
 	}
 
 	private void checkLoginFailCount(String email) {
-		RAtomicLong counter = redissonClient.getAtomicLong(redisKeyGenerator.loginFailCountKey(email));
+		RAtomicLong counter = redissonClient.getAtomicLong(RedisKeyGenerator.loginFailCountKey(email));
 		long count = counter.get();
 		if (count >= LOGIN_FAIL_CAPTCHA_THRESHOLD) {
 			throw new BusinessException(BusinessErrorCode.AUTH_LOGIN_FAIL_CAPTCHA);
@@ -158,7 +158,7 @@ public class AuthService {
 	}
 
 	private void incrementLoginFailCount(String email) {
-		RAtomicLong counter = redissonClient.getAtomicLong(redisKeyGenerator.loginFailCountKey(email));
+		RAtomicLong counter = redissonClient.getAtomicLong(RedisKeyGenerator.loginFailCountKey(email));
 		long count = counter.incrementAndGet();
 		if (count == 1) {
 			counter.expire(Duration.ofMinutes(LOGIN_FAIL_TTL_MINUTES));
@@ -166,7 +166,7 @@ public class AuthService {
 	}
 
 	private void resetLoginFailCount(String email) {
-		redissonClient.getAtomicLong(redisKeyGenerator.loginFailCountKey(email)).delete();
+		redissonClient.getAtomicLong(RedisKeyGenerator.loginFailCountKey(email)).delete();
 	}
 
 	@Transactional
@@ -187,7 +187,7 @@ public class AuthService {
 		}
 
 		User user = userRepository.findById(userId)
-				.filter(u -> !u.isDeleted())
+				.filter(User::isActive)
 				.orElseThrow(() -> new BusinessException(BusinessErrorCode.AUTH_NOT_FOUND_USER));
 
 		String newAccessToken = jwtTokenProvider.generateAccessToken(
@@ -200,13 +200,18 @@ public class AuthService {
 		return new TokenRefreshResponse(newAccessToken, newRefreshToken, jwtProperties.getAccessTokenExpiration());
 	}
 
+	@Transactional(readOnly = true)
+	public boolean isEmailDuplicate(String email) {
+		return userRepository.existsByEmail(email);
+	}
+
 	@Transactional
 	public FindEmailResponse findEmail(FindEmailRequest request) {
 		if (!smsVerifyService.consumeVerification(request.phoneNumber())) {
 			throw new BusinessException(BusinessErrorCode.AUTH_PHONE_NOT_VERIFIED);
 		}
 
-		User user = userRepository.findByPhoneNumberAndIsDeletedFalse(request.phoneNumber())
+		User user = userRepository.findByPhoneNumberAndStatus(request.phoneNumber(), UserStatus.ACTIVE)
 				.orElseThrow(() -> new BusinessException(BusinessErrorCode.AUTH_NOT_FOUND_USER));
 
 		return new FindEmailResponse(MaskingUtils.mask(user.getEmail(), MaskingType.EMAIL));
@@ -229,7 +234,7 @@ public class AuthService {
 		User user = userRepository.findById(userId)
 				.orElseThrow(() -> new BusinessException(BusinessErrorCode.AUTH_NOT_FOUND_USER));
 
-		if (user.isDeleted()) {
+		if (user.isInactive()) {
 			throw new BusinessException(BusinessErrorCode.AUTH_ALREADY_WITHDRAWN);
 		}
 
@@ -237,7 +242,7 @@ public class AuthService {
 			throw new BusinessException(BusinessErrorCode.AUTH_INVALID_PASSWORD);
 		}
 
-		user.markDeleted();
+		user.deactivate();
 		mainServiceClient.syncUserDeleted(userId);
 
 		logout(userId, accessToken);

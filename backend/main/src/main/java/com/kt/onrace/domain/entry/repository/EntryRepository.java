@@ -17,4 +17,6 @@ public interface EntryRepository extends JpaRepository<Entry, Long>, EntryReposi
 	Optional<Entry> findByUserIdAndEventId(Long userId, Long eventId);
 
 	void deleteByUserIdAndEventId(Long userId, Long eventId);
+
+	Optional<Entry> findByUserIdAndEventPaceId(Long userId, Long eventPaceId);
 }

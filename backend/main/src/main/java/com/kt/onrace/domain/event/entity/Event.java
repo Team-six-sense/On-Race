@@ -64,6 +64,9 @@ public class Event extends BaseEntity {
 	@Column(nullable = false)
 	private boolean soldOut = false;
 
+	@Column(nullable = false)
+	private boolean isQueue = false;
+
 	@OneToMany(mappedBy = "event")
 	private List<EventCourse> courses = new ArrayList<>();
 
@@ -116,5 +119,9 @@ public class Event extends BaseEntity {
 
 	public void delete() {
 		this.isDeleted = true;
+	}
+
+	public void enableQueue() {
+		this.isQueue = true;
 	}
 }

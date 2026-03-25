@@ -16,28 +16,27 @@ import lombok.RequiredArgsConstructor;
 public class TokenStoreService {
 
 	private final RedissonClient redissonClient;
-	private final RedisKeyGenerator redisKeyGenerator;
 
 	public void saveRefreshToken(Long userId, String token, long ttlMs) {
-		RBucket<String> bucket = redissonClient.getBucket(redisKeyGenerator.refreshTokenKey(userId));
+		RBucket<String> bucket = redissonClient.getBucket(RedisKeyGenerator.refreshTokenKey(userId));
 		bucket.set(token, Duration.ofMillis(ttlMs));
 	}
 
 	public Optional<String> getRefreshToken(Long userId) {
-		RBucket<String> bucket = redissonClient.getBucket(redisKeyGenerator.refreshTokenKey(userId));
+		RBucket<String> bucket = redissonClient.getBucket(RedisKeyGenerator.refreshTokenKey(userId));
 		return Optional.ofNullable(bucket.get());
 	}
 
 	public void deleteRefreshToken(Long userId) {
-		redissonClient.getBucket(redisKeyGenerator.refreshTokenKey(userId)).delete();
+		redissonClient.getBucket(RedisKeyGenerator.refreshTokenKey(userId)).delete();
 	}
 
 	public void blacklistJti(String jti, long remainingTtlMs) {
-		RBucket<String> bucket = redissonClient.getBucket(redisKeyGenerator.blacklistKey(jti));
+		RBucket<String> bucket = redissonClient.getBucket(RedisKeyGenerator.blacklistKey(jti));
 		bucket.set("1", Duration.ofMillis(remainingTtlMs));
 	}
 
 	public boolean isBlacklisted(String jti) {
-		return redissonClient.getBucket(redisKeyGenerator.blacklistKey(jti)).isExists();
+		return redissonClient.getBucket(RedisKeyGenerator.blacklistKey(jti)).isExists();
 	}
 }

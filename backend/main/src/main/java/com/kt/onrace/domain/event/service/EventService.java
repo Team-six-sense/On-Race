@@ -1,13 +1,19 @@
 package com.kt.onrace.domain.event.service;
 
+import java.time.LocalDateTime;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.logging.annotation.ServiceLog;
 import com.kt.onrace.common.response.CursorResponse;
+import com.kt.onrace.domain.event.config.EventProperties;
 import com.kt.onrace.domain.event.dto.EventCursorData;
 import com.kt.onrace.domain.event.dto.EventDetailResponse;
+import com.kt.onrace.domain.event.dto.EventInfoResponse;
 import com.kt.onrace.domain.event.dto.EventListResponse;
 import com.kt.onrace.domain.event.dto.EventSalesInfoResponse;
 import com.kt.onrace.domain.event.dto.EventSearchRequest;
@@ -18,6 +24,7 @@ import com.kt.onrace.domain.event.repository.EventSalesInfoRepository;
 
 import lombok.RequiredArgsConstructor;
 
+@ServiceLog
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -25,8 +32,8 @@ public class EventService {
 
 	private final EventRepository eventRepository;
 	private final EventSalesInfoRepository eventSalesInfoRepository;
+	private final EventProperties eventProperties;
 
-	@ServiceLog
 	public CursorResponse<EventListResponse> getEvents(EventSearchRequest request) {
 		int fetchSize = request.getValidSize();
 
@@ -38,19 +45,39 @@ public class EventService {
 		);
 	}
 
-	@ServiceLog
+	public EventInfoResponse getEventInfo(Long eventId) {
+		Event event = eventRepository.findVisibleEventOrThrow(eventId, BusinessErrorCode.EVENT_NOT_FOUND);
+
+		return EventInfoResponse.from(event);
+	}
+
 	public EventDetailResponse getEventDetail(Long eventId) {
 		Event event = eventRepository.findVisibleEventDetailOrThrow(eventId, BusinessErrorCode.EVENT_NOT_FOUND);
 
 		return EventDetailResponse.from(event);
 	}
 
-	@ServiceLog
 	public EventSalesInfoResponse getEventSalesInfo(Long eventId) {
 		Event event = eventRepository.findVisibleEventDetailOrThrow(eventId, BusinessErrorCode.EVENT_NOT_FOUND);
 
 		EventSalesInfo salesInfo = eventSalesInfoRepository.findByEventIdOrThrow(eventId, BusinessErrorCode.SALES_INFO_NOT_FOUND);
 
 		return EventSalesInfoResponse.from(salesInfo);
+	}
+
+	@Transactional
+	public void enableQueue(Long eventId) {
+		Event event = eventRepository.findByIdOrThrow(eventId, BusinessErrorCode.EVENT_NOT_FOUND);
+		event.enableQueue();
+	}
+
+	public Set<Long> getQueueEnabledEventIds() {
+		return eventRepository.findQueueEnabledEvents(
+			LocalDateTime.now(),
+			eventProperties.getQueueStartMinutes(),
+			eventProperties.getQueueEndMinutes()
+		).stream()
+			.map(Event::getId)
+			.collect(Collectors.toSet());
 	}
 }

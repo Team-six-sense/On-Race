@@ -12,7 +12,7 @@ export default function OrderDetailPage() {
     <div className="max-w-6xl mx-auto px-4 pt-8 pb-0">
       {/* 상단 네비게이션: 목록으로 가기 */}
       <div className="flex justify-self-start">
-        <Button variant="text" onClick={() => router.push('/schedule')}>
+        <Button variant="text" onClick={() => router.push('/event')}>
           <LuArrowLeft size={20} />
           뒤로가기
         </Button>
@@ -132,7 +132,7 @@ export default function OrderDetailPage() {
         <Button
           variant="outline"
           rounded="sm"
-          onClick={() => router.push('/schedule')}
+          onClick={() => router.push('/event')}
         >
           취소
         </Button>

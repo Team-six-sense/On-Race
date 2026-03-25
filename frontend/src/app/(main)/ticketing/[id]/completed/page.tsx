@@ -46,12 +46,12 @@ export default function LoginSuccess() {
 
       <div className="max-w-md w-full flex gap-2 items-center justify-center">
         <Button
-          variant="outline"
+          variant="secondary"
           rounded="full"
           size="lg"
           onClick={() => router.push('/')}
         >
-          메인 페이지로 이동
+          홈으로 이동하기
         </Button>
 
         <Button
@@ -60,7 +60,7 @@ export default function LoginSuccess() {
           size="lg"
           onClick={() => router.push(`/ticketing/${params.id}/payment/details`)}
         >
-          주문내역 보기
+          결제 상세내역 보기
         </Button>
       </div>
     </div>

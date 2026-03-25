@@ -2,20 +2,51 @@
 
 import { useEffect, useState } from 'react';
 import {
-  RefundPolicy,
-  SalesShippingInfo,
+  DeliveryInfo,
+  OperatingPolicy,
+  RefundPolicyInfo,
   SellerInfo,
-  ShippingDetails,
 } from './details/sales';
+import { eventService } from '@/features/event/services';
+import { useParams } from 'next/navigation';
+import { SalesInfo } from '@/features/event/types';
 
 export function EventSalesInfo() {
-  // 하이드레이션 오류 방지를 위한 마운트 상태 관리
-  const [mounted, setMounted] = useState(false);
+  const params = useParams();
 
+  const [mounted, setMounted] = useState<boolean>(false);
+  const [activeIndex, setActiveIndex] = useState<number | null>(0);
+  const [salesInfo, setSalesInfo] = useState<SalesInfo>();
+
+  const toggleSection = (index: number) => {
+    // 이미 열려있는걸 누르면 닫고(null), 아니면 해당 인덱스를 엶
+    setActiveIndex(activeIndex === index ? null : index);
+  };
   // 컴포넌트가 마운트된 후에만 렌더링을 허용
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // 데이터 로드
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!mounted) return;
+
+      try {
+        if (event) {
+          const response = await eventService.getSalesInfo(Number(params.id));
+          setSalesInfo((prev) => ({
+            ...prev,
+            ...response.data,
+          }));
+        }
+      } catch (error) {
+        console.error('데이터 로드 실패:', error);
+      }
+    };
+
+    fetchData();
+  }, [mounted, params.id]);
 
   // 아직 마운트되지 않았다면 껍데기(Skeleton) 혹은 null 반환
   if (!mounted) {
@@ -24,26 +55,36 @@ export function EventSalesInfo() {
 
   return (
     <div className="space-y-4">
-      {/* 판매 및 배송 정보 */}
-      <SalesShippingInfo />
+      {salesInfo && (
+        <div>
+          {/* 판매자 정보 */}
+          <SellerInfo
+            seller={salesInfo.seller}
+            isOpen={activeIndex === 0}
+            onToggle={() => toggleSection(0)}
+          />
 
-      {/* 구분선 */}
-      <div className="my-3 h-[1px] bg-gray-300"></div>
+          {/* 배송 정보 */}
+          <DeliveryInfo
+            delivery={salesInfo.delivery}
+            isOpen={activeIndex === 1}
+            onToggle={() => toggleSection(1)}
+          />
 
-      {/* 취소 및 환불 정책 */}
-      <RefundPolicy />
+          {/* 취소 및 환불 정책 */}
+          <RefundPolicyInfo
+            refundPolicy={salesInfo.refundPolicy}
+            isOpen={activeIndex === 2}
+            onToggle={() => toggleSection(2)}
+          />
 
-      {/* 구분선 */}
-      <div className="my-3 h-[1px] bg-gray-300"></div>
-
-      {/* 배송 정보 */}
-      <ShippingDetails />
-
-      {/* 구분선 */}
-      <div className="my-3 h-[1px] bg-gray-300"></div>
-
-      {/* 판매자 정보 */}
-      <SellerInfo />
+          {/* 운영 정책 */}
+          <OperatingPolicy
+            isOpen={activeIndex === 3}
+            onToggle={() => toggleSection(3)}
+          />
+        </div>
+      )}
     </div>
   );
 }

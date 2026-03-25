@@ -1,11 +1,17 @@
-// app/login/success/page.tsx
 'use client';
 
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { useSignupStore } from '@/features/auth/store/useSignupStore';
 
 export default function LoginSuccess() {
   const router = useRouter();
+  const { email, resetSignupData } = useSignupStore();
+
+  const handleFinalSignup = () => {
+    resetSignupData();
+    router.push('/login/email');
+  };
 
   return (
     <div className="flex flex-col items-center justify-center bg-white p-4">
@@ -19,17 +25,11 @@ export default function LoginSuccess() {
 
         <div className="bg-gray-50 rounded-none border-2 border-gray-300 p-2">
           <p className="text-sm text-gray-500">이름: 온러닝</p>
-          <p className="text-sm text-gray-500">
-            이메일(아이디): example@email.com
-          </p>
+          <p className="text-sm text-gray-500">이메일(아이디): {email}</p>
         </div>
 
         <div>
-          <Button
-            variant="primary1"
-            rounded="sm"
-            onClick={() => router.push('/login/email')}
-          >
+          <Button variant="primary1" rounded="sm" onClick={handleFinalSignup}>
             로그인 페이지로 이동
           </Button>
         </div>

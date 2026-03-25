@@ -31,7 +31,7 @@ front/
 │   │   ├── (main)/           # 메인 서비스 페이지 그룹
 │   │   │   ├── design/       # 공통 디자인 시스템 가이드 페이지
 │   │   │   ├── mypage/       # 마이 페이지
-│   │   │   ├── schedule/     # 전체 이벤트 일정 페이지
+│   │   │   ├── event/     # 전체 이벤트 일정 페이지
 │   │   │   └── ticketing/    # 티켓 예매 및 관리 페이지
 │   ├── components/           # 재사용 가능한 UI 컴포넌트 (Presentational)
 │   │   ├── layout/           # 전역 레이아웃 요소 (Header, Footer, Sidebar 등)
@@ -47,7 +47,7 @@ front/
 │   │   ├── auth/             # 인증 및 사용자 계정 관련 비즈니스 로직
 │   │   ├── design/           # 디자인 시스템 샘플 및 테스트 컴포넌트
 │   │   ├── mypage/           # 마이 페이지 관련 기능
-│   │   ├── schedule/         # 이벤트 일정 관련 기능
+│   │   ├── event/         # 이벤트 일정 관련 기능
 │   │   └── ticketing/        # 예매 프로세스 기능
 │   ├── hooks/                # 프로젝트 전역 공통 Custom Hooks
 │   ├── lib/                  # 외부 라이브러리 설정 및 인스턴스 (Axios, Fetcher 등)

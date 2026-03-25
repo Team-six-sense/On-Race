@@ -1,5 +1,6 @@
 package com.kt.onrace.domain.event.repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,9 +19,17 @@ public interface EventRepositoryCustom {
 		return findEventWithCoursesAndPaces(id).orElseThrow(() -> new BusinessException(errorCode));
 	}
 
+	default Event findVisibleEventOrThrow(Long id, ErrorCode errorCode) {
+		return findVisibleEvent(id).orElseThrow(() -> new BusinessException(errorCode));
+	}
+
 	List<Event> findVisibleEvents(EventSearchRequest request, int size);
 
 	Optional<Event> findVisibleEventDetail(Long id);
 
 	Optional<Event> findEventWithCoursesAndPaces(Long id);
+
+	Optional<Event> findVisibleEvent(Long id);
+
+	List<Event> findQueueEnabledEvents(LocalDateTime now, long beforeStartMinutes, long afterEndMinutes);
 }

@@ -1,3 +1,4 @@
 export * from './auth';
-export * from './marathonList';
+export * from './eventList';
+export * from './eventDetails';
 export * from './address';

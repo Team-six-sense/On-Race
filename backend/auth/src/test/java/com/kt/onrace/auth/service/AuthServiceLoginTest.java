@@ -23,6 +23,7 @@ import com.kt.onrace.auth.dto.LoginResponse;
 import com.kt.onrace.auth.dto.TokenRefreshRequest;
 import com.kt.onrace.auth.dto.TokenRefreshResponse;
 import com.kt.onrace.auth.entity.User;
+import com.kt.onrace.auth.entity.UserStatus;
 import com.kt.onrace.auth.repository.TermUserRepository;
 import com.kt.onrace.auth.repository.TermVersionRepository;
 import com.kt.onrace.auth.repository.UserRepository;
@@ -83,6 +84,7 @@ class AuthServiceLoginTest {
 	void setUp() {
 		testUser = User.createUser("test@test.com", "테스터", "encodedPw", "01012345678");
 		ReflectionTestUtils.setField(testUser, "id", 1L);
+	}
 
 		given(redissonClient.getAtomicLong(anyString())).willReturn(rAtomicLong);
 		given(rAtomicLong.get()).willReturn(0L);
@@ -94,9 +96,10 @@ class AuthServiceLoginTest {
 	@DisplayName("로그인 성공: 올바른 자격증명으로 Access/Refresh Token 반환")
 	void login_success() {
 		// given
+		setupLoginFailCounter();
 		LoginRequest request = new LoginRequest("test@test.com", "password123!");
 
-		given(userRepository.findByEmailAndIsDeletedFalse("test@test.com")).willReturn(Optional.of(testUser));
+		given(userRepository.findByEmailAndStatus("test@test.com", UserStatus.ACTIVE)).willReturn(Optional.of(testUser));
 		given(passwordEncoder.matches("password123!", "encodedPw")).willReturn(true);
 		given(jwtTokenProvider.generateAccessToken(1L, "test@test.com", "USER")).willReturn("access-token");
 		given(jwtTokenProvider.generateRefreshToken(1L)).willReturn("refresh-token");
@@ -119,9 +122,10 @@ class AuthServiceLoginTest {
 	@DisplayName("로그인 실패: 존재하지 않는 loginId")
 	void login_userNotFound() {
 		// given
+		setupLoginFailCounter();
 		LoginRequest request = new LoginRequest("unknown@test.com", "password123!");
 
-		given(userRepository.findByEmailAndIsDeletedFalse("unknown@test.com")).willReturn(Optional.empty());
+		given(userRepository.findByEmailAndStatus("unknown@test.com", UserStatus.ACTIVE)).willReturn(Optional.empty());
 		given(rAtomicLong.incrementAndGet()).willReturn(1L);
 
 		// when & then
@@ -135,9 +139,10 @@ class AuthServiceLoginTest {
 	@DisplayName("로그인 실패: 비밀번호 불일치")
 	void login_passwordMismatch() {
 		// given
+		setupLoginFailCounter();
 		LoginRequest request = new LoginRequest("test@test.com", "wrongPassword!");
 
-		given(userRepository.findByEmailAndIsDeletedFalse("test@test.com")).willReturn(Optional.of(testUser));
+		given(userRepository.findByEmailAndStatus("test@test.com", UserStatus.ACTIVE)).willReturn(Optional.of(testUser));
 		given(passwordEncoder.matches("wrongPassword!", "encodedPw")).willReturn(false);
 		given(rAtomicLong.incrementAndGet()).willReturn(1L);
 
