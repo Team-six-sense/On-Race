@@ -4,14 +4,12 @@ import static com.kt.onrace.domain.event.entity.QEvent.*;
 import static com.kt.onrace.domain.event.entity.QEventCourse.*;
 import static com.kt.onrace.domain.event.entity.QEventImage.*;
 import static com.kt.onrace.domain.event.entity.QEventPace.*;
-import static com.kt.onrace.domain.event.entity.QEventPackage.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-import org.springframework.cglib.core.Local;
 import org.springframework.stereotype.Repository;
 
 import com.kt.onrace.domain.event.dto.EventCursorData;
@@ -291,12 +289,6 @@ public class EventRepositoryImpl implements EventRepositoryCustom {
 				.where(eventCourse.event.id.eq(foundEvent.getId()))
 				.fetch();
 		}
-
-		queryFactory
-			.selectFrom(event)
-			.leftJoin(event.packages, eventPackage).fetchJoin()
-			.where(event.id.eq(foundEvent.getId()))
-			.fetchOne();
 
 		// 이미지도 별도 쿼리로 조회 (courses와 동시 fetch join 시 MultipleBagFetchException 발생)
 		queryFactory
