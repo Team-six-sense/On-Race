@@ -8,6 +8,7 @@ import com.kt.onrace.auth.config.AppProperties;
 import com.kt.onrace.auth.dto.AccountMeResponse;
 import com.kt.onrace.auth.entity.AuthProvider;
 import com.kt.onrace.auth.entity.User;
+import com.kt.onrace.auth.entity.VerificationStatus;
 import com.kt.onrace.auth.repository.UserRepository;
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
@@ -30,7 +31,11 @@ public class AccountService {
 			user.getEmail(),
 			user.getName(),
 			user.getAuthProvider(),
-			user.getStatus()
+			user.getStatus(),
+			user.getPhoneNumber(),
+			user.canChangePassword(),
+			user.getVerificationStatus(),
+			user.isMarketingConsent()
 		);
 	}
 
@@ -52,6 +57,18 @@ public class AccountService {
 		}
 
 		passwordResetService.requestPasswordReset(user.getEmail(), appProperties.getPasswordReset().getBaseUrl());
+	}
+
+	@Transactional
+	public void updateMarketingConsent(Long userId, boolean marketingConsent) {
+		User user = findActiveUser(userId);
+		user.changeMarketingConsent(marketingConsent);
+	}
+
+	@Transactional
+	public void updateVerificationStatus(Long userId, VerificationStatus verificationStatus) {
+		User user = findActiveUser(userId);
+		user.changeVerificationStatus(verificationStatus);
 	}
 
 	private User findActiveUser(Long userId) {
