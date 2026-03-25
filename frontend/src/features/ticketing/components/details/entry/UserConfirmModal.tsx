@@ -1,6 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { LuX } from 'react-icons/lu';
 
 interface UserData {
@@ -24,7 +23,22 @@ export const UserConfirmModal = ({
   onConfirm,
   data,
 }: ModalProps) => {
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      modalRef.current?.focus();
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Tab' || e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault(); // 브라우저 기본 동작 방지
+      e.stopPropagation(); // 이벤트 전파 방지
+    }
+  };
 
   return (
     // 전체 화면 레이어 (z-index 50)
@@ -33,7 +47,12 @@ export const UserConfirmModal = ({
       <div className="absolute inset-0 bg-black/50 transition-opacity" />
 
       {/* 모달 본체 */}
-      <div className="relative w-full max-w-lg px-8 py-6 transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all animate-in fade-in zoom-in duration-300">
+      <div
+        ref={modalRef}
+        onKeyDown={handleKeyDown}
+        tabIndex={-1}
+        className="relative w-full max-w-lg px-8 py-6 transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all animate-in fade-in zoom-in duration-300"
+      >
         {/* 헤더 부분: 제목과 X 버튼 */}
         <div className="relative flex flex-col items-start justify-between">
           <div className="flex w-full items-center justify-between">
@@ -41,7 +60,12 @@ export const UserConfirmModal = ({
               참가자 정보 확인
             </div>
             <div>
-              <Button variant="ghost" size="iconSm" onClick={onClose}>
+              <Button
+                variant="ghost"
+                size="iconSm"
+                onClick={onClose}
+                tabIndex={-1}
+              >
                 <LuX />
               </Button>
             </div>
@@ -76,7 +100,12 @@ export const UserConfirmModal = ({
 
         {/* 하단 버튼 */}
         <div className="flex">
-          <Button variant="primary1" rounded="full" onClick={onConfirm}>
+          <Button
+            variant="primary1"
+            rounded="full"
+            onClick={onConfirm}
+            tabIndex={-1}
+          >
             확인
           </Button>
         </div>

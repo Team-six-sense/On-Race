@@ -89,8 +89,9 @@ export function EventFilter({
 
   return (
     <div className="p-6 mb-6 bg-gray-50 rounded-sm">
-      <div className="grid grid-cols-3 space-y-4 gap-4 mb-4">
-        <div>
+      <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-4 mb-6 items-center">
+        {/* 거리 슬라이더 */}
+        <div className="flex flex-col gap-2">
           <DistanceSlider
             min={0}
             max={100}
@@ -98,12 +99,16 @@ export function EventFilter({
             onChange={(val: any) => setRange(val)}
           />
         </div>
-        <div>
-          <label className="text-sm font-bold">날짜</label>
+
+        {/* 날짜 */}
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-bold">개최일</label>
           <DualDateRangePicker onChange={(val) => setDateRange(val)} />
         </div>
-        <div>
-          <label className="text-sm font-bold">지역</label>
+
+        {/* 지역 */}
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-bold">개최지</label>
           <Select value={location} onValueChange={(val) => setLocation(val)}>
             <SelectTrigger
               variant="default"
@@ -124,28 +129,30 @@ export function EventFilter({
           </Select>
         </div>
 
-        <div className="col-span-full space-y-2">
-          <label className="text-sm font-bold">키워드</label>
-          <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} />
+        {/* 초기화 버튼 */}
+        <div className="self-end">
+          <Button variant="outline" rounded="full" onClick={initFilter}>
+            필터 초기화
+          </Button>
         </div>
-      </div>
-      <div className="flex justify-end items-center gap-2  w-full">
-        <Button
-          variant="primary2"
-          rounded="full"
-          size="fit"
-          onClick={initFilter}
-        >
-          필터 초기화
-        </Button>
-        <Button
-          variant="primary1"
-          rounded="full"
-          size="fit"
-          onClick={applyFilter}
-        >
-          검색하기
-        </Button>
+
+        {/* 키워드 및 검색 (전체 너비 사용 및 버튼 인라인 배치) */}
+        <div className="col-span-3 space-y-2">
+          <label className="text-sm font-bold">키워드</label>
+          <div className="flex gap-2">
+            <Input
+              className="flex-1"
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              placeholder="검색어를 입력하세요"
+            />
+          </div>
+        </div>
+        <div className="self-end">
+          <Button variant="primary1" rounded="full" onClick={applyFilter}>
+            검색하기
+          </Button>
+        </div>
       </div>
     </div>
   );

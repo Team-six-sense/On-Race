@@ -155,7 +155,7 @@ export default function CheckoutPage() {
                 </div>
                 <div className="flex">
                   <Button variant="outline" size="sm" rounded="sm">
-                    변경
+                    변경하기
                   </Button>
                 </div>
               </div>

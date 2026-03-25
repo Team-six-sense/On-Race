@@ -30,16 +30,18 @@ export const EVENT_LIST: EventList = {
       thumbnailImg: {
         id: 1,
         url: '/image/default.png',
-        images: [
-          '/image/default.png',
-          '/image/default.png',
-          '/image/default.png',
-        ],
       },
       minPrice: 20000,
+      maxPrice: 50000,
 
       // 빠진 정보
+      discountRate: 20,
       resultAt: '2026-04-01T10:00:00',
+      delivery: {
+        schedule:
+          '본 상품은 일괄배송 상품으로 2026년 4월 1일부터 순차 배송됩니다.',
+        feePolicy: '3만 원 이상 무료배송',
+      },
     },
     {
       id: 2,
@@ -71,7 +73,15 @@ export const EVENT_LIST: EventList = {
         url: '/image/default.png',
       },
       minPrice: 20000,
+      maxPrice: 50000,
+
+      discountRate: 20,
       resultAt: '2026-05-01T10:00:00',
+      delivery: {
+        schedule:
+          '본 상품은 일괄배송 상품으로 2026년 4월 1일부터 순차 배송됩니다.',
+        feePolicy: '3만 원 이상 무료배송',
+      },
     },
     {
       id: 3,
@@ -100,7 +110,15 @@ export const EVENT_LIST: EventList = {
       },
 
       minPrice: 20000,
+      maxPrice: 50000,
+
+      discountRate: 0,
       resultAt: '2026-06-01T10:00:00',
+      delivery: {
+        schedule:
+          '본 상품은 일괄배송 상품으로 2026년 4월 1일부터 순차 배송됩니다.',
+        feePolicy: '3만 원 이상 무료배송',
+      },
     },
     {
       id: 4,
@@ -129,7 +147,15 @@ export const EVENT_LIST: EventList = {
         url: '/image/default.png',
       },
       minPrice: 20000,
+      maxPrice: 50000,
+
+      discountRate: 0,
       resultAt: '2026-06-01T10:00:00',
+      delivery: {
+        schedule:
+          '본 상품은 일괄배송 상품으로 2026년 4월 1일부터 순차 배송됩니다.',
+        feePolicy: '3만 원 이상 무료배송',
+      },
     },
     {
       id: 5,
@@ -158,7 +184,56 @@ export const EVENT_LIST: EventList = {
       },
 
       minPrice: 20000,
+      maxPrice: 50000,
+
+      discountRate: 0,
       resultAt: '2026-03-01T10:00:00',
+      delivery: {
+        schedule:
+          '본 상품은 일괄배송 상품으로 2026년 4월 1일부터 순차 배송됩니다.',
+        feePolicy: '3만 원 이상 무료배송',
+      },
+    },
+    {
+      id: 6,
+      title: '서울 마라톤 2026',
+      type: 'MARATHON',
+      appType: 'LOTTERY',
+      status: 'CLOSING_SOON',
+      eventAt: '2026-03-15T09:00:00',
+      appStartAt: '2026-02-01T00:00:00',
+      appEndAt: '2026-02-28T23:59:59',
+      region: 'SEOUL',
+      venue: '서울특별시 송파구 올림픽로',
+      courses: [
+        {
+          id: 1,
+          name: '풀코스',
+        },
+        {
+          id: 2,
+          name: '하프코스',
+        },
+        {
+          id: 3,
+          name: '10km',
+        },
+      ],
+      thumbnailImg: {
+        id: 1,
+        url: '/image/default.png',
+      },
+
+      discountRate: 0,
+      minPrice: 20000,
+      maxPrice: 50000,
+
+      resultAt: '2026-04-01T10:00:00',
+      delivery: {
+        schedule:
+          '본 상품은 일괄배송 상품으로 2026년 4월 1일부터 순차 배송됩니다.',
+        feePolicy: '3만 원 이상 무료배송',
+      },
     },
   ],
   nextCursor: 15,

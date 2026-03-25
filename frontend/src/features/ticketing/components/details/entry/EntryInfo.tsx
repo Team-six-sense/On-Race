@@ -1,6 +1,7 @@
 'use client';
 
 import { Event } from '@/features/event/types';
+import { cn } from '@/lib/utils';
 import { getTypeLabel } from '@/types/constants';
 import { useEffect, useState } from 'react';
 
@@ -13,19 +14,28 @@ export function EntryInfo({ event }: { event: Event }) {
     setMounted(true);
   }, []);
 
+  const formatPriceRange = (min: number, max: number) => {
+    const minStr = Math.floor(min).toLocaleString('ko-KR');
+    const maxStr = Math.floor(max).toLocaleString('ko-KR');
+
+    return min === max ? `${minStr}원` : `${minStr}원 ~ ${maxStr}원`;
+  };
+
+  const participationFee = () => {
+    return formatPriceRange(event.minPrice, event.maxPrice);
+  };
+
+  const discountParticipationFee = () => {
+    const ratio = 1 - event.discountRate / 100;
+    return formatPriceRange(event.minPrice * ratio, event.maxPrice * ratio);
+  };
+
   const recruitmentType = () => {
     if (event.status === 'READY') return '접수 후 추첨';
     if (event.appType === 'LOTTERY') return '응모 후 추첨';
     if (event.appType === 'FIRST_COME') return '선착순 신청';
     return '선착순 신청';
   };
-
-  const recruitmentStatus = () => {
-    if (event.status === 'END' || event.status === 'DRAW_COMPLETED')
-      return '마감';
-    return 'N일 N시간 남음';
-  };
-
   // 아직 마운트되지 않았다면 껍데기(Skeleton) 혹은 null 반환
   if (!mounted) {
     return <div className="mb-6 min-h-[100px]" />; // 레이아웃 시프트를 방지하기 위해 최소 높이 설정
@@ -48,16 +58,32 @@ export function EntryInfo({ event }: { event: Event }) {
         </div>
         <div className="flex">
           <span className="w-24 font-semibold">참가비</span>
-          <span className="flex-1 font-bold">50,000원</span>
+          <span
+            className={cn(
+              'flex-1',
+              event.discountRate > 0
+                ? 'text-gray-500 line-through'
+                : 'text-black',
+            )}
+          >
+            {participationFee()}
+          </span>
         </div>
+        {event.discountRate > 0 && (
+          <div className="flex">
+            <span className="w-24 font-semibold"></span>
+            <p className="font-bold text-red-500 mr-2">
+              {event.discountRate}%{' '}
+            </p>
+            <span className="flex-1">{discountParticipationFee()}</span>
+          </div>
+        )}
 
         <div className="flex">
           <span className="w-24 font-semibold">배송정보</span>
           <div className="flex-1">
-            <p>
-              본 상품은 일괄배송 상품으로 2026년 4월 1일부터 순차 배송됩니다.
-            </p>
-            <p>3만 원 이상 구매 시 무료배송</p>
+            <p>{event.delivery.schedule}</p>
+            <p className="text-gray-500">{event.delivery.feePolicy}</p>
           </div>
         </div>
         <div className="flex">

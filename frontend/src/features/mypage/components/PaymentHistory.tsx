@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-// 아이콘 사용을 위해 lucide-react를 설치하거나 기본 텍스트로 대체 가능합니다.
-import { ChevronRight } from 'lucide-react';
 import { DATE_FILTER_OPTIONS } from '@/types/constants';
 import { Button } from '@/components/ui/button';
+import { LuChevronRight } from 'react-icons/lu';
 
 export const PaymentHistory = () => {
   const [searchType, setSearchType] = useState<string>('ALL');
@@ -83,7 +82,7 @@ export const PaymentHistory = () => {
                 <span className="text-xs font-medium">{step.label}</span>
               </div>
               {index < orderSteps.length - 1 && (
-                <ChevronRight className="text-gray-400" size={16} />
+                <LuChevronRight className="text-gray-400" size={16} />
               )}
             </React.Fragment>
           ))}

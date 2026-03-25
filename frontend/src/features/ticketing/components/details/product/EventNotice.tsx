@@ -19,8 +19,8 @@ export function EventNotice({ notice }: { notice: string }) {
   return (
     <section>
       <div>
-        <h2 className="text-xl font-bold mb-6 flex items-center">공지사항</h2>
-        <div className="w-full p-2 overflow-hidden bg-gray-100 border-2 rounded text-gray-900">
+        <h2 className="text-xl font-bold mb-2 flex items-center">유의사항</h2>
+        <div className="w-full p-2 overflow-hidden bg-gray-100 border-2 rounded text-gray-600">
           {notice}
         </div>
       </div>

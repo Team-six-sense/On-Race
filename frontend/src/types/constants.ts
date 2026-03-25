@@ -31,7 +31,12 @@ export type RoundedSize = 'full' | 'none';
 // ----------------
 
 // 타입 정의
-export type StatusId = 'UPCOMING' | 'OPEN' | 'CLOSED';
+export type StatusId =
+  | 'READY'
+  | 'IN_PROGRESS'
+  | 'CLOSING_SOON'
+  | 'END'
+  | 'DRAW_COMPLETED';
 export type TypeId = 'LOTTERY' | 'FIRST_COME';
 export type CategoryId =
   | 'ALL'
@@ -50,6 +55,14 @@ const STATUS_MAP: Record<string, string> = {
   DRAW_COMPLETED: '결과',
 };
 
+const STATUS_CONFIG_MAP: Record<string, string> = {
+  READY: 'bg-yellow-50 text-yellow-500',
+  IN_PROGRESS: 'bg-blue-50 text-blue-500',
+  CLOSING_SOON: 'bg-red-50 text-red-500',
+  END: 'bg-gray-100 text-gray-400',
+  DRAW_COMPLETED: 'bg-gray-100 text-gray-400',
+};
+
 const TYPE_MAP: Record<string, string> = {
   ALL: '전체보기',
   MARATHON: '마라톤',
@@ -60,8 +73,8 @@ const TYPE_MAP: Record<string, string> = {
 };
 
 const APP_TYPE_MAP: Record<string, string> = {
-  LOTTERY: '응모',
-  FIRST_COME: '선착',
+  LOTTERY: '추첨',
+  FIRST_COME: '선착순',
 };
 
 const DATE_FILTER_OPTIONS_MAP: Record<string, string> = {
@@ -96,6 +109,7 @@ export const DATE_FILTER_OPTIONS = Object.entries(DATE_FILTER_OPTIONS_MAP).map(
 
 // 변환 함수 (Getter)
 export const getStatusLabel = (id: string) => STATUS_MAP[id] || '미지정';
+export const getStatusConfig = (id: string) => STATUS_CONFIG_MAP[id] || '';
 export const getTypeLabel = (id: string) => TYPE_MAP[id] || '미지정';
 export const getAppTypeLabel = (id: string) => APP_TYPE_MAP[id] || '미지정';
 export const getDateFilterOption = (id: string) =>

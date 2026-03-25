@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Search as SearchIcon } from 'lucide-react';
 import { EventFilter } from '@/features/event/components';
 import { useMarathonFilter } from '@/features/event/hooks';
 import { Course, Event } from '@/features/event/types';
@@ -11,15 +10,28 @@ import { useRouter } from 'next/navigation';
 import {
   TYPE,
   getAppTypeLabel,
+  getStatusConfig,
   getStatusLabel,
   getTypeLabel,
 } from '@/types/constants';
 import { useEventStore } from '@/features/event/store/useEventStore';
+import { cn } from '@/lib/utils';
+import { LuSearch } from 'react-icons/lu';
 
 export default function EventPage() {
   const router = useRouter();
   const [events, setEvents] = useState<Event[]>([]);
   const { setEvent } = useEventStore();
+
+  const {
+    searchType,
+    setSearchLocation,
+    setSearchTerm,
+    setSearchDistance,
+    setSearchDate,
+    setSearchType,
+    filteredEvents,
+  } = useMarathonFilter(events);
 
   // 데이터 로드
   useEffect(() => {
@@ -35,20 +47,48 @@ export default function EventPage() {
     fetchData();
   }, []);
 
-  const {
-    searchType,
-    setSearchLocation,
-    setSearchTerm,
-    setSearchDistance,
-    setSearchDate,
-    setSearchType,
-    filteredEvents,
-  } = useMarathonFilter(events);
+  const discountPrice = (price: number, discountRate: number) => {
+    const discountPrice = price * (1 - discountRate / 100);
+
+    return discountPrice.toLocaleString('ko-KR');
+  };
+
+  const displayStatusLabel = (status: string) => {
+    let displayLabel = '';
+
+    switch (status) {
+      case 'READY':
+        const dateStr = '2026-03-15T09:00:00';
+        const date = new Date(dateStr);
+
+        const formattedDate = new Intl.DateTimeFormat('ko-KR', {
+          month: 'long', // "3월"
+          day: 'numeric', // "15일"
+          hour: 'numeric', // "9시"
+          minute: 'numeric',
+          hour12: false, // 24시간 형식
+        }).format(date);
+
+        displayLabel = `${formattedDate} ${getStatusLabel(status)}`;
+        break;
+      case 'CLOSING_SOON':
+        displayLabel = `내일 ${getStatusLabel(status)}`;
+        break;
+      case 'DRAW_COMPLETED':
+        displayLabel = getStatusLabel('END');
+        break;
+      default:
+        displayLabel = getStatusLabel(status);
+    }
+
+    return displayLabel;
+  };
 
   const handleEventDetail = (event: Event) => {
     setEvent(event);
     router.push(`/ticketing/${event.id}`);
   };
+
   return (
     <div className="min-h-screen bg-primary1">
       {/* Header */}
@@ -123,15 +163,20 @@ export default function EventPage() {
                     <div className="inline-block px-2 py-0.5 mr-1 rounded-sm text-[10px] font-bold bg-gray-100 text-gray-500">
                       {getAppTypeLabel(event.appType)}
                     </div>
-                    <div className="inline-block px-2 py-0.5 rounded-sm text-[10px] font-bold bg-gray-100 text-gray-500">
-                      {getStatusLabel(event.status)}
+                    <div
+                      className={cn(
+                        'inline-block px-2 py-0.5 rounded-sm text-[10px] font-bold',
+                        getStatusConfig(event.status),
+                      )}
+                    >
+                      {displayStatusLabel(event.status)}
                     </div>
 
                     <h2 className="font-bold text-black text-lg leading-tight truncate">
                       {event.title}
                     </h2>
 
-                    {/* 주소 및 코스 (한 줄 처리) */}
+                    {/* 주소 및 코스 */}
                     <div className="flex items-center text-gray-500 text-sm min-w-0">
                       <span className="truncate shrink-0 max-w-[120px] sm:max-w-none">
                         {event.venue}
@@ -155,8 +200,16 @@ export default function EventPage() {
                 </div>
 
                 {/* 가격 정보 */}
-                <div className="my-2 flex items-center text-black text-md font-bold">
-                  {event.minPrice.toLocaleString('ko-KR')}원 ~
+                <div className="my-2 flex items-center text-black font-bold">
+                  {event.discountRate > 0 && (
+                    <p className="text-md text-red-500 mr-2">
+                      {event.discountRate}%
+                    </p>
+                  )}
+
+                  <p className="text-xl">
+                    {discountPrice(event.minPrice, event.discountRate)}원 ~
+                  </p>
                 </div>
               </div>
             </div>
@@ -166,7 +219,7 @@ export default function EventPage() {
         {/* Empty State (기존 유지) */}
         {filteredEvents.length === 0 && (
           <div className="text-center py-32 border-2 border-dashed border-slate-200 rounded-3xl bg-white">
-            <SearchIcon className="mx-auto text-slate-200 mb-4" size={48} />
+            <LuSearch className="mx-auto text-slate-200 mb-4" size={48} />
             <p className="text-slate-400 font-bold text-lg">
               검색 결과가 없습니다.
             </p>
