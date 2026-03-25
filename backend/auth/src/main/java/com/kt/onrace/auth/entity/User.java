@@ -51,6 +51,13 @@ public class User extends BaseEntity {
 	@Column(nullable = false, columnDefinition = "VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'")
 	private UserStatus status;
 
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false, columnDefinition = "VARCHAR(20) NOT NULL DEFAULT 'UNVERIFIED'")
+	private VerificationStatus verificationStatus = VerificationStatus.UNVERIFIED;
+
+	@Column(nullable = false, columnDefinition = "TINYINT(1) NOT NULL DEFAULT 0")
+	private boolean marketingConsent = false;
+
 	private User(String email, String name, String password, String phoneNumber) {
 		this.email = email;
 		this.name = name;
@@ -96,6 +103,18 @@ public class User extends BaseEntity {
 
 	public void changeName(String name) {
 		this.name = name;
+	}
+
+	public void changeMarketingConsent(boolean marketingConsent) {
+		this.marketingConsent = marketingConsent;
+	}
+
+	public void changeVerificationStatus(VerificationStatus verificationStatus) {
+		this.verificationStatus = verificationStatus;
+	}
+
+	public boolean canChangePassword() {
+		return this.authProvider == AuthProvider.LOCAL && this.password != null;
 	}
 
 }

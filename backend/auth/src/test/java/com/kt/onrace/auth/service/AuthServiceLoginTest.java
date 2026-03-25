@@ -86,6 +86,7 @@ class AuthServiceLoginTest {
 		ReflectionTestUtils.setField(testUser, "id", 1L);
 	}
 
+	private void setupLoginFailCounter() {
 		given(redissonClient.getAtomicLong(anyString())).willReturn(rAtomicLong);
 		given(rAtomicLong.get()).willReturn(0L);
 	}

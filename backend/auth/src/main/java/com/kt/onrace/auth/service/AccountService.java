@@ -30,7 +30,11 @@ public class AccountService {
 			user.getEmail(),
 			user.getName(),
 			user.getAuthProvider(),
-			user.getStatus()
+			user.getStatus(),
+			user.getPhoneNumber(),
+			user.canChangePassword(),
+			user.getVerificationStatus(),
+			user.isMarketingConsent()
 		);
 	}
 
@@ -52,6 +56,12 @@ public class AccountService {
 		}
 
 		passwordResetService.requestPasswordReset(user.getEmail(), appProperties.getPasswordReset().getBaseUrl());
+	}
+
+	@Transactional
+	public void updateMarketingConsent(Long userId, boolean marketingConsent) {
+		User user = findActiveUser(userId);
+		user.changeMarketingConsent(marketingConsent);
 	}
 
 	private User findActiveUser(Long userId) {
