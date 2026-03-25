@@ -8,12 +8,11 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.kt.onrace.domain.address.entity.Address;
-import com.kt.onrace.domain.address.repository.AddressRepository;
+import com.kt.onrace.domain.address.dto.AddressDto;
+import com.kt.onrace.domain.address.service.AddressService;
 import com.kt.onrace.domain.mypage.client.AuthAccountClient;
 import com.kt.onrace.domain.mypage.dto.MyPageAccountResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageAccountType;
@@ -26,9 +25,8 @@ class MyPageAccountQueryServiceTest {
 	private AuthAccountClient authAccountClient;
 
 	@Mock
-	private AddressRepository addressRepository;
+	private AddressService addressService;
 
-	@InjectMocks
 	private MyPageAddressQueryService myPageAddressQueryService;
 
 	private MyPageAccountQueryService myPageAccountQueryService;
@@ -36,6 +34,7 @@ class MyPageAccountQueryServiceTest {
 	@Test
 	@DisplayName("계정 요약은 auth 원천값과 기본 배송지 요약을 함께 조립한다")
 	void getAccountReturnsAccountSummary() {
+		myPageAddressQueryService = new MyPageAddressQueryService(addressService);
 		myPageAccountQueryService = new MyPageAccountQueryService(authAccountClient, myPageAddressQueryService);
 
 		when(authAccountClient.getMyInfo(7L)).thenReturn(
@@ -49,7 +48,7 @@ class MyPageAccountQueryServiceTest {
 				true
 			)
 		);
-		when(addressRepository.findByUserIdOrderByIsDefaultDescCreatedAtDesc(7L)).thenReturn(List.of(defaultAddress()));
+		when(addressService.getDefault(7L)).thenReturn(new AddressDto.DefaultResponse(true, defaultAddress()));
 
 		MyPageAccountResponseDto response = myPageAccountQueryService.getAccount(7L);
 
@@ -62,12 +61,16 @@ class MyPageAccountQueryServiceTest {
 		assertThat(response.verificationStatus()).isEqualTo(MyPageVerificationStatus.COMPLETED);
 		assertThat(response.marketingConsent()).isTrue();
 		assertThat(response.address().hasAddress()).isTrue();
+		assertThat(response.address().defaultAddress().receiverName()).isEqualTo("홍길동");
 		assertThat(response.address().defaultAddress().label()).isEqualTo("집");
+		assertThat(response.address().defaultAddress().address()).isEqualTo("서울시 강남구 101동 1203호");
+		assertThat(response.address().defaultAddress().phone()).isEqualTo("01012345678");
 	}
 
 	@Test
 	@DisplayName("기본 배송지가 없으면 hasAddress=false와 defaultAddress=null을 반환한다")
 	void getAccountReturnsEmptyAddressWhenDefaultAddressMissing() {
+		myPageAddressQueryService = new MyPageAddressQueryService(addressService);
 		myPageAccountQueryService = new MyPageAccountQueryService(authAccountClient, myPageAddressQueryService);
 
 		when(authAccountClient.getMyInfo(8L)).thenReturn(
@@ -81,7 +84,7 @@ class MyPageAccountQueryServiceTest {
 				false
 			)
 		);
-		when(addressRepository.findByUserIdOrderByIsDefaultDescCreatedAtDesc(8L)).thenReturn(List.of());
+		when(addressService.getDefault(8L)).thenReturn(AddressDto.DefaultResponse.empty());
 
 		MyPageAccountResponseDto response = myPageAccountQueryService.getAccount(8L);
 
@@ -94,6 +97,7 @@ class MyPageAccountQueryServiceTest {
 	@Test
 	@DisplayName("SNS 계정은 accountType=SNS, canChangePassword=false, UNVERIFIED는 PENDING으로 매핑한다")
 	void getAccountNormalizesSnsAccountFields() {
+		myPageAddressQueryService = new MyPageAddressQueryService(addressService);
 		myPageAccountQueryService = new MyPageAccountQueryService(authAccountClient, myPageAddressQueryService);
 
 		when(authAccountClient.getMyInfo(9L)).thenReturn(
@@ -107,7 +111,7 @@ class MyPageAccountQueryServiceTest {
 				true
 			)
 		);
-		when(addressRepository.findByUserIdOrderByIsDefaultDescCreatedAtDesc(9L)).thenReturn(List.of(defaultAddress()));
+		when(addressService.getDefault(9L)).thenReturn(new AddressDto.DefaultResponse(true, defaultAddress()));
 
 		MyPageAccountResponseDto response = myPageAccountQueryService.getAccount(9L);
 
@@ -117,19 +121,17 @@ class MyPageAccountQueryServiceTest {
 		assertThat(response.verificationStatus()).isEqualTo(MyPageVerificationStatus.PENDING);
 	}
 
-	private Address defaultAddress() {
-		return Address.builder()
-			.userId(7L)
-			.label("집")
-			.normalizedLabel("집")
-			.receiverName("홍길동")
-			.phone("01012345678")
-			.zipcode("06236")
-			.address1("서울시 강남구")
-			.address2("101동 1203호")
-			.memo("문앞")
-			.isDefault(true)
-			.activeDefaultOwnerId(7L)
-			.build();
+	private AddressDto.Response defaultAddress() {
+		return new AddressDto.Response(
+			1L,
+			"집",
+			"홍길동",
+			"01012345678",
+			"06236",
+			"서울시 강남구",
+			"101동 1203호",
+			"문앞",
+			true
+		);
 	}
 }

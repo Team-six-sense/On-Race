@@ -20,6 +20,8 @@
 - 이 문서에서 고정하는 현재 1차 기준은 아래와 같다.
   - `GET /mypage/account`는 auth 원천값과 main/address 기본 배송지를 조합하는 공식 aggregate API다.
   - `GET /mypage/account` 공개 응답은 `accountType`, `authProvider`, `email`, `name`, `phone`, `canChangePassword`, `verificationStatus`, `marketingConsent`, `address`를 포함한다.
+  - 마이페이지의 기본 배송지는 요약 응답만 노출한다.
+    - `receiverName`, `label`, `address`, `phone`
   - `accountType` 공개 계약은 `EMAIL`, `SNS`다.
   - `verificationStatus` 공개 계약은 `PENDING`, `COMPLETED`, `FAILED`다.
   - 신청내역은 `/mypage/entries`와 `/mypage/waiting-entries`의 분리형을 유지한다.
@@ -99,7 +101,7 @@
 | `verificationStatus` | Main MyPage aggregate 계산값 | 존재 | 기본값 `PENDING` | Main MyPage | auth raw 값을 공개용 `PENDING/COMPLETED/FAILED`로 정규화 |
 | `marketingConsent` | Auth `User.marketingConsent` | 존재 | 기본값 `false` | Auth Account | 수정 API 존재 |
 | `address.hasAddress` | Main Address 집계값 | 존재 | 주소 없으면 `false` | Main Address + MyPage | 계정관리 화면의 기본 배송지 존재 플래그 |
-| `address.defaultAddress.*` | Main `Address` | 존재 | 주소 없으면 `null` | Main Address + MyPage | 기본 배송지 요약 구조 재사용 |
+| `address.defaultAddress.receiverName`, `label`, `address`, `phone` | Main `Address` | 존재 | 주소 없으면 `null` | Main Address + MyPage | 계정 화면과 개요 화면에서 쓰는 기본 배송지 요약 구조 |
 
 #### account 계약 결정
 
@@ -131,14 +133,28 @@
 | 필요한 필드 | 원천 도메인 | 현재 존재 여부 | fallback 가능 여부 | 책임 | 비고 |
 | --- | --- | --- | --- | --- | --- |
 | `hasAddress` | Main Address 집계값 | 존재 | 주소 없으면 `false` | Main Address + MyPageQuery | 마이페이지 요약/계정관리 공통 플래그 |
-| `defaultAddress.addressId` | Main `Address.id` | 존재 | 주소 없으면 `defaultAddress=null` | Main Address | |
-| `defaultAddress.label`, `receiverName`, `phone`, `zipcode`, `address1`, `address2`, `memo`, `isDefault` | Main `Address` | 존재 | `address2`, `memo`는 `null` 허용 | Main Address | 화면 표시용 기본 배송지 정보 |
+| `defaultAddress.receiverName` | Main `Address.receiverName` | 존재 | 주소 없으면 `defaultAddress=null` | Main Address | 수령인 |
+| `defaultAddress.label` | Main `Address.label` | 존재 | 주소 없으면 `defaultAddress=null` | Main Address | 주소별칭 |
+| `defaultAddress.address` | Main `Address.address1 + address2` | 존재 | 주소 없으면 `defaultAddress=null` | Main Address + MyPage | 상세주소가 있으면 공백으로 이어 붙인 문자열 |
+| `defaultAddress.phone` | Main `Address.phone` | 존재 | 주소 없으면 `defaultAddress=null` | Main Address | 전화번호는 정규화된 숫자 문자열 기준 |
 
 #### default address 계약 결정
 
 - 기본 배송지는 `auth`가 아니라 `main/address`가 책임진다.
 - 마이페이지는 읽기 계약으로 `GET /mypage/address`를 사용한다.
+- `/mypage/account.address`와 `GET /mypage/address`는 계정/개요 화면 표시를 위한 요약형 DTO다.
+- `GET /addresses/default`와 `GET /addresses`, `GET /addresses/{id}`, `POST /addresses`, `PUT /addresses/{id}`, `DELETE /addresses/{id}`, `PATCH /addresses/{id}/default`는 원본 배송지 계약을 그대로 사용한다.
+- 마이페이지 응답은 기본 배송지 요약 필드만 노출한다.
+  - `receiverName`, `label`, `address`, `phone`
+- 요약형 응답 shape는 아래처럼 고정한다.
+  - `hasAddress: boolean`
+  - `defaultAddress: null | { receiverName, label, address, phone }`
+- `address` 조합 규칙은 아래처럼 고정한다.
+  - `address2 == null` 또는 blank면 `address1`만 사용한다.
+  - 둘 다 있으면 `address1`과 `address2`를 공백 한 칸으로 결합한다.
+  - 최종 문자열은 `trim` 처리한다.
 - 주소 CRUD와 기본 배송지 변경은 `AddressController` 계약을 그대로 재사용한다.
+- 배송지 목록/상세/추가/수정/삭제/기본설정은 `/addresses` 계약을 그대로 사용하고, 마이페이지 집계 응답에서는 그중 요약 필드만 재노출한다.
 - 기본 배송지 플래그가 비정상적으로 비어 있어도 활성 주소가 하나 이상 있으면 최신 주소를 기본 배송지로 복구한다.
 - 활성 주소가 없으면 `hasAddress=false`, `defaultAddress=null`로 고정한다.
 

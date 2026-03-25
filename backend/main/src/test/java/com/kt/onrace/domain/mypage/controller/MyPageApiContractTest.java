@@ -160,6 +160,9 @@ class MyPageApiContractTest {
 		assertThat(account.path("data").path("marketingConsent").asBoolean()).isTrue();
 		assertThat(account.path("data").path("address").path("hasAddress").asBoolean()).isTrue();
 		assertThat(account.path("data").path("address").path("defaultAddress").path("label").asText()).isEqualTo("집");
+		assertThat(account.path("data").path("address").path("defaultAddress").path("receiverName").asText()).isEqualTo("홍길동");
+		assertThat(account.path("data").path("address").path("defaultAddress").path("address").asText()).isEqualTo("서울시 강남구 101동");
+		assertThat(account.path("data").path("address").path("defaultAddress").path("phone").asText()).isEqualTo("01012345678");
 
 		assertThat(overview.path("data").path("entries").path("totalCount").asInt()).isEqualTo(1);
 		assertThat(overview.path("data").path("waitingEntries").path("totalCount").asInt()).isEqualTo(1);
@@ -194,6 +197,7 @@ class MyPageApiContractTest {
 
 		assertThat(address.path("data").path("hasAddress").asBoolean()).isTrue();
 		assertThat(address.path("data").path("defaultAddress").path("label").asText()).isEqualTo("집");
+		assertThat(address.path("data").path("defaultAddress").path("address").asText()).isEqualTo("서울시 강남구 101동");
 
 		assertThat(emptyAccount.path("data").path("name").asText()).isEqualTo("빈사용자");
 		assertThat(emptyAccount.path("data").path("accountType").asText()).isEqualTo("EMAIL");
@@ -310,7 +314,9 @@ class MyPageApiContractTest {
 		assertThat(addressOverview.path("data").path("orders").path("totalCount").asInt()).isZero();
 		assertThat(addressOverview.path("data").path("address").path("hasAddress").asBoolean()).isTrue();
 		assertThat(addressOnly.path("data").path("defaultAddress").path("label").asText()).isEqualTo("집");
-		assertThat(addressOnly.path("data").path("defaultAddress").path("isDefault").asBoolean()).isTrue();
+		assertThat(addressOnly.path("data").path("defaultAddress").path("receiverName").asText()).isEqualTo("주소사용자");
+		assertThat(addressOnly.path("data").path("defaultAddress").path("address").asText()).isEqualTo("서울시 강남구 201동");
+		assertThat(addressOnly.path("data").path("defaultAddress").path("phone").asText()).isEqualTo("01022223333");
 		assertThat(addressRepository.countByUserId(ADDRESS_ONLY_USER_ID)).isEqualTo(2L);
 		assertThat(addressEntries.path("data").path("items")).isEmpty();
 		assertThat(addressOrders.path("data").path("items")).isEmpty();

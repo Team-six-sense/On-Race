@@ -70,7 +70,8 @@ class MyPageControllerTest {
 			.andExpect(jsonPath("$.data.verificationStatus").value("COMPLETED"))
 			.andExpect(jsonPath("$.data.marketingConsent").value(true))
 			.andExpect(jsonPath("$.data.address.hasAddress").value(true))
-			.andExpect(jsonPath("$.data.address.defaultAddress.label").value("집"));
+			.andExpect(jsonPath("$.data.address.defaultAddress.label").value("집"))
+			.andExpect(jsonPath("$.data.address.defaultAddress.address").value("서울시 강남구 101동"));
 
 		verify(myPageService).getAccount(USER_ID);
 	}
@@ -163,7 +164,8 @@ class MyPageControllerTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data.hasAddress").value(true))
-			.andExpect(jsonPath("$.data.defaultAddress.receiverName").value("홍길동"));
+			.andExpect(jsonPath("$.data.defaultAddress.receiverName").value("홍길동"))
+			.andExpect(jsonPath("$.data.defaultAddress.address").value("서울시 강남구 101동"));
 
 		verify(myPageService).getAddress(USER_ID);
 	}
@@ -213,15 +215,10 @@ class MyPageControllerTest {
 		);
 
 		MyPageAddressDto address = new MyPageAddressDto(
-			1L,
-			"집",
 			"홍길동",
-			"01012345678",
-			"12345",
-			"서울시 강남구",
-			"101동",
-			"문앞",
-			true
+			"집",
+			"서울시 강남구 101동",
+			"01012345678"
 		);
 
 		return new MyPageOverviewResponseDto(

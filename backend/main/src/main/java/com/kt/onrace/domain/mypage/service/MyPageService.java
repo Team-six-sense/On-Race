@@ -21,7 +21,7 @@ import lombok.RequiredArgsConstructor;
  */
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
+@Transactional
 public class MyPageService {
 
 	private final MemberRepository memberRepository;
@@ -40,21 +40,25 @@ public class MyPageService {
 		return myPageQueryService.getOverview(userId);
 	}
 
+	@Transactional(readOnly = true)
 	public MyPageEntryListResponseDto getEntries(Long userId, int page, int size) {
 		validateMember(userId);
 		return applicationHistoryService.getEntries(userId, page, size);
 	}
 
+	@Transactional(readOnly = true)
 	public MyPageEntryListResponseDto getWaitingEntries(Long userId, int page, int size) {
 		validateMember(userId);
 		return applicationHistoryService.getWaitingEntries(userId, page, size);
 	}
 
+	@Transactional(readOnly = true)
 	public MyPageOrderListResponseDto getOrders(Long userId, String tab, int page, int size) {
 		validateMember(userId);
 		return orderHistoryService.getOrders(userId, MyPageOrderTab.from(tab), page, size);
 	}
 
+	@Transactional(readOnly = true)
 	public MyPageOrderDetailResponseDto getOrderDetail(Long userId, String orderNumber) {
 		validateMember(userId);
 		return orderHistoryService.getOrderDetail(userId, orderNumber);
