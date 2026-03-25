@@ -46,9 +46,11 @@ public class HttpAuthAccountClient implements AuthAccountClient {
 
 			AuthAccountPayload data = response.data();
 			return new AccountSummary(
+				data.email(),
 				data.name(),
 				data.phone(),
 				data.authProvider(),
+				data.canChangePassword(),
 				data.verificationStatus(),
 				data.marketingConsent()
 			);
@@ -76,9 +78,11 @@ public class HttpAuthAccountClient implements AuthAccountClient {
 	}
 
 	private record AuthAccountPayload(
+		String email,
 		String name,
 		String phone,
 		String authProvider,
+		boolean canChangePassword,
 		String verificationStatus,
 		boolean marketingConsent
 	) {

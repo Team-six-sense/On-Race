@@ -1,10 +1,10 @@
 # 마이페이지 계약 재확정 문서
 
 - 작성일: 2026-03-25
-- 상태: 재구현 전 기준 계약 문서 (정책 참고, MVP 우선)
+- 상태: 재구현 전 기준 계약 문서 (정책 반영, aggregate 반영)
 - 목적: 마이페이지 재구현 전에 각 도메인에서 무엇을 받아야 하는지 먼저 못 박아서 DTO 재작업과 책임 혼선을 막는다.
 - 범위: 계정관리, 기본 배송지, 신청내역, 주문내역의 읽기 계약과 현재 MVP 화면 표시 계약
-- 비범위: 본인인증 실제 처리, 전화번호 변경/재인증, 실제 결제/취소/환불/교환 처리, 정책 기준의 확장 필드 정규화
+- 비범위: 본인인증 실제 처리, 전화번호 변경/재인증, 실제 결제/취소/환불/교환 처리
 
 ## 왜 이 문서를 먼저 고정하는가
 
@@ -15,19 +15,22 @@
 
 ## 기준과 우선순위
 
-- 정책 문서는 참고하되, 1차 계약은 현재 컨트롤러, DTO, 계약 테스트가 드러내는 MVP 공개 표면을 우선한다.
-- 정책과 현재 코드가 충돌하면 1차는 현재 MVP를 문서화하고, 정책 정합화는 후속 티켓으로 분리한다.
-- 이 문서에서 고정하는 현재 MVP 기준은 아래와 같다.
+- 정책 문서와 현재 구현을 함께 보되, 1차 계약은 현재 채택한 공개 API와 계약 테스트를 기준으로 고정한다.
+- 정책과 기존 초안이 충돌할 때는 이번 재구현에서 실제 채택한 결정을 문서와 테스트에 같이 반영한다.
+- 이 문서에서 고정하는 현재 1차 기준은 아래와 같다.
+  - `GET /mypage/account`는 auth 원천값과 main/address 기본 배송지를 조합하는 공식 aggregate API다.
+  - `GET /mypage/account` 공개 응답은 `accountType`, `authProvider`, `email`, `name`, `phone`, `canChangePassword`, `verificationStatus`, `marketingConsent`, `address`를 포함한다.
+  - `accountType` 공개 계약은 `EMAIL`, `SNS`다.
+  - `verificationStatus` 공개 계약은 `PENDING`, `COMPLETED`, `FAILED`다.
   - 신청내역은 `/mypage/entries`와 `/mypage/waiting-entries`의 분리형을 유지한다.
   - `entries`는 결제 완료 주문이 이미 존재하는 신청을 제외한다.
   - 주문 목록 탭은 `ALL`, `PENDING`, `COMPLETED`, `CANCELLED`를 유지한다.
   - `GET /mypage` overview는 현재 MVP 범위에 포함한다.
-  - `verificationStatus`는 현재 enum 값 `UNVERIFIED`, `VERIFIED`를 유지한다.
   - 리스트 페이지는 0-based `page`를 사용하고 목록 기본 `size`는 20이다.
 
 ## 계약 원칙
 
-1. `auth` 원천값과 `main` 집계값을 한 DTO에 섞어서 소유권을 흐리지 않는다.
+1. `/mypage/account`처럼 aggregate DTO를 제공하더라도 필드별 원천 책임은 문서에서 고정한다.
 2. `auth`는 계정 원천값을 책임진다.
    - 이름, 전화번호, 마케팅 수신 여부, 본인인증 상태, 비밀번호 변경 가능 여부
 3. `main`은 마이페이지 집계값과 화면 표시용 계산값을 책임진다.
@@ -41,6 +44,7 @@
 | --- | --- | --- | --- |
 | Auth 원천 | `auth/account` | `email`, `authProvider`, `name`, `phone`, `marketingConsent`, `verificationStatus`, `canChangePassword` | Auth |
 | Main 집계 | `main/address` | `hasAddress`, `defaultAddress.*` | Main Address |
+| Main aggregate | `main/mypage` + `auth/account` + `main/address` | `/mypage/account` 공개 응답, `accountType`, 공개용 `verificationStatus` 정규화 | Main MyPage |
 | Main 집계 + 계산 | `main/entry`, `main/event`, `main/mypage` | 신청내역 목록, 대기 신청내역 목록, 표시 상태/액션 | Main MyPage |
 | Main 집계 + 계산 | `main/order`, `main/event`, `main/mypage` | 주문내역 목록, 표시 상태/액션 | Main MyPage |
 
@@ -70,7 +74,6 @@
   - 전화번호 변경 및 재인증 API
   - 신청내역 통합 혼합 목록 API
   - 정책 기준 확장 필드인 `statusLabel`, `detailType`, `eventDeleted`, `timeline`, `applicationPeriod`
-  - 정책 기준 정규화 enum인 `accountType=EMAIL/SNS`, `verificationStatus=PENDING/COMPLETED/FAILED`
 
 ## 하위 영역 계약
 
@@ -87,22 +90,31 @@
 
 | 필요한 필드 | 원천 도메인 | 현재 존재 여부 | fallback 가능 여부 | 책임 | 비고 |
 | --- | --- | --- | --- | --- | --- |
+| `accountType` | Main MyPage aggregate 계산값 | 존재 | 불가 | Main MyPage | `authProvider`를 공개용 `EMAIL/SNS`로 정규화 |
 | `email` | Auth `User.email` | 존재 | 불가 | Auth Account | 읽기 전용 |
 | `authProvider` | Auth `User.authProvider` | 존재 | 불가 | Auth Account | 현재 raw enum `LOCAL`, `KAKAO`, `NAVER` |
 | `name` | Auth `User.name` | 존재 | 불가 | Auth Account | 계정관리 화면 표시 및 수정 대상 |
 | `phone` | Auth `User.phoneNumber` -> 응답 필드 `phone` | 존재 | `null` 허용 | Auth Account | 현재는 조회만 가능, 변경 계약은 별도 |
 | `canChangePassword` | Auth 계산값 | 존재 | `false` 허용 | Auth Account | OAuth 사용자는 `false`일 수 있음 |
-| `verificationStatus` | Auth `User.verificationStatus` | 존재 | 기본값 `UNVERIFIED` | Auth Account | 현재는 조회만 가능, 변경 API 없음 |
+| `verificationStatus` | Main MyPage aggregate 계산값 | 존재 | 기본값 `PENDING` | Main MyPage | auth raw 값을 공개용 `PENDING/COMPLETED/FAILED`로 정규화 |
 | `marketingConsent` | Auth `User.marketingConsent` | 존재 | 기본값 `false` | Auth Account | 수정 API 존재 |
+| `address.hasAddress` | Main Address 집계값 | 존재 | 주소 없으면 `false` | Main Address + MyPage | 계정관리 화면의 기본 배송지 존재 플래그 |
+| `address.defaultAddress.*` | Main `Address` | 존재 | 주소 없으면 `null` | Main Address + MyPage | 기본 배송지 요약 구조 재사용 |
 
 #### account 계약 결정
 
 - 계정관리 화면의 계정 원천값은 `auth`를 단일 진실 공급원으로 본다.
-- `main`은 이메일, 계정 유형, 이름, 전화번호, 마케팅 수신 여부, 본인인증 상태를 복제하거나 다시 계산하지 않는다.
+- `GET /mypage/account`는 1차 공식 aggregate API로 채택한다.
+- `main`은 auth 원천값을 임의로 복제하지 않고, 화면 계약에 필요한 정규화와 기본 배송지 조합만 수행한다.
 - `phone`은 현재 응답 필드명이 `phone`이므로, 별도 티켓 없이 `phoneNumber`로 바꾸지 않는다.
-- 현재 MVP에서 계정 유형 표기가 필요하면 `authProvider` raw enum을 사용한다. 정책 기준의 `accountType=EMAIL/SNS` 정규화는 후속 티켓으로 분리한다.
+- `accountType`은 공개 계약의 기본 필드로 두고 `EMAIL`, `SNS`만 사용한다.
+- `authProvider`는 raw 공급자 정보를 보존하는 보조 필드로 유지한다.
 - `verificationStatus`는 읽기 전용으로 고정한다. 변경 플로우는 별도 티켓으로 분리한다.
-- `verificationStatus`는 현재 enum `UNVERIFIED`, `VERIFIED`를 그대로 사용한다. 정책 기준의 `PENDING`, `COMPLETED`, `FAILED` 정규화는 후속 티켓이다.
+- `verificationStatus`는 공개 계약에서 `PENDING`, `COMPLETED`, `FAILED`를 사용한다.
+- auth raw 상태는 아래처럼 매핑한다.
+  - `UNVERIFIED -> PENDING`
+  - `VERIFIED -> COMPLETED`
+  - `FAILED -> FAILED`
 - 전화번호 변경 및 재인증 플로우도 별도 티켓으로 분리한다.
 
 ### 2. default address
@@ -202,7 +214,7 @@
 
 | 항목 | 현재 상태 | 처리 원칙 |
 | --- | --- | --- |
-| 계정 원천값과 마이페이지 집계값을 한 API에서 내려주는 통합 계약 | 현재 `GET /mypage` overview는 있으나 auth는 별도 | 재구현 1차에서는 `auth`와 `main`을 분리 호출하거나 BFF에서 조합한다 |
+| 계정 원천값과 마이페이지 집계값을 한 API에서 내려주는 통합 계약 | `GET /mypage/account`로 구현됨 | 1차 공식 aggregate API로 유지하고 문서/테스트를 동일 계약으로 고정한다 |
 | `verificationStatus` 변경 API | 부재 | 읽기 전용으로 유지하고 별도 티켓으로 분리 |
 | 전화번호 변경 API | 부재 | 조회 계약만 먼저 고정하고 변경 플로우는 별도 티켓으로 분리 |
 | 신청/주문 `thumbnailUrl` 실제 값 | 부재 | nullable 유지, 프론트 플레이스홀더 사용 가능 |
@@ -212,19 +224,20 @@
 ## 재구현 전에 못 박는 최종 결정
 
 1. 계정 원천값은 `auth`, 마이페이지 집계값은 `main`이 책임진다.
-2. 계정관리 화면의 기본 배송지는 `auth` 응답에 섞지 않고 `main/address`에서 읽는다.
-3. 신청내역과 주문내역의 표시 상태/버튼은 프론트가 직접 계산하지 않는다.
-4. 현재 원천이 없는 값은 임시 문자열이 아니라 `null` 또는 빈 응답으로 고정한다.
-5. 읽기 계약과 쓰기 계약을 분리한다.
+2. 계정관리 화면은 `GET /mypage/account` aggregate API를 사용한다.
+3. 계정관리 화면의 기본 배송지는 `auth` 응답에 섞지 않고 `main/address`에서 읽는다.
+4. `accountType`은 공개 계약에서 `EMAIL/SNS`, `verificationStatus`는 `PENDING/COMPLETED/FAILED`로 고정한다.
+5. `authProvider`는 raw 공급자 정보 보존용 보조 필드로 유지한다.
+6. 신청내역과 주문내역의 표시 상태/버튼은 프론트가 직접 계산하지 않는다.
+7. 현재 원천이 없는 값은 임시 문자열이 아니라 `null` 또는 빈 응답으로 고정한다.
+8. 읽기 계약과 쓰기 계약을 분리한다.
    - 읽기: 이 문서의 범위
    - 쓰기: 이름 변경, 마케팅 수신 변경, 주소 CRUD/기본 설정
-6. 정책 문서보다 현재 공개 표면이 더 MVP에 가까운 경우, 1차 계약은 현재 공개 표면을 따른다.
-7. 본인인증 상태 변경, 전화번호 변경, 결제 마감 시각, 썸네일 소스, 정책 기준 확장 필드는 후속 티켓으로 분리한다.
+9. 정책 문서보다 현재 공개 표면이 더 MVP에 가까운 경우, 1차 계약은 현재 공개 표면을 따른다.
+10. 본인인증 상태 변경, 전화번호 변경, 결제 마감 시각, 썸네일 소스, 정책 기준 확장 필드는 후속 티켓으로 분리한다.
 
 ## 후속 확장 후보
 
-- 계정 유형 정규화 필드 `accountType=EMAIL/SNS`
-- 본인인증 상태 정규화 필드 `verificationStatus=PENDING/COMPLETED/FAILED`
 - 신청/주문 공개 enum 표준화와 별도 `statusLabel`
 - `eventDeleted`, `detailType`, `applicationPeriod`, `timeline`, nested `selectedOption`
 - 신청내역 단일 혼합 목록 + `전체/추첨/선착` 필터

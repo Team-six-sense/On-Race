@@ -24,6 +24,7 @@ import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.GlobalExceptionHandler;
 import com.kt.onrace.common.filter.GatewayAccessFilter;
 import com.kt.onrace.domain.mypage.dto.MyPageAccountResponseDto;
+import com.kt.onrace.domain.mypage.dto.MyPageAccountType;
 import com.kt.onrace.domain.mypage.dto.MyPageAddressDto;
 import com.kt.onrace.domain.mypage.dto.MyPageAddressResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageEntryItemDto;
@@ -32,6 +33,7 @@ import com.kt.onrace.domain.mypage.dto.MyPageOrderDetailResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageOrderItemDto;
 import com.kt.onrace.domain.mypage.dto.MyPageOrderListResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageOverviewResponseDto;
+import com.kt.onrace.domain.mypage.dto.MyPageVerificationStatus;
 import com.kt.onrace.domain.mypage.service.MyPageService;
 
 @WebMvcTest(
@@ -59,10 +61,13 @@ class MyPageControllerTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.code").value("SUCCESS"))
+			.andExpect(jsonPath("$.data.accountType").value("EMAIL"))
+			.andExpect(jsonPath("$.data.email").value("runner@example.com"))
 			.andExpect(jsonPath("$.data.name").value("홍길동"))
 			.andExpect(jsonPath("$.data.phone").value("01012345678"))
 			.andExpect(jsonPath("$.data.authProvider").value("LOCAL"))
-			.andExpect(jsonPath("$.data.verificationStatus").value("VERIFIED"))
+			.andExpect(jsonPath("$.data.canChangePassword").value(true))
+			.andExpect(jsonPath("$.data.verificationStatus").value("COMPLETED"))
 			.andExpect(jsonPath("$.data.marketingConsent").value(true))
 			.andExpect(jsonPath("$.data.address.hasAddress").value(true))
 			.andExpect(jsonPath("$.data.address.defaultAddress.label").value("집"));
@@ -229,10 +234,13 @@ class MyPageControllerTest {
 
 	private MyPageAccountResponseDto sampleAccount() {
 		return new MyPageAccountResponseDto(
+			MyPageAccountType.EMAIL,
+			"LOCAL",
+			"runner@example.com",
 			"홍길동",
 			"01012345678",
-			"LOCAL",
-			"VERIFIED",
+			true,
+			MyPageVerificationStatus.COMPLETED,
 			true,
 			sampleOverview().address()
 		);

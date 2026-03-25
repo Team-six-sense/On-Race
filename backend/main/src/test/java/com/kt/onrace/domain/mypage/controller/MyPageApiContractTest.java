@@ -120,11 +120,11 @@ class MyPageApiContractTest {
 		createMember(ORDER_ONLY_USER_ID);
 		createMember(ADDRESS_ONLY_USER_ID);
 
-		stubAuthAccount(MIXED_USER_ID, "홍길동", "01012345678", "LOCAL", "VERIFIED", true);
-		stubAuthAccount(EMPTY_USER_ID, "빈사용자", "01000000000", "LOCAL", "UNVERIFIED", false);
-		stubAuthAccount(ENTRY_ONLY_USER_ID, "신청사용자", "01011112222", "KAKAO", "UNVERIFIED", false);
-		stubAuthAccount(ORDER_ONLY_USER_ID, "주문사용자", "01033334444", "NAVER", "VERIFIED", true);
-		stubAuthAccount(ADDRESS_ONLY_USER_ID, "주소사용자", "01022223333", "LOCAL", "UNVERIFIED", false);
+		stubAuthAccount(MIXED_USER_ID, "runner@example.com", "홍길동", "01012345678", "LOCAL", true, "VERIFIED", true);
+		stubAuthAccount(EMPTY_USER_ID, "empty@example.com", "빈사용자", "01000000000", "LOCAL", true, "UNVERIFIED", false);
+		stubAuthAccount(ENTRY_ONLY_USER_ID, "kakao@example.com", "신청사용자", "01011112222", "KAKAO", false, "UNVERIFIED", false);
+		stubAuthAccount(ORDER_ONLY_USER_ID, "naver@example.com", "주문사용자", "01033334444", "NAVER", false, "VERIFIED", true);
+		stubAuthAccount(ADDRESS_ONLY_USER_ID, "address@example.com", "주소사용자", "01022223333", "LOCAL", true, "UNVERIFIED", false);
 
 		LocalDateTime now = LocalDateTime.now();
 
@@ -152,8 +152,11 @@ class MyPageApiContractTest {
 		JsonNode emptyAddress = get(EMPTY_USER_ID, "/mypage/address");
 
 		assertThat(account.path("data").path("name").asText()).isEqualTo("홍길동");
+		assertThat(account.path("data").path("accountType").asText()).isEqualTo("EMAIL");
 		assertThat(account.path("data").path("authProvider").asText()).isEqualTo("LOCAL");
-		assertThat(account.path("data").path("verificationStatus").asText()).isEqualTo("VERIFIED");
+		assertThat(account.path("data").path("email").asText()).isEqualTo("runner@example.com");
+		assertThat(account.path("data").path("canChangePassword").asBoolean()).isTrue();
+		assertThat(account.path("data").path("verificationStatus").asText()).isEqualTo("COMPLETED");
 		assertThat(account.path("data").path("marketingConsent").asBoolean()).isTrue();
 		assertThat(account.path("data").path("address").path("hasAddress").asBoolean()).isTrue();
 		assertThat(account.path("data").path("address").path("defaultAddress").path("label").asText()).isEqualTo("집");
@@ -193,8 +196,10 @@ class MyPageApiContractTest {
 		assertThat(address.path("data").path("defaultAddress").path("label").asText()).isEqualTo("집");
 
 		assertThat(emptyAccount.path("data").path("name").asText()).isEqualTo("빈사용자");
-		assertThat(emptyAccount.path("data").path("verificationStatus").asText()).isEqualTo("UNVERIFIED");
+		assertThat(emptyAccount.path("data").path("accountType").asText()).isEqualTo("EMAIL");
+		assertThat(emptyAccount.path("data").path("verificationStatus").asText()).isEqualTo("PENDING");
 		assertThat(emptyAccount.path("data").path("address").path("hasAddress").asBoolean()).isFalse();
+		assertThat(emptyAccount.path("data").path("address").path("defaultAddress").isNull()).isTrue();
 		assertThat(emptyOverview.path("data").path("entries").path("items").isArray()).isTrue();
 		assertThat(emptyOverview.path("data").path("entries").path("page").asInt()).isZero();
 		assertThat(emptyOverview.path("data").path("entries").path("size").asInt()).isEqualTo(3);
@@ -250,7 +255,10 @@ class MyPageApiContractTest {
 		JsonNode entryOrders = get(ENTRY_ONLY_USER_ID, "/mypage/orders");
 		JsonNode entryAddress = get(ENTRY_ONLY_USER_ID, "/mypage/address");
 
+		assertThat(entryAccount.path("data").path("accountType").asText()).isEqualTo("SNS");
 		assertThat(entryAccount.path("data").path("authProvider").asText()).isEqualTo("KAKAO");
+		assertThat(entryAccount.path("data").path("canChangePassword").asBoolean()).isFalse();
+		assertThat(entryAccount.path("data").path("verificationStatus").asText()).isEqualTo("PENDING");
 		assertThat(entryOverview.path("data").path("entries").path("totalCount").asInt()).isEqualTo(3);
 		assertThat(entryOverview.path("data").path("waitingEntries").path("totalCount").asInt()).isEqualTo(1);
 		assertThat(entryOverview.path("data").path("orders").path("totalCount").asInt()).isZero();
@@ -273,7 +281,10 @@ class MyPageApiContractTest {
 		JsonNode orderWaitingEntries = get(ORDER_ONLY_USER_ID, "/mypage/waiting-entries");
 		JsonNode orderAddress = get(ORDER_ONLY_USER_ID, "/mypage/address");
 
+		assertThat(orderAccount.path("data").path("accountType").asText()).isEqualTo("SNS");
 		assertThat(orderAccount.path("data").path("authProvider").asText()).isEqualTo("NAVER");
+		assertThat(orderAccount.path("data").path("canChangePassword").asBoolean()).isFalse();
+		assertThat(orderAccount.path("data").path("verificationStatus").asText()).isEqualTo("COMPLETED");
 		assertThat(orderOverview.path("data").path("entries").path("totalCount").asInt()).isZero();
 		assertThat(orderOverview.path("data").path("waitingEntries").path("totalCount").asInt()).isZero();
 		assertThat(orderOverview.path("data").path("orders").path("totalCount").asInt()).isEqualTo(3);
@@ -335,14 +346,24 @@ class MyPageApiContractTest {
 
 	private void stubAuthAccount(
 		Long userId,
+		String email,
 		String name,
 		String phone,
 		String authProvider,
+		boolean canChangePassword,
 		String verificationStatus,
 		boolean marketingConsent
 	) {
 		given(authAccountClient.getMyInfo(userId)).willReturn(
-			new AuthAccountClient.AccountSummary(name, phone, authProvider, verificationStatus, marketingConsent)
+			new AuthAccountClient.AccountSummary(
+				email,
+				name,
+				phone,
+				authProvider,
+				canChangePassword,
+				verificationStatus,
+				marketingConsent
+			)
 		);
 	}
 

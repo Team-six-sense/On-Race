@@ -5,6 +5,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.kt.onrace.domain.mypage.client.AuthAccountClient;
 import com.kt.onrace.domain.mypage.dto.MyPageAccountResponseDto;
+import com.kt.onrace.domain.mypage.dto.MyPageAccountType;
+import com.kt.onrace.domain.mypage.dto.MyPageVerificationStatus;
 
 import lombok.RequiredArgsConstructor;
 
@@ -23,10 +25,13 @@ public class MyPageAccountQueryService {
 		AuthAccountClient.AccountSummary account = authAccountClient.getMyInfo(userId);
 
 		return new MyPageAccountResponseDto(
+			MyPageAccountType.fromAuthProvider(account.authProvider()),
+			account.authProvider(),
+			account.email(),
 			account.name(),
 			account.phone(),
-			account.authProvider(),
-			account.verificationStatus(),
+			account.canChangePassword(),
+			MyPageVerificationStatus.fromAuthStatus(account.verificationStatus()),
 			account.marketingConsent(),
 			myPageAddressQueryService.getAddress(userId)
 		);
