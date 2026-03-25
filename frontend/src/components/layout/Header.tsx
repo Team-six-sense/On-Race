@@ -10,9 +10,8 @@ import Image from 'next/image';
 export default function Header() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const pathname = usePathname(); // 현재 경로에 따른 활성화 표시를 위함
+  const pathname = usePathname();
 
-  // 현재 페이지가 메인(홈)인지 확인
   const isHome = pathname === '/';
 
   const navItems = [
@@ -29,20 +28,32 @@ export default function Header() {
           isHome ? 'absolute top-0 ' : 'relative bg-white ',
         )}
       >
-        <div className="max-w-[1200px] mx-auto flex items-center justify-between h-20 px-6">
-          <div className="flex items-center gap-12">
+        <div className="max-w-[1200px] mx-auto flex items-center justify-between h-20 p-6">
+          <div className="flex items-center gap-10">
             <Link href="/">
-              <h1
-                className={cn(
-                  'text-2xl font-black tracking-tighter transition-colors duration-500',
-                  isHome ? 'text-white' : 'text-black',
-                )}
-              >
-                LOGO
-              </h1>
+              <div className="flex flex-row items-center justifycenter gap-2">
+                <Image
+                  src={
+                    isHome
+                      ? '/image/logo/logo_white.png'
+                      : '/image/logo/logo_black.png'
+                  }
+                  alt="Logo"
+                  width={16}
+                  height={16}
+                />
+                <div
+                  className={cn(
+                    'text-base tracking-tighter transition-colors duration-500',
+                    isHome ? 'text-white' : 'text-black',
+                  )}
+                >
+                  Race
+                </div>
+              </div>
             </Link>
 
-            <ul className="hidden md:flex items-center gap-8 h-full">
+            <ul className="hidden md:flex items-center gap-4 h-full">
               {navItems.map((item) => {
                 const isActive = pathname === item.href;
                 return (
@@ -160,7 +171,7 @@ export default function Header() {
       {isHome && (
         <section className="relative h-[700px] w-full bg-black overflow-hidden">
           <Image
-            src="/image/banner.jpg"
+            src="/image/banner2.png"
             alt="Main Banner"
             fill
             priority
@@ -169,10 +180,10 @@ export default function Header() {
           <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent" />
           <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-full max-w-[1200px] px-6 z-10">
             <div className="max-w-xl text-left text-white">
-              <h2 className="text-5xl font-black mb-4 leading-tight tracking-tight">
+              <h2 className="text-6xl font-bold mb-4  tracking-tight">
                 달림 그 이상의 순간
               </h2>
-              <p className="text-lg mb-8 text-white/80 leading-relaxed">
+              <p className="text-2xl mb-8 text-white/80">
                 기록이 아닌 감각, 속도가 아닌 연결.
                 <br />
                 On이 설계한 러닝 라이프를 직접 경험하세요.
