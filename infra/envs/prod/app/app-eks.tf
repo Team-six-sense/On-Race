@@ -1,4 +1,4 @@
-# 1. EKS 모듈 설정 (에러 원인인 tags 제거)
+# 1. EKS 모듈 설정
 module "eks" {
   source          = "../../../modules/eks"
   project_name    = var.project_name
@@ -12,14 +12,38 @@ module "eks" {
   max_size        = 5
 }
 
-# [핵심] 모듈 외부에서 Karpenter용 태그를 직접 주입 (보안 그룹)
+# 2. [에러 해결 1] LB Controller용 IAM 역할 (IRSA) - 누락되었던 부분
+module "lb_controller_irsa" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+  version = "~> 5.0"
+
+  role_name                              = "${var.project_name}-lb-controller"
+  attach_load_balancer_controller_policy = true
+
+  oidc_providers = {
+    main = {
+      provider_arn               = module.eks.oidc_provider_arn
+      namespace_service_accounts = ["kube-system:aws-load-balancer-controller"]
+    }
+  }
+}
+
+# 3. [에러 해결 2] App 네임스페이스 생성 - 누락되었던 부분
+resource "kubernetes_namespace_v1" "app" {
+  metadata { 
+    name = "${var.project_name}-${var.environment}" 
+  }
+  depends_on = [module.eks]
+}
+
+# 4. Karpenter용 태그 주입 (보안 그룹)
 resource "aws_ec2_tag" "eks_sg_karpenter_tag" {
   resource_id = module.eks.node_security_group_id
   key         = "karpenter.sh/discovery"
   value       = module.eks.cluster_name
 }
 
-# [추가] Karpenter가 노드를 띄울 서브넷을 찾을 수 있도록 태그 주입
+# 5. Karpenter용 태그 주입 (서브넷)
 resource "aws_ec2_tag" "subnet_karpenter_tag" {
   for_each    = toset(data.terraform_remote_state.base.outputs.private_subnets)
   resource_id = each.value
@@ -27,7 +51,7 @@ resource "aws_ec2_tag" "subnet_karpenter_tag" {
   value       = module.eks.cluster_name
 }
 
-# 2. EBS CSI Add-on (중복 제거 및 문법 교정)
+# 6. EBS CSI Add-on
 resource "aws_eks_addon" "ebs_csi" {
   cluster_name                = module.eks.cluster_name
   addon_name                  = "aws-ebs-csi-driver"
@@ -35,7 +59,7 @@ resource "aws_eks_addon" "ebs_csi" {
   depends_on                  = [module.eks]
 }
 
-# 3. LB Controller 설치
+# 7. LB Controller 설치
 resource "helm_release" "lb_controller" {
   name       = "aws-load-balancer-controller"
   repository = "https://aws.github.io/eks-charts"
@@ -58,10 +82,10 @@ resource "helm_release" "lb_controller" {
     name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
     value = module.lb_controller_irsa.iam_role_arn
   }
-  depends_on = [module.eks]
+  depends_on = [module.eks, module.lb_controller_irsa]
 }
 
-# [최적화] 웹훅 안정화를 위한 대기 시간 연장
+# 8. 컨트롤러 안정화 대기 시간
 resource "time_sleep" "wait_for_lb_controller" {
   depends_on      = [helm_release.lb_controller]
   create_duration = "180s" 
