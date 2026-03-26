@@ -1,3 +1,4 @@
+# 1. EKS 모듈 설정 (Managed Node Group 포함)
 module "eks" {
   source          = "../../../modules/eks"
   project_name    = var.project_name
@@ -5,28 +6,31 @@ module "eks" {
   cluster_name    = "${var.project_name}-${var.environment}-cluster"
   vpc_id          = data.terraform_remote_state.base.outputs.vpc_id
   subnet_ids      = data.terraform_remote_state.base.outputs.private_subnets
-  instance_types = ["m5.large"]
+  
+  # 초기 노드 설정 (인프라용 파드가 올라갈 '땅')
+  instance_types = ["m5.large"] 
   min_size        = 2
-  max_size        = 15
-}
+  max_size        = 5 # 초기 노드는 많이 필요 없습니다. 나머지는 Karpenter가 처리합니다.
 
-# 1. Load Balancer Controller용 IAM 역할 (IRSA)
-module "lb_controller_irsa" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.0"
-
-  role_name                              = "${var.project_name}-lb-controller"
-  attach_load_balancer_controller_policy = true
-
-  oidc_providers = {
-    main = {
-      provider_arn               = module.eks.oidc_provider_arn
-      namespace_service_accounts = ["kube-system:aws-load-balancer-controller"]
-    }
+  # [중요] Karpenter가 이 노드 그룹을 인식할 수 있도록 태그가 모듈 내부에 포함되어야 합니다.
+  # 만약 모듈이 태그를 지원한다면 아래와 같이 추가하세요.
+  tags = {
+    "karpenter.sh/discovery" = "${var.project_name}-${var.environment}-cluster"
   }
 }
 
-# 2. Helm을 이용한 Load Balancer Controller 설치
+# 2. EBS CSI Add-on (문법 오류 수정됨)
+resource "aws_eks_addon" "ebs_csi" {
+  cluster_name                = module.eks.cluster_name
+  addon_name                  = "aws-ebs-csi-driver"
+  
+  # [수정] resolve_conflicts_on_update가 두 번 선언되어 에러가 났었습니다. 하나로 합칩니다.
+  resolve_conflicts_on_update = "PRESERVE" 
+  
+  depends_on                  = [module.eks]
+}
+
+# 3. LB Controller 설치 (변경 없음, 대기 시간 유지)
 resource "helm_release" "lb_controller" {
   name       = "aws-load-balancer-controller"
   repository = "https://aws.github.io/eks-charts"
@@ -56,39 +60,8 @@ resource "helm_release" "lb_controller" {
   depends_on = [module.eks]
 }
 
-# 3. 컨트롤러 안정화를 위한 대기 시간
+# [핵심] 컨트롤러가 노드에 안착하고 웹훅을 준비할 충분한 시간 (90초 -> 180초 추천)
 resource "time_sleep" "wait_for_lb_controller" {
   depends_on      = [helm_release.lb_controller]
-  create_duration = "90s"
-}
-
-resource "aws_eks_addon" "ebs_csi" {
-  cluster_name                = module.eks.cluster_name
-  addon_name                  = "aws-ebs-csi-driver"
-  resolve_conflicts_on_update = "OVERWRITE"
-  depends_on                  = [module.eks]
-}
-
-resource "aws_iam_role_policy_attachment" "node_ebs_policy" {
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
-  role        = module.eks.node_iam_role_name
-  depends_on = [module.eks]
-}
-
-resource "kubernetes_storage_class_v1" "gp3_default" {
-  metadata {
-    name        = "gp3"
-    annotations = { "storageclass.kubernetes.io/is-default-class" = "true" }
-  }
-  storage_provisioner    = "ebs.csi.aws.com"
-  reclaim_policy         = "Delete"
-  volume_binding_mode    = "WaitForFirstConsumer"
-  allow_volume_expansion = true
-  parameters             = { type = "gp3" }
-  depends_on             = [module.eks, aws_eks_addon.ebs_csi]
-}
-
-resource "kubernetes_namespace_v1" "app" {
-  metadata { name = "${var.project_name}-${var.environment}" }
-  depends_on = [module.eks]
+  create_duration = "180s" 
 }

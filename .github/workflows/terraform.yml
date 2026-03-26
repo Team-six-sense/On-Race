@@ -54,7 +54,17 @@ jobs:
         run: |
           terraform apply -auto-approve \
             -target=module.lb_controller_irsa \
-            -target=helm_release.lb_controller \
+            -target=helm_release.lb_controller
+
+      # [추가] LB 컨트롤러 웹훅이 활성화될 때까지 3분간 강제 대기
+      - name: Wait for LB Controller Webhook
+        run: sleep 180
+
+      # --- [5-2단계] 나머지 컨트롤러 설치 ---
+      - name: App Layer - Remaining Controllers
+        working-directory: ./infra/envs/prod/app
+        run: |
+          terraform apply -auto-approve \
             -target=module.karpenter \
             -target=helm_release.karpenter \
             -target=helm_release.keda \
