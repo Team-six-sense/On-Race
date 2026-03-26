@@ -1,7 +1,7 @@
 package com.kt.onrace.domain.order.service;
 
-import java.util.Comparator;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -81,7 +81,8 @@ public class OrderService {
 		Event event = eventId != null ? eventById.get(eventId) : null;
 		EventPace pace = order.getEventPaceId() != null ? paceById.get(order.getEventPaceId()) : null;
 
-		List<OrderDetailResponseDto.PackageInfo> packages = orderPackageRepository.findByOrderIdOrderByIdAsc(order.getId())
+		List<OrderDetailResponseDto.PackageInfo> packages = orderPackageRepository.findByOrderIdOrderByIdAsc(
+				order.getId())
 			.stream()
 			.map(orderPackage -> new OrderDetailResponseDto.PackageInfo(
 				orderPackage.getEventPackageId(),
@@ -139,7 +140,7 @@ public class OrderService {
 			itemTotalAmount, shippingFee, discountAmount, finalAmount);
 
 		String prepareToken = UUID.randomUUID().toString();
-		CheckoutPrepareResponseDto.ShippingAddressInfo shippingAddress = resolveShippingAddress(userId, request.addressId());
+		CheckoutPrepareResponseDto.ShippingAddressInfo shippingAddress = resolveShippingAddress(userId);
 		String thumbnailUrl = extractThumbnailUrl(event);
 
 		return CheckoutPrepareResponseDto.of(
@@ -236,13 +237,7 @@ public class OrderService {
 		return selectedPackages;
 	}
 
-	private CheckoutPrepareResponseDto.ShippingAddressInfo resolveShippingAddress(Long userId, Long addressId) {
-		if (addressId != null) {
-			Address address = findOwnedAddressOrThrow(userId, addressId);
-
-			return toShippingAddressInfo(address);
-		}
-
+	private CheckoutPrepareResponseDto.ShippingAddressInfo resolveShippingAddress(Long userId) {
 		return findDefaultAddressForCheckout(userId)
 			.map(this::toShippingAddressInfo)
 			.orElseGet(CheckoutPrepareResponseDto.ShippingAddressInfo::empty);
