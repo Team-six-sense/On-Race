@@ -39,12 +39,20 @@ jobs:
         working-directory: ./infra/envs/prod/app
         run: terraform init
 
-      # --- [3단계] 핵심 인프라 및 컨트롤러 우선 설치 ---
-      - name: App Layer - Targeted Apply (EKS & Controllers)
+      # --- [3단계] EKS 클러스터 본체만 우선 배포 ---
+      - name: App Layer - Create EKS Cluster
+        working-directory: ./infra/envs/prod/app
+        run: terraform apply -auto-approve -target=module.eks
+
+      # --- [4단계] Kubeconfig 갱신 (클러스터 접속 정보 동기화) ---
+      - name: Update Kubeconfig
+        run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }}
+
+      # --- [5단계] 핵심 컨트롤러 우선 설치 ---
+      - name: App Layer - Targeted Apply (Controllers)
         working-directory: ./infra/envs/prod/app
         run: |
           terraform apply -auto-approve \
-            -target=module.eks \
             -target=module.lb_controller_irsa \
             -target=helm_release.lb_controller \
             -target=module.karpenter \
@@ -56,11 +64,7 @@ jobs:
             -target=aws_eks_addon.ebs_csi \
             -target=kubernetes_storage_class_v1.gp3_default
 
-      # --- [4단계] Kubeconfig 갱신 ---
-      - name: Update Kubeconfig
-        run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }}
-
-      # --- [5단계] App Layer 전체 배포 (Manifests 등 나머지) ---
+      # --- [6단계] App Layer 전체 배포 (Manifests 등 나머지) ---
       - name: App Layer - Full Apply
         working-directory: ./infra/envs/prod/app
         run: terraform apply -auto-approve
