@@ -30,6 +30,4 @@ public interface EventRepositoryCustom {
 	Optional<Event> findEventWithCoursesAndPaces(Long id);
 
 	Optional<Event> findVisibleEvent(Long id);
-
-	List<Event> findQueueEnabledEvents(LocalDateTime now, long beforeStartMinutes, long afterEndMinutes);
 }

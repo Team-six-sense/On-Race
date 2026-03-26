@@ -114,7 +114,6 @@ gateway:
     secret: ${GATEWAY_INTERNAL_SECRET}
   queue-cache:
     service-uri: ${MAIN_SERVICE_URI:http://localhost:8082}
-    poll-interval-ms: ${QUEUE_CACHE_POLL_INTERVAL_MS:5000}
     enabled-events-path: ${QUEUE_CACHE_ENABLED_EVENTS_PATH:/events/queue-enabled}
   queue-token-secret: ${QUEUE_TOKEN_SECRET}
 

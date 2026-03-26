@@ -93,4 +93,8 @@ public class RedisKeyGenerator {
 	public static String queueActivePaces() {
 		return "queue:active-paces";
 	}
+
+	public static String queueEnableChange() {
+		return "queue:event:enabled:changed";
+	}
 }
