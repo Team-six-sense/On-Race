@@ -2,7 +2,7 @@
 pipeline_stages:
   - docker: {}
   - match:
-      selector: '{app="spring-cloud-gateway"}'
+      selector: '{app="t6-on-race-scg"}'
       stages:
         - labels:
             job: scg-gateway # Loki에서 검색할 때 사용할 레이블

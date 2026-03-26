@@ -13,7 +13,7 @@ spring:
 
   datasource:
     # [RDS Proxy 연동] Base 계층에서 생성한 RDS Proxy 주입
-    url: jdbc:mysql://${DB_ENDPOINT}:3306/onrace?useSSL=false&characterEncoding=UTF-8
+    url: jdbc:mysql://${DB_ENDPOINT}:3306/onrace?useSSL=true&characterEncoding=UTF-8
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver

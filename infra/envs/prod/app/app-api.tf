@@ -61,7 +61,7 @@ resource "kubernetes_deployment_v1" "on_race_api" {
         # 메인 API 컨테이너 (Spring Boot)
         container {
           name  = "api"
-          image = "nginx:alpine"
+          image = "274130523831.dkr.ecr.ap-northeast-2.amazonaws.com/on-race-api:latest"
           
           # Spring Boot 3 표준 포트 (필요 시 80으로 수정)
           port {

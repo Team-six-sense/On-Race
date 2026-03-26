@@ -2,8 +2,15 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: on-race-scg-service
-  namespace: on-race-prod
+  name: t6-on-race-scg-service
+  namespace: t6-on-race-prod
+
+annotations:
+    # 프로메테우스가 이 서비스를 자동으로 찾아 메트릭을 수집하도록 설정
+    prometheus.io/scrape: "true"
+    prometheus.io/path: "/actuator/prometheus"
+    prometheus.io/port: "8080"
+
 spec:
   selector:
     app: t6-on-race-scg # SCG 파드의 레이블과 일치해야 함
