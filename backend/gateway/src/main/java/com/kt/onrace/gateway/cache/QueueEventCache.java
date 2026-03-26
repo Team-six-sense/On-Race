@@ -18,6 +18,7 @@ import com.kt.onrace.common.util.RedisKeyGenerator;
 import com.kt.onrace.gateway.config.GatewayProperties;
 
 import lombok.extern.slf4j.Slf4j;
+import reactor.core.publisher.Mono;
 
 /**
  * 해당 부분은 대기열 이벤트 활성화 여부를 주기적으로 조회하여 캐싱하는 역할로 현재 gateway->redis 직접 조회를 방지하지 위함이지만
@@ -43,12 +44,11 @@ public class QueueEventCache {
 
 	@EventListener(ApplicationReadyEvent.class)
 	public void init() {
-		refresh();
-		subscribeToQueueChanges();
+		refresh().doFinally(signal -> subscribeToQueueChanges()).subscribe();
 	}
 
-	public void refresh() {
-		webClient.get()
+	public Mono<Void> refresh() {
+		return webClient.get()
 			.uri(queueCache.getEnabledEventsPath())
 			.retrieve()
 			.bodyToMono(new ParameterizedTypeReference<EnabledEventsResponse>() {})
@@ -56,8 +56,7 @@ public class QueueEventCache {
 				Set<Long> ids = (response.data() != null) ? response.data() : Set.of();
 				this.enabledEventIds = ids;
 			})
-			.doOnError(e -> log.warn("대기열 캐시 갱신 실패 - 기존 캐시 유지: {}", e.getMessage()))
-			.subscribe();
+			.doOnError(e -> log.warn("대기열 캐시 갱신 실패 - 기존 캐시 유지: {}", e.getMessage())).then();
 	}
 
 	private void subscribeToQueueChanges() {
@@ -74,8 +73,14 @@ public class QueueEventCache {
 		}
 
 		return Arrays.stream(message.split(","))
-			.map(String::trim)
-			.map(Long::parseLong)
+			.map(s -> {
+				try {
+					return Long.parseLong(s);
+				} catch (NumberFormatException e) {
+					return null;
+				}
+			})
+			.filter(java.util.Objects::nonNull)
 			.collect(Collectors.toSet());
 	}
 
