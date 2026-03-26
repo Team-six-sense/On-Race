@@ -176,7 +176,7 @@
 | --- | --- | --- | --- | --- | --- |
 | `page`, `size`, `totalCount`, `hasNext` | Main MyPage 페이징 계산값 | 존재 | 빈 목록이면 `0/false` | Main MyPage | 요약 화면은 기본 size 3, 목록은 기본 size 20 |
 | `items[].entryId`, `eventId` | Main Entry / Event | 존재 | 불가 | Main Entry | 식별자 |
-| `items[].status`, `actionType`, `actionLabel`, `actionEnabled` | Main MyPage 표시 계산값 | 존재 | 프론트 임의 계산 불가 | Main MyPage | `MyPageDisplayStatusResolver`가 결정 |
+| `items[].status`, `actionType`, `actionLabel`, `actionEnabled` | Main MyPage 표시 계산값 | 존재 | 프론트 임의 계산 불가 | Main MyPage | 신청은 `ApplyDisplayStatusResolver`, 주문은 `MyPageDisplayStatusResolver`가 결정 |
 | `items[].thumbnailUrl` | Main Event/Media | 부분 존재 | `null` 허용 | Main Event + Media | 현재 백엔드는 항상 `null` |
 | `items[].title`, `courseName`, `paceName` | Main Event / Course / Pace | 존재 | `courseName`, `paceName`은 `null` 허용 | Main Event | |
 | `items[].price` | Main EventCourse | 존재 | `null` 허용 | Main Event | 현재 코스 가격 사용 |
@@ -271,6 +271,7 @@
 - `backend/main/src/main/java/com/kt/onrace/domain/mypage/service/MyPageService.java`
 - `backend/main/src/main/java/com/kt/onrace/domain/mypage/service/MyPageQueryService.java`
 - `backend/main/src/main/java/com/kt/onrace/domain/mypage/service/ApplicationHistoryService.java`
+- `backend/main/src/main/java/com/kt/onrace/domain/mypage/service/apply/ApplyDisplayStatusResolver.java`
 - `backend/main/src/main/java/com/kt/onrace/domain/mypage/service/OrderHistoryService.java`
 - `backend/main/src/main/java/com/kt/onrace/domain/mypage/service/MyPageDisplayStatusResolver.java`
 - `backend/main/src/test/java/com/kt/onrace/domain/mypage/controller/MyPageApiContractTest.java`

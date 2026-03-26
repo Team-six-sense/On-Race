@@ -24,6 +24,12 @@ import com.kt.onrace.domain.mypage.dto.MyPageApplicationHistoryListResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageEntryItemDto;
 import com.kt.onrace.domain.mypage.dto.MyPageEntryListResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageStatusDto;
+import com.kt.onrace.domain.mypage.service.apply.ApplyDisplayDecision;
+import com.kt.onrace.domain.mypage.service.apply.ApplyDisplayStatusContext;
+import com.kt.onrace.domain.mypage.service.apply.ApplyDisplayStatusResolver;
+import com.kt.onrace.domain.mypage.service.apply.ApplyDisplaySurface;
+import com.kt.onrace.domain.mypage.service.apply.ApplyResultStatus;
+import com.kt.onrace.domain.mypage.service.apply.ApplyUserStatus;
 import com.kt.onrace.domain.order.entity.OrderStatus;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.dsl.BooleanExpression;
@@ -42,7 +48,7 @@ import lombok.RequiredArgsConstructor;
 public class ApplicationHistoryService {
 
 	private final JPAQueryFactory queryFactory;
-	private final MyPageDisplayStatusResolver displayStatusResolver;
+	private final ApplyDisplayStatusResolver applyDisplayStatusResolver;
 
 	public MyPageApplicationHistoryListResponseDto getEntries(
 		Long userId,
@@ -252,7 +258,7 @@ public class ApplicationHistoryService {
 	}
 
 	private MyPageApplicationHistoryItemDto toApplicationHistoryItem(Entry currentEntry, String thumbnailUrl) {
-		MyPageStatusDto status = displayStatusResolver.resolveApplicationHistoryStatus(currentEntry.getEvent(), currentEntry);
+		MyPageStatusDto status = toMyPageStatusDto(resolveApplyDisplayDecision(ApplyDisplaySurface.APPLICATION_HISTORY, currentEntry));
 		String courseName = currentEntry.getEventCourse() != null ? currentEntry.getEventCourse().getName() : null;
 		String paceName = currentEntry.getEventPace() != null ? currentEntry.getEventPace().getName() : null;
 
@@ -285,7 +291,7 @@ public class ApplicationHistoryService {
 	}
 
 	private MyPageEntryItemDto toSummaryEntryItem(Entry currentEntry) {
-		MyPageStatusDto status = displayStatusResolver.resolveApplicationStatus(currentEntry.getEvent(), currentEntry);
+		MyPageStatusDto status = toMyPageStatusDto(resolveApplyDisplayDecision(ApplyDisplaySurface.SUMMARY, currentEntry));
 
 		return new MyPageEntryItemDto(
 			currentEntry.getId(),
@@ -301,6 +307,41 @@ public class ApplicationHistoryService {
 			currentEntry.getEventCourse() != null ? currentEntry.getEventCourse().getPrice() : null,
 			currentEntry.getCreatedAt(),
 			currentEntry.getEvent().getLotteryAnnouncedAt()
+		);
+	}
+
+	private ApplyDisplayDecision resolveApplyDisplayDecision(ApplyDisplaySurface surface, Entry currentEntry) {
+		return applyDisplayStatusResolver.resolve(new ApplyDisplayStatusContext(
+			surface,
+			currentEntry.getEvent().getAppType(),
+			currentEntry.getEvent().getStatus(),
+			resolveApplyUserStatus(currentEntry.getStatus()),
+			resolveApplyResultStatus(currentEntry.getStatus())
+		));
+	}
+
+	private ApplyUserStatus resolveApplyUserStatus(EntryStatus entryStatus) {
+		return switch (entryStatus) {
+			case PRE_SAVED -> ApplyUserStatus.PRE_SAVED;
+			case RESERVED -> ApplyUserStatus.RESERVED;
+			case APPLIED, WON, LOST -> ApplyUserStatus.APPLIED;
+		};
+	}
+
+	private ApplyResultStatus resolveApplyResultStatus(EntryStatus entryStatus) {
+		return switch (entryStatus) {
+			case WON -> ApplyResultStatus.WON;
+			case LOST -> ApplyResultStatus.LOST;
+			case PRE_SAVED, RESERVED, APPLIED -> ApplyResultStatus.NONE;
+		};
+	}
+
+	private MyPageStatusDto toMyPageStatusDto(ApplyDisplayDecision decision) {
+		return MyPageStatusDto.of(
+			decision.displayStatus().label(),
+			decision.actionType().code(),
+			decision.actionType().label(),
+			decision.actionEnabled()
 		);
 	}
 
