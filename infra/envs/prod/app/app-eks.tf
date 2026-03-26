@@ -12,18 +12,32 @@ module "eks" {
   max_size        = 5
 }
 
-# 2. [에러 해결 1] LB Controller용 IAM 역할 (IRSA) - 누락되었던 부분
+# 2. [에러 해결 1] LB Controller용 IAM 역할
 module "lb_controller_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
   version = "~> 5.0"
-
   role_name                              = "${var.project_name}-lb-controller"
   attach_load_balancer_controller_policy = true
-
   oidc_providers = {
     main = {
       provider_arn               = module.eks.oidc_provider_arn
       namespace_service_accounts = ["kube-system:aws-load-balancer-controller"]
+    }
+  }
+}
+
+# [핵심 추가] 2-1. EBS CSI 드라이버용 IAM 역할 (IRSA)
+module "ebs_csi_irsa" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+  version = "~> 5.0"
+
+  role_name             = "${var.project_name}-ebs-csi-role"
+  attach_ebs_csi_policy = true # EBS 관리 권한 부여
+
+  oidc_providers = {
+    main = {
+      provider_arn               = module.eks.oidc_provider_arn
+      namespace_service_accounts = ["kube-system:ebs-csi-controller-sa"]
     }
   }
 }
@@ -51,12 +65,16 @@ resource "aws_ec2_tag" "subnet_karpenter_tag" {
   value       = module.eks.cluster_name
 }
 
-# 6. EBS CSI Add-on
+# 6. [수정] EBS CSI Add-on (IAM 역할 연동)
 resource "aws_eks_addon" "ebs_csi" {
   cluster_name                = module.eks.cluster_name
   addon_name                  = "aws-ebs-csi-driver"
-  resolve_conflicts_on_update = "PRESERVE" 
-  depends_on                  = [module.eks]
+  resolve_conflicts_on_update = "PRESERVE"
+  
+  # 생성한 IAM 역할의 ARN을 여기에 연결해야 드라이버가 정상 작동합니다.
+  service_account_role_arn    = module.ebs_csi_irsa.iam_role_arn
+  
+  depends_on                  = [module.eks, module.ebs_csi_irsa]
 }
 
 # 7. LB Controller 설치
