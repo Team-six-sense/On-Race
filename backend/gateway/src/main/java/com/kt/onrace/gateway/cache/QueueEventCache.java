@@ -1,13 +1,20 @@
 package com.kt.onrace.gateway.cache;
 
+import java.util.Arrays;
 import java.util.Set;
+import java.util.stream.Collectors;
 
+import org.redisson.api.RTopic;
+import org.redisson.api.RedissonClient;
+import org.redisson.client.codec.StringCodec;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.kt.onrace.common.util.RedisKeyGenerator;
 import com.kt.onrace.gateway.config.GatewayProperties;
 
 import lombok.extern.slf4j.Slf4j;
@@ -23,16 +30,23 @@ public class QueueEventCache {
 	private volatile Set<Long> enabledEventIds = Set.of();
 	private final WebClient webClient;
 	private final GatewayProperties.QueueCache queueCache;
+	private final RedissonClient redissonClient;
 
-	public QueueEventCache(GatewayProperties gatewayProperties) {
+	public QueueEventCache(GatewayProperties gatewayProperties, RedissonClient redissonClient) {
 		this.queueCache = gatewayProperties.getQueueCache();
 		this.webClient = WebClient.builder()
 			.baseUrl(queueCache.getServiceUri())
 			.defaultHeader("X-Gateway-Token", gatewayProperties.getInternal().getSecret())
 			.build();
+		this.redissonClient = redissonClient;
 	}
 
-	@Scheduled(fixedDelayString = "${gateway.queue-cache.poll-interval-ms}")
+	@EventListener(ApplicationReadyEvent.class)
+	public void init() {
+		refresh();
+		subscribeToQueueChanges();
+	}
+
 	public void refresh() {
 		webClient.get()
 			.uri(queueCache.getEnabledEventsPath())
@@ -44,6 +58,25 @@ public class QueueEventCache {
 			})
 			.doOnError(e -> log.warn("대기열 캐시 갱신 실패 - 기존 캐시 유지: {}", e.getMessage()))
 			.subscribe();
+	}
+
+	private void subscribeToQueueChanges() {
+		RTopic topic = redissonClient.getTopic(RedisKeyGenerator.queueEnableChange(), StringCodec.INSTANCE);
+		topic.addListener(String.class, (channel, message) -> {
+			Set<Long> ids = parseEventIds(message);
+			this.enabledEventIds = ids;
+		});
+	}
+
+	private Set<Long> parseEventIds(String message) {
+		if(message == null || message.isBlank()) {
+			return Set.of();
+		}
+
+		return Arrays.stream(message.split(","))
+			.map(String::trim)
+			.map(Long::parseLong)
+			.collect(Collectors.toSet());
 	}
 
 	public boolean isQueueEnabled(Long eventId) {

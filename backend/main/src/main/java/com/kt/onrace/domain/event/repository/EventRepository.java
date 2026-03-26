@@ -1,5 +1,6 @@
 package com.kt.onrace.domain.event.repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -18,4 +19,6 @@ public interface EventRepository extends JpaRepository<Event, Long>, EventReposi
 	}
 
 	Optional<Event> findByIdAndIsViewTrueAndIsDeletedFalse(Long id);
+
+	List<Event> findAllByIsQueueTrueAndIsDeletedFalse();
 }

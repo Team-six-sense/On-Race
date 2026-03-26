@@ -80,6 +80,15 @@ public class EventController {
 		return ApiResponse.success();
 	}
 
+	@ApiLog
+	@PostMapping("/{eventId}/queue/disable")
+	public ApiResponse<Void> disableQueue(
+		@PathVariable Long eventId
+	) {
+		eventService.disableQueue(eventId);
+		return ApiResponse.success();
+	}
+
 	@GetMapping("/queue-enabled")
 	public ApiResponse<Set<Long>> getQueueEnabledEventIds() {
 		return ApiResponse.success(eventService.getQueueEnabledEventIds());
