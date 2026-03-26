@@ -1,4 +1,4 @@
-# 1. EKS 모듈 설정 (Managed Node Group 포함)
+# 1. EKS 모듈 설정 (에러 원인인 tags 제거)
 module "eks" {
   source          = "../../../modules/eks"
   project_name    = var.project_name
@@ -7,30 +7,35 @@ module "eks" {
   vpc_id          = data.terraform_remote_state.base.outputs.vpc_id
   subnet_ids      = data.terraform_remote_state.base.outputs.private_subnets
   
-  # 초기 노드 설정 (인프라용 파드가 올라갈 '땅')
-  instance_types = ["m5.large"] 
+  instance_types  = ["m5.large"] 
   min_size        = 2
-  max_size        = 5 # 초기 노드는 많이 필요 없습니다. 나머지는 Karpenter가 처리합니다.
-
-  # [중요] Karpenter가 이 노드 그룹을 인식할 수 있도록 태그가 모듈 내부에 포함되어야 합니다.
-  # 만약 모듈이 태그를 지원한다면 아래와 같이 추가하세요.
-  tags = {
-    "karpenter.sh/discovery" = "${var.project_name}-${var.environment}-cluster"
-  }
+  max_size        = 5
 }
 
-# 2. EBS CSI Add-on (문법 오류 수정됨)
+# [핵심] 모듈 외부에서 Karpenter용 태그를 직접 주입 (보안 그룹)
+resource "aws_ec2_tag" "eks_sg_karpenter_tag" {
+  resource_id = module.eks.node_security_group_id
+  key         = "karpenter.sh/discovery"
+  value       = module.eks.cluster_name
+}
+
+# [추가] Karpenter가 노드를 띄울 서브넷을 찾을 수 있도록 태그 주입
+resource "aws_ec2_tag" "subnet_karpenter_tag" {
+  for_each    = toset(data.terraform_remote_state.base.outputs.private_subnets)
+  resource_id = each.value
+  key         = "karpenter.sh/discovery"
+  value       = module.eks.cluster_name
+}
+
+# 2. EBS CSI Add-on (중복 제거 및 문법 교정)
 resource "aws_eks_addon" "ebs_csi" {
   cluster_name                = module.eks.cluster_name
   addon_name                  = "aws-ebs-csi-driver"
-  
-  # [수정] resolve_conflicts_on_update가 두 번 선언되어 에러가 났었습니다. 하나로 합칩니다.
   resolve_conflicts_on_update = "PRESERVE" 
-  
   depends_on                  = [module.eks]
 }
 
-# 3. LB Controller 설치 (변경 없음, 대기 시간 유지)
+# 3. LB Controller 설치
 resource "helm_release" "lb_controller" {
   name       = "aws-load-balancer-controller"
   repository = "https://aws.github.io/eks-charts"
@@ -41,26 +46,22 @@ resource "helm_release" "lb_controller" {
     name  = "clusterName"
     value = module.eks.cluster_name
   }
-
   set {
     name  = "serviceAccount.create"
     value = "true"
   }
-
   set {
     name  = "serviceAccount.name"
     value = "aws-load-balancer-controller"
   }
-
   set {
     name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
     value = module.lb_controller_irsa.iam_role_arn
   }
-
   depends_on = [module.eks]
 }
 
-# [핵심] 컨트롤러가 노드에 안착하고 웹훅을 준비할 충분한 시간 (90초 -> 180초 추천)
+# [최적화] 웹훅 안정화를 위한 대기 시간 연장
 resource "time_sleep" "wait_for_lb_controller" {
   depends_on      = [helm_release.lb_controller]
   create_duration = "180s" 
