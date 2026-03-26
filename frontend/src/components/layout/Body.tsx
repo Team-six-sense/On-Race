@@ -74,7 +74,7 @@ export default function Body() {
   }, []);
 
   return (
-    <main className="py-4 flex flex-col ">
+    <main className="flex flex-col ">
       {/* --- 이벤트 목록 (Event List) --- */}
       <section className="p-20 bg-white">
         <div className="max-w-[1200px] mx-auto px-6">

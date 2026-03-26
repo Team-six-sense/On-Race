@@ -180,10 +180,10 @@ export default function Header() {
           <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent" />
           <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-full max-w-[1200px] px-6 z-10">
             <div className="max-w-xl text-left text-white">
-              <h2 className="text-6xl font-bold mb-4  tracking-tight">
+              <h2 className="text-6xl font-bold mb-4 tracking-tight">
                 달림 그 이상의 순간
               </h2>
-              <p className="text-2xl mb-8 text-white/80">
+              <p className="text-2xl mb-8 text-white">
                 기록이 아닌 감각, 속도가 아닌 연결.
                 <br />
                 On이 설계한 러닝 라이프를 직접 경험하세요.
