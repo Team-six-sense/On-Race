@@ -39,11 +39,11 @@ export default function SystemInfoContent() {
       <div className="relative flex flex-col bg-[#F8F8F8] items-center max-w-[1200px] w-full mx-auto">
         <div className="absolute inset-0 z-0 pointer-events-none">
           <Image
-            src="/image/systemInfo/bg-patten.png"
+            src="/image/systemInfo/bg-pattern.svg"
             alt="background"
             fill
             className="object-cover"
-            quality={75}
+            quality={100}
             priority
           />
         </div>
