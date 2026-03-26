@@ -24,7 +24,7 @@ public class MyPageQueryService {
 
 	public MyPageOverviewResponseDto getOverview(Long userId) {
 		return new MyPageOverviewResponseDto(
-			applicationHistoryService.getEntries(userId, MyPagePagingPolicy.DEFAULT_PAGE, MyPagePagingPolicy.SUMMARY_SIZE),
+			applicationHistoryService.getSummaryEntries(userId, MyPagePagingPolicy.DEFAULT_PAGE, MyPagePagingPolicy.SUMMARY_SIZE),
 			applicationHistoryService.getWaitingEntries(userId, MyPagePagingPolicy.DEFAULT_PAGE, MyPagePagingPolicy.SUMMARY_SIZE),
 			orderHistoryService.getOrders(userId, MyPageOrderTab.ALL, MyPagePagingPolicy.DEFAULT_PAGE, MyPagePagingPolicy.SUMMARY_SIZE),
 			myPageAddressQueryService.getAddress(userId)

@@ -464,9 +464,14 @@ class OrderServiceTest {
 			.name("하프코스")
 			.mapUrl("https://example.com/map")
 			.distanceMeter(21097)
+			.timeLimit(180)
+			.waterSource(5)
+			.altitude(100)
+			.courseRoute("잠실-여의도 하프 코스")
 			.price(50000L)
 			.build();
 		setId(course, 10L);
+		event.getCourses().add(course);
 
 		EventPace pace = EventPace.builder()
 			.eventCourse(course)
@@ -476,6 +481,7 @@ class OrderServiceTest {
 			.capacity(100)
 			.build();
 		setId(pace, 20L);
+		course.getEventPaces().add(pace);
 
 		EventPackage eventPackage = EventPackage.builder()
 			.event(event)
@@ -484,6 +490,7 @@ class OrderServiceTest {
 			.description("기본 옵션")
 			.build();
 		setId(eventPackage, 30L);
+		event.getPackages().add(eventPackage);
 
 		Address defaultAddress = Address.builder()
 			.userId(7L)

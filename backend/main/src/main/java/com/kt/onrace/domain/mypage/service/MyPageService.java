@@ -6,6 +6,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.domain.member.repository.MemberRepository;
 import com.kt.onrace.domain.mypage.dto.MyPageAccountResponseDto;
+import com.kt.onrace.domain.mypage.dto.MyPageApplicationHistoryFilter;
+import com.kt.onrace.domain.mypage.dto.MyPageApplicationHistoryListResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageAddressResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageEntryListResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageOrderDetailResponseDto;
@@ -41,9 +43,9 @@ public class MyPageService {
 	}
 
 	@Transactional(readOnly = true)
-	public MyPageEntryListResponseDto getEntries(Long userId, int page, int size) {
+	public MyPageApplicationHistoryListResponseDto getEntries(Long userId, String filter, int page, int size) {
 		validateMember(userId);
-		return applicationHistoryService.getEntries(userId, page, size);
+		return applicationHistoryService.getEntries(userId, MyPageApplicationHistoryFilter.from(filter), page, size);
 	}
 
 	@Transactional(readOnly = true)

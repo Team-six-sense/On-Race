@@ -25,6 +25,8 @@ import com.kt.onrace.common.exception.GlobalExceptionHandler;
 import com.kt.onrace.common.filter.GatewayAccessFilter;
 import com.kt.onrace.domain.mypage.dto.MyPageAccountResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageAccountType;
+import com.kt.onrace.domain.mypage.dto.MyPageApplicationHistoryItemDto;
+import com.kt.onrace.domain.mypage.dto.MyPageApplicationHistoryListResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageAddressDto;
 import com.kt.onrace.domain.mypage.dto.MyPageAddressResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageEntryItemDto;
@@ -95,18 +97,28 @@ class MyPageControllerTest {
 
 	@Test
 	void getEntriesReturnsEntryList() throws Exception {
-		given(myPageService.getEntries(USER_ID, 0, 20)).willReturn(sampleOverview().entries());
+		given(myPageService.getEntries(USER_ID, "ALL", 0, 20)).willReturn(sampleApplicationHistory());
 
 		mockMvc.perform(get("/mypage/entries").header(USER_ID_HEADER, USER_ID))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.filter").value("ALL"))
+			.andExpect(jsonPath("$.data.counts.all").value(1))
+			.andExpect(jsonPath("$.data.counts.lottery").value(1))
+			.andExpect(jsonPath("$.data.counts.firstCome").value(0))
 			.andExpect(jsonPath("$.data.page").value(0))
-			.andExpect(jsonPath("$.data.size").value(3))
+			.andExpect(jsonPath("$.data.size").value(20))
 			.andExpect(jsonPath("$.data.totalCount").value(1))
 			.andExpect(jsonPath("$.data.hasNext").value(false))
-			.andExpect(jsonPath("$.data.items[0].title").value("서울 마라톤 대회 2026"));
+			.andExpect(jsonPath("$.data.emptyState.empty").value(false))
+			.andExpect(jsonPath("$.data.items[0].eventName").value("서울 마라톤 대회 2026"))
+			.andExpect(jsonPath("$.data.items[0].selectedOption.displayValue").value("풀코스 / 6:00/km"))
+			.andExpect(jsonPath("$.data.items[0].eventMethod.code").value("LOTTERY"))
+			.andExpect(jsonPath("$.data.items[0].eventMethod.label").value("추첨"))
+			.andExpect(jsonPath("$.data.items[0].statusDisplayValue").value("응모 완료"))
+			.andExpect(jsonPath("$.data.items[0].action.type").value("NONE"));
 
-		verify(myPageService).getEntries(USER_ID, 0, 20);
+		verify(myPageService).getEntries(USER_ID, "ALL", 0, 20);
 	}
 
 	@Test
@@ -226,6 +238,33 @@ class MyPageControllerTest {
 			MyPageEntryListResponseDto.empty(0, 3),
 			new MyPageOrderListResponseDto(0, 3, 1, false, List.of(orderItem)),
 			new MyPageAddressResponseDto(true, address)
+		);
+	}
+
+	private MyPageApplicationHistoryListResponseDto sampleApplicationHistory() {
+		MyPageApplicationHistoryItemDto item = new MyPageApplicationHistoryItemDto(
+			11L,
+			101L,
+			LocalDateTime.of(2026, 3, 10, 9, 0),
+			"https://example.com/event-101.png",
+			"서울 마라톤 대회 2026",
+			new MyPageApplicationHistoryItemDto.SelectedOption("풀코스", "6:00/km", "풀코스 / 6:00/km"),
+			new MyPageApplicationHistoryItemDto.EventMethod("LOTTERY", "추첨"),
+			new MyPageApplicationHistoryItemDto.RecruitmentSchedule(
+				LocalDateTime.of(2026, 3, 1, 0, 0),
+				LocalDateTime.of(2026, 3, 14, 23, 59)
+			),
+			"응모 완료",
+			new MyPageApplicationHistoryItemDto.Action("NONE", null, false)
+		);
+
+		return MyPageApplicationHistoryListResponseDto.of(
+			"ALL",
+			new MyPageApplicationHistoryListResponseDto.Counts(1, 1, 0),
+			0,
+			20,
+			1,
+			List.of(item)
 		);
 	}
 

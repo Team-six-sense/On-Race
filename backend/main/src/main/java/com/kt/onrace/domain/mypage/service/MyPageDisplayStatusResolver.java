@@ -24,6 +24,13 @@ public class MyPageDisplayStatusResolver {
 	private static final String ACTION_CHECKOUT = "CHECKOUT";
 	private static final String ACTION_DETAIL = "DETAIL";
 
+	public MyPageStatusDto resolveApplicationHistoryStatus(Event currentEvent, Entry currentEntry) {
+		return switch (currentEvent.getAppType()) {
+			case LOTTERY -> resolveLotteryHistoryStatus(currentEvent, currentEntry);
+			case FIRST_COME -> resolveFirstComeHistoryStatus(currentEvent, currentEntry);
+		};
+	}
+
 	public MyPageStatusDto resolveApplicationStatus(Event currentEvent, Entry currentEntry) {
 		EntryStatus entryStatus = currentEntry.getStatus();
 		EventStatus eventStatus = currentEvent.getStatus();
@@ -73,6 +80,62 @@ public class MyPageDisplayStatusResolver {
 
 		if (entryStatus == EntryStatus.LOST) {
 			return MyPageStatusDto.of("미당첨", ACTION_NONE, null, false);
+		}
+
+		return MyPageStatusDto.of(entryStatus.getDescription(), ACTION_NONE, null, false);
+	}
+
+	private MyPageStatusDto resolveLotteryHistoryStatus(Event currentEvent, Entry currentEntry) {
+		EntryStatus entryStatus = currentEntry.getStatus();
+		EventStatus eventStatus = currentEvent.getStatus();
+
+		if (entryStatus == EntryStatus.WON) {
+			return MyPageStatusDto.of("당첨", ACTION_CHECKOUT, "결제하기", true);
+		}
+
+		if (entryStatus == EntryStatus.LOST) {
+			return MyPageStatusDto.of("미당첨", ACTION_NONE, null, false);
+		}
+
+		if (entryStatus == EntryStatus.APPLIED) {
+			if (eventStatus == EventStatus.IN_PROGRESS || eventStatus == EventStatus.CLOSING_SOON) {
+				return MyPageStatusDto.of("응모 완료", ACTION_NONE, null, false);
+			}
+
+			if (eventStatus == EventStatus.END) {
+				return MyPageStatusDto.of("결과 발표 대기", ACTION_NONE, null, false);
+			}
+
+			if (eventStatus == EventStatus.DRAW_COMPLETED) {
+				return MyPageStatusDto.of("결과 확인 필요", ACTION_NONE, null, false);
+			}
+		}
+
+		return MyPageStatusDto.of("응모 전", ACTION_NONE, null, false);
+	}
+
+	private MyPageStatusDto resolveFirstComeHistoryStatus(Event currentEvent, Entry currentEntry) {
+		EntryStatus entryStatus = currentEntry.getStatus();
+		EventStatus eventStatus = currentEvent.getStatus();
+
+		if (entryStatus == EntryStatus.PRE_SAVED) {
+			if (eventStatus == EventStatus.IN_PROGRESS || eventStatus == EventStatus.CLOSING_SOON) {
+				return MyPageStatusDto.of("신청 가능", ACTION_APPLY, "신청하기", true);
+			}
+
+			if (eventStatus == EventStatus.END) {
+				return MyPageStatusDto.of("신청 마감", ACTION_NONE, null, false);
+			}
+
+			return MyPageStatusDto.of("사전정보 저장", ACTION_EDIT, "사전정보 수정", true);
+		}
+
+		if (entryStatus == EntryStatus.RESERVED) {
+			return MyPageStatusDto.of("예약 중", ACTION_CHECKOUT, "결제하기", true);
+		}
+
+		if (entryStatus == EntryStatus.APPLIED) {
+			return MyPageStatusDto.of("신청 완료", ACTION_NONE, null, false);
 		}
 
 		return MyPageStatusDto.of(entryStatus.getDescription(), ACTION_NONE, null, false);
