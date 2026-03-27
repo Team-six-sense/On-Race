@@ -5,6 +5,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,12 +32,15 @@ class MyPageAccountQueryServiceTest {
 
 	private MyPageAccountQueryService myPageAccountQueryService;
 
+	@BeforeEach
+	void setUp() {
+		myPageAddressQueryService = new MyPageAddressQueryService(addressService);
+		myPageAccountQueryService = new MyPageAccountQueryService(authAccountClient, myPageAddressQueryService);
+	}
+
 	@Test
 	@DisplayName("계정 요약은 auth 원천값과 기본 배송지 요약을 함께 조립한다")
 	void getAccountReturnsAccountSummary() {
-		myPageAddressQueryService = new MyPageAddressQueryService(addressService);
-		myPageAccountQueryService = new MyPageAccountQueryService(authAccountClient, myPageAddressQueryService);
-
 		when(authAccountClient.getMyInfo(7L)).thenReturn(
 			new AuthAccountClient.AccountSummary(
 				"runner@example.com",
@@ -70,9 +74,6 @@ class MyPageAccountQueryServiceTest {
 	@Test
 	@DisplayName("기본 배송지가 없으면 hasAddress=false와 defaultAddress=null을 반환한다")
 	void getAccountReturnsEmptyAddressWhenDefaultAddressMissing() {
-		myPageAddressQueryService = new MyPageAddressQueryService(addressService);
-		myPageAccountQueryService = new MyPageAccountQueryService(authAccountClient, myPageAddressQueryService);
-
 		when(authAccountClient.getMyInfo(8L)).thenReturn(
 			new AuthAccountClient.AccountSummary(
 				"empty@example.com",
@@ -97,9 +98,6 @@ class MyPageAccountQueryServiceTest {
 	@Test
 	@DisplayName("SNS 계정은 accountType=SNS, canChangePassword=false, UNVERIFIED는 PENDING으로 매핑한다")
 	void getAccountNormalizesSnsAccountFields() {
-		myPageAddressQueryService = new MyPageAddressQueryService(addressService);
-		myPageAccountQueryService = new MyPageAccountQueryService(authAccountClient, myPageAddressQueryService);
-
 		when(authAccountClient.getMyInfo(9L)).thenReturn(
 			new AuthAccountClient.AccountSummary(
 				"sns@example.com",

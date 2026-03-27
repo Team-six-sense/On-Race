@@ -269,7 +269,8 @@ public class AddressService {
 	}
 
 	private void validatePhone(String phone) {
-		if (normalizePhone(phone) == null || !PHONE_PATTERN.matcher(normalizePhone(phone)).matches()) {
+		String normalizedPhone = normalizePhone(phone);
+		if (normalizedPhone == null || !PHONE_PATTERN.matcher(normalizedPhone).matches()) {
 			throw new BusinessException(BusinessErrorCode.ADDRESS_INVALID_PHONE);
 		}
 	}
