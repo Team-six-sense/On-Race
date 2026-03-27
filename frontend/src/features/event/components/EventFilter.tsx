@@ -88,7 +88,7 @@ export function EventFilter({
   }
 
   return (
-    <div className="p-6 mb-6 bg-gray-50 rounded-sm">
+    <div className="p-6 mb-6 bg-secondary rounded-sm">
       <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-4 mb-6 items-center">
         {/* 거리 슬라이더 */}
         <div className="flex flex-col gap-2">

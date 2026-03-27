@@ -5,6 +5,7 @@ import '@/styles/globals.css';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { cn } from '@/lib/utils';
+import ScrollToTopButton from '@/components/layout/ScrollToTopButton';
 
 // 폰트 설정
 const pretendard = localFont({
@@ -37,7 +38,10 @@ export default function RootLayout({
           <div className="flex flex-col min-h-screen">
             <Header />
 
-            <main className="flex-1 bg-white content-center">{children}</main>
+            <main className="flex-1 bg-white content-center">
+              {children}
+              <ScrollToTopButton />
+            </main>
 
             <Footer />
           </div>

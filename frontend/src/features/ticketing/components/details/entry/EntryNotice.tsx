@@ -19,9 +19,9 @@ export function EntryNotice() {
   return (
     <section className="p-4">
       <div className="flex items-center gap-2 mb-2">
-        <label className="font-bold">안내사항</label>
+        <label className="text-base font-bold">안내사항</label>
       </div>
-      <ul className="space-y-1.5 text-gray-500">
+      <ul className="space-y-1.5 text-sm text-gray-500">
         <li className="flex gap-1.5">
           <span>•</span>
           <span>

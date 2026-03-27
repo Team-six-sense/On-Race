@@ -36,7 +36,7 @@ export function EventProductInfo({
   }
 
   return (
-    <div className="relative">
+    <div className="relative mb-6">
       <div className="space-y-4">
         {/* 코스 정보 섹션 */}
         <EventCourse courses={eventDetails.courses} />

@@ -57,7 +57,7 @@ export default function CategoryContent() {
 
   return (
     <section className="p-20 bg-white">
-      <div className="max-w-[1200px] mx-auto">
+      <div className="max-w-[1440px] mx-auto w-full">
         {/* 상단 텍스트 영역 (중앙 정렬) */}
         <div className="flex flex-col mb-10">
           <div className="text-4xl md:text-5xl font-bold mb-6 text-gray-900">

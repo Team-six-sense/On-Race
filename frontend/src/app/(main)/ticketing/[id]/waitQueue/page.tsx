@@ -33,10 +33,6 @@ export default function WaitingPage() {
   return (
     <main className="flex flex-col items-center justify-center p-6">
       <QueueStatusCard status={status} progress={progress} />
-
-      <footer className="mt-8 text-gray-400 text-[10px] uppercase tracking-widest">
-        Powered by Queue-Gate System v2.0
-      </footer>
     </main>
   );
 }

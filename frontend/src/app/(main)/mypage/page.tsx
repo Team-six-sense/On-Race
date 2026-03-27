@@ -13,8 +13,8 @@ export default function MyPage() {
 
   const menuItems = [
     { id: 'account', label: '회원정보 수정' },
-    { id: 'payment', label: '결제내역' },
     { id: 'event', label: '신청내역' },
+    { id: 'payment', label: '결제내역' },
     { id: 'support', label: '고객지원' },
   ];
 
@@ -22,10 +22,10 @@ export default function MyPage() {
     switch (activeTab) {
       case 'account':
         return <AccountSettings />;
-      case 'payment':
-        return <PaymentHistory />;
       case 'event':
         return <EventHistory />;
+      case 'payment':
+        return <PaymentHistory />;
       case 'support':
         return <div>고객지원 콘텐츠</div>;
       default:
@@ -35,10 +35,9 @@ export default function MyPage() {
 
   return (
     <div className="max-w-6xl mx-auto my-10  flex flex-col gap-8 min-h-screen">
-      <header className="bg-primary text-black ">
-        <h2 className="text-3xl font-bold border-b-2 border-black pb-2">
-          마이페이지
-        </h2>
+      <header className="text-black px-4">
+        <h2 className="text-3xl font-bold">마이페이지</h2>
+        <div className="my-2 h-[2px] bg-black"></div>
       </header>
 
       <div className="flex flex-row gap-8">

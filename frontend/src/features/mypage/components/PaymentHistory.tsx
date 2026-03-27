@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { DATE_FILTER_OPTIONS } from '@/types/constants';
 import { Button } from '@/components/ui/button';
 import { LuChevronRight } from 'react-icons/lu';
+import { cn } from '@/lib/utils';
 
 export const PaymentHistory = () => {
   const [searchType, setSearchType] = useState<string>('ALL');
@@ -65,21 +66,26 @@ export const PaymentHistory = () => {
 
   return (
     <div className="max-w-6xl mx-auto p-6 min-h-screen">
-      <h1 className="text-2xl font-bold mb-2 text-gray-800">결제 내역</h1>
+      <h1 className="text-xl font-bold mb-2 text-gray-800">결제 내역</h1>
 
       {/* 상단 상태 카드 섹션 */}
-      <div className="flex flex-col lg:flex-row mb-10 border border-gray-200 rounded-sm">
+      <div className="flex flex-col lg:flex-row mb-10 border border-cta-outline rounded-sm">
         {/* 주문 프로세스 */}
         <div className="flex-[3] bg-white p-6 flex justify-between items-center relative overflow-hidden">
           {orderSteps.map((step, index) => (
             <React.Fragment key={index}>
               <div className="flex flex-col items-center flex-1 z-10">
                 <span
-                  className={`text-xl border-b-2 mb-1 ${step.count === 0 ? 'text-gray-300' : 'text-gray-600'}`}
+                  className={cn(
+                    'text-xl border-b mb-1',
+                    step.count === 0
+                      ? 'text-font-disabled border-font-disabled'
+                      : 'text-font-medium border-font-medium',
+                  )}
                 >
                   {step.count}
                 </span>
-                <span className="text-xs font-medium">{step.label}</span>
+                <span className="text-base font-medium">{step.label}</span>
               </div>
               {index < orderSteps.length - 1 && (
                 <LuChevronRight className="text-gray-400" size={16} />
@@ -89,13 +95,18 @@ export const PaymentHistory = () => {
         </div>
 
         {/* CS 현황 */}
-        <div className="flex-1 bg-gray-50 p-6">
+        <div className="flex-1 bg-secondary p-6">
           {csSteps.map((step, index) => (
             <div key={index} className="flex flex-row items-center">
               <div className="flex items-center justify-between w-full">
-                <span className="text-xs font-medium">{step.label}</span>
+                <span className="text-base font-medium">{step.label}</span>
                 <span
-                  className={`border-b-2 pb-0.5 ${step.count === 0 ? 'text-gray-300' : 'text-gray-600'}`}
+                  className={cn(
+                    'text-base border-b',
+                    step.count === 0
+                      ? 'text-font-disabled border-font-disabled'
+                      : 'text-font-medium border-font-medium',
+                  )}
                 >
                   {step.count}
                 </span>
@@ -105,7 +116,7 @@ export const PaymentHistory = () => {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-2">
+      <div className="flex flex-wrap gap-1 mb-2">
         {DATE_FILTER_OPTIONS.map((type) => (
           <Button
             key={type.id}
@@ -134,19 +145,11 @@ export const PaymentHistory = () => {
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-gray-100 border-t border-b border-gray-300">
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600 text-center">
-                  주문번호/주문일
-                </th>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600">
-                  주문상품
-                </th>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600 text-center">
-                  주문상태
-                </th>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600 text-center">
-                  결제금액
-                </th>
+              <tr className="bg-gray-100 border-t border-b border-gray-300 font-medium text-sm text-font-medium text-center">
+                <th className="py-4">주문번호/주문일</th>
+                <th className="py-4">주문상품</th>
+                <th className="py-4">주문상태</th>
+                <th className="py-4">결제금액</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -156,12 +159,12 @@ export const PaymentHistory = () => {
                   className="hover:bg-gray-50 transition-colors"
                 >
                   <td className="px-6 py-6 text-center">
-                    <div className="text-xs text-gray-600 mb-2">
-                      <span className="border-b">{order.id}</span>
+                    <div className="text-xs text-font-medium mb-2">
+                      <span className="border-b border-font-medium">
+                        {order.id}
+                      </span>
                     </div>
-                    <div className="text-sm font-medium text-gray-800">
-                      {order.date}
-                    </div>
+                    <div className="text-black">{order.date}</div>
                   </td>
 
                   <td className="px-6 py-6">
@@ -187,29 +190,25 @@ export const PaymentHistory = () => {
                         </div>
 
                         {/* 제목 */}
-                        <h2 className="font-bold text-black text-base sm:text-lg leading-tight truncate mb-1">
+                        <h2 className="font-bold text-black text-lg">
                           서울 마라톤 2026
                         </h2>
 
                         {/* 주소 및 코스 */}
-                        <div className="flex items-center text-gray-500 text-xs sm:text-sm min-w-0 mb-1">
+                        <div className="flex items-center text-font-medium text-sm min-w-0">
                           <span className="truncate shrink-0 max-w-[100px] sm:max-w-[150px]">
                             2026.02.28 (토) 오전 9시
                           </span>
                           <span className="mx-1 shrink-0">·</span>
-                          <span className="truncate text-gray-400">
-                            서울 여의도 공원
-                          </span>
+                          <span>서울 여의도 공원</span>
                         </div>
 
                         {/* 날짜 정보 및 하단 영역 */}
                         <div className="mt-auto flex justify-between items-end">
-                          <div className="flex items-center text-gray-400 text-xs sm:text-sm">
+                          <div className="flex items-center text-gray-500 text-sm">
                             <span>10km</span>
                             <span className="mx-1 shrink-0">·</span>
-                            <span className="truncate text-gray-400">
-                              5’30’’ ~ 6’30’’/km
-                            </span>
+                            <span>5’30’’ ~ 6’30’’/km</span>
                           </div>
                         </div>
                       </div>
@@ -219,7 +218,7 @@ export const PaymentHistory = () => {
                   <td className="px-6 py-6 text-center text-sm">
                     {order.status}
                   </td>
-                  <td className="px-6 py-6 font-semibold text-center text-sm">
+                  <td className="px-6 py-6 font-semibold text-center text-base">
                     {order.price}
                   </td>
                 </tr>

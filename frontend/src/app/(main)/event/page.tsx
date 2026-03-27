@@ -101,16 +101,14 @@ function EventContent() {
   return (
     <div className="min-h-screen bg-primary1">
       {/* Header */}
-      <header className="bg-primary text-black py-6  px-4 ">
+      <header className="text-black py-6 px-4">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl font-bold mb-2">이벤트 </h2>
-          <p className="opacity-80">
-            참여 가능한 러닝 이벤트를 확인하고 신청해 보세요!
-          </p>
+          <h2 className="text-3xl font-bold">이벤트</h2>
+          <div className="my-2 h-[2px] bg-black"></div>
         </div>
       </header>
 
-      <main className="max-w-[1100px] mx-auto px-6 pt-6 pb-20 space-y-8">
+      <main className="max-w-[1100px] mx-auto px-6 pb-20 space-y-6">
         <EventFilter
           setSearchTerm={setSearchTerm}
           setSearchDate={setSearchDate}
@@ -118,7 +116,7 @@ function EventContent() {
           setSearchDistance={setSearchDistance}
         />
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1">
           {TYPE.map((type) => (
             <Button
               key={type.id}
@@ -159,7 +157,7 @@ function EventContent() {
 
                 {/* 상태 칩 (예: 접수중, 마감, 예정) */}
                 <div className="absolute top-2 left-2">
-                  <span className="px-2 py-1 rounded-sm  bg-black text-font-accent text-xs">
+                  <span className="px-2 py-1 rounded-xs bg-black text-font-accent text-xs">
                     {getTypeLabel(event.type)}
                   </span>
                 </div>
@@ -169,24 +167,24 @@ function EventContent() {
               <div className="p-2 flex flex-col flex-grow">
                 <div className="flex-grow">
                   <div className="space-y-1.5">
-                    <div className="inline-block px-2 py-0.5 mr-1 rounded-sm text-[10px] font-bold bg-gray-100 text-gray-500">
+                    <div className="inline-block px-2 py-0.5 mr-1 rounded-xs text-xs font-bold bg-gray-100 text-gray-500">
                       {getAppTypeLabel(event.appType)}
                     </div>
                     <div
                       className={cn(
-                        'inline-block px-2 py-0.5 rounded-sm text-[10px] font-bold',
+                        'inline-block px-2 py-0.5 rounded-xs text-xs font-bold',
                         getStatusConfig(event.status),
                       )}
                     >
                       {displayStatusLabel(event.status)}
                     </div>
 
-                    <h2 className="font-bold text-black text-lg leading-tight truncate">
+                    <h2 className="font-bold text-black text-xl leading-tight truncate">
                       {event.title}
                     </h2>
 
                     {/* 주소 및 코스 */}
-                    <div className="flex items-center text-gray-500 text-sm min-w-0">
+                    <div className="flex items-center text-font-low text-sm min-w-0">
                       <span className="truncate shrink-0 max-w-[120px] sm:max-w-none">
                         {event.venue}
                       </span>
@@ -196,7 +194,7 @@ function EventContent() {
                       </span>
                     </div>
                     {/* 날짜 정보 */}
-                    <div className="flex items-center text-gray-400 text-sm">
+                    <div className="flex items-center text-font-low text-sm">
                       <span>
                         {new Date(event.eventAt).toLocaleDateString('ko-KR', {
                           year: 'numeric',
@@ -211,7 +209,7 @@ function EventContent() {
                 {/* 가격 정보 */}
                 <div className="my-2 flex items-center text-black font-bold">
                   {event.discountRate > 0 && (
-                    <p className="text-md text-red-500 mr-2">
+                    <p className="text-md text-font-error mr-2">
                       {event.discountRate}%
                     </p>
                   )}

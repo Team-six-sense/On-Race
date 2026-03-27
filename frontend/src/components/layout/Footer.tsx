@@ -5,30 +5,56 @@ import ChallengeBanner from './contents/ChallengeBanner';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { Button } from '../ui/button';
+import { cn } from '@/lib/utils';
 
 export default function Footer() {
   const pathname = usePathname();
 
   const isHome = pathname === '/';
   return (
-    <footer className="border-t border-gray-100 bg-black">
+    <footer
+      className={cn(
+        'border-t border-gray-100 ',
+        isHome ? 'bg-black' : 'bg-white',
+      )}
+    >
       {isHome && <ChallengeBanner />}
 
-      <div className="max-w-7xl mx-auto px-4 py-4 md:px-6 md:py-6 lg:px-8 lg:py-8 border-t border-gray-700">
+      <div
+        className={cn(
+          'max-w-7xl mx-auto px-4 py-4 md:px-6 md:py-6 lg:px-8 lg:py-8 border-t',
+          isHome ? 'border-gray-700' : 'border-gray-100',
+        )}
+      >
         <div className="flex flex-col md:flex-row justify-between gap-10">
           {/* 왼쪽: 로고 및 설명 */}
           <div className="w-2/3">
             <div className="flex items-center gap-2 mb-4">
               <Image
-                src="/image/logo/logo_white.png"
+                src={
+                  isHome
+                    ? '/image/logo/logo_white.png'
+                    : '/image/logo/logo_black.png'
+                }
                 alt="Logo"
                 width={16}
                 height={16}
               />
-
-              <h2 className="text-xl font-semibold text-white">Race</h2>
+              <h2
+                className={cn(
+                  'text-xl font-semibold',
+                  isHome ? 'text-white' : 'text-black',
+                )}
+              >
+                Race
+              </h2>
             </div>
-            <div className="space-y-1 text-font-low text-sm py-6">
+            <div
+              className={cn(
+                'space-y-1  text-sm py-6',
+                isHome ? 'text-font-low' : 'text-gray-500',
+              )}
+            >
               <p>
                 (주) 온레이스 | 대표이사 홍길동 | 서울 특별시 강남구 테헤란로
                 123
@@ -52,14 +78,24 @@ export default function Footer() {
           <div className="flex gap-12">
             {/* 서비스 섹션 */}
             <div>
-              <h3 className="text-base font-semibold text-white uppercase tracking-wider mb-4">
+              <h3
+                className={cn(
+                  'text-base font-semibold uppercase tracking-wider mb-4',
+                  isHome ? 'text-white' : 'text-black',
+                )}
+              >
                 서비스
               </h3>
               <ul className="space-y-2">
                 <li>
                   <Link
                     href="/event"
-                    className="text-sm text-white hover:text-gray-400"
+                    className={cn(
+                      'text-sm',
+                      isHome
+                        ? 'text-white hover:text-font-low'
+                        : 'text-black hover:text-gray-500',
+                    )}
                   >
                     이벤트
                   </Link>
@@ -67,7 +103,12 @@ export default function Footer() {
                 <li>
                   <Link
                     href="/mypage"
-                    className="text-sm text-white hover:text-gray-400 transition-colors"
+                    className={cn(
+                      'text-sm',
+                      isHome
+                        ? 'text-white hover:text-font-low'
+                        : 'text-black hover:text-gray-500',
+                    )}
                   >
                     마이페이지
                   </Link>
@@ -77,12 +118,29 @@ export default function Footer() {
 
             {/* 고객상담 섹션 */}
             <div>
-              <h3 className="text-base font-semibold text-white mb-4">
+              <h3
+                className={cn(
+                  'text-base font-semibold mb-4',
+                  isHome ? 'text-white' : 'text-black',
+                )}
+              >
                 고객상담
               </h3>
               <ul className="space-y-1">
-                <li className="text-sm text-white">평일 09:00 ~ 18:00</li>
-                <li className="text-sm text-font-low">
+                <li
+                  className={cn(
+                    'text-sm',
+                    isHome ? 'text-white' : 'text-black',
+                  )}
+                >
+                  평일 09:00 ~ 18:00
+                </li>
+                <li
+                  className={cn(
+                    'text-sm',
+                    isHome ? 'text-font-low' : 'text-gray-500',
+                  )}
+                >
                   (점심시간 12:00 ~ 13:00 제외)
                 </li>
               </ul>
@@ -91,30 +149,55 @@ export default function Footer() {
         </div>
 
         {/* 추가된 최하단 영역: 정책 메뉴 및 Copyright */}
-        <div className="mt-4 pt-4 border-t border-gray-700 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div
+          className={cn(
+            'mt-4 pt-4 border-t flex flex-col md:flex-row justify-between items-center gap-4',
+            isHome ? 'border-gray-700' : 'border-gray-100',
+          )}
+        >
           <div className="flex flex-wrap justify-center md:justify-start gap-x-6 gap-y-2">
             <Link
               href="/policy/privacy"
-              className="text-sm font-bold text-white hover:text-gray-400"
+              className={cn(
+                'text-sm font-bold',
+                isHome
+                  ? 'text-white hover:text-font-low'
+                  : 'text-black hover:text-gray-500',
+              )}
             >
               개인정보 처리방침
             </Link>
             <Link
               href="/policy/terms"
-              className="text-sm text-white hover:text-gray-400"
+              className={cn(
+                'text-sm font-bold',
+                isHome
+                  ? 'text-white hover:text-font-low'
+                  : 'text-black hover:text-gray-500',
+              )}
             >
               이용약관
             </Link>
             <Link
               href="/policy/refund"
-              className="text-sm text-white hover:text-gray-400"
+              className={cn(
+                'text-sm font-bold',
+                isHome
+                  ? 'text-white hover:text-font-low'
+                  : 'text-black hover:text-gray-500',
+              )}
             >
               환불/교환정책
             </Link>
           </div>
         </div>
         <div>
-          <p className="text-sm text-gray-500 pt-4">
+          <p
+            className={cn(
+              'text-sm pt-4',
+              isHome ? 'text-font-low' : 'text-gray-500',
+            )}
+          >
             © 2026 On. All rights reserved.
           </p>
         </div>

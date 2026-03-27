@@ -51,7 +51,7 @@ export function EntryOptions({
     <section>
       {/* 코스 선택 */}
       <div className="py-2">
-        <label className="text-xs">코스 선택*</label>
+        <label className="text-base font-semibold">코스*</label>
         <Select value={selectedCourse} onValueChange={setSelectedCourse}>
           <SelectTrigger variant="default">
             <SelectValue placeholder="코스을 선택하세요" />
@@ -68,7 +68,7 @@ export function EntryOptions({
 
       {/* 페이스 선택 */}
       <div className="py-2">
-        <label className="text-xs">페이스 선택*</label>
+        <label className="text-base font-semibold">페이스</label>
         <Select value={selectedPace} onValueChange={setSelectedPace}>
           <SelectTrigger variant="default">
             <SelectValue placeholder="페이스를 선택하세요" />
