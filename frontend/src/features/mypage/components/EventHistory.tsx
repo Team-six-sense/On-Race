@@ -37,14 +37,14 @@ export const EventHistory = () => {
   const appType = [
     { id: 'ALL', label: '전체' },
     { id: 'LOTTERY', label: '응모' },
-    { id: 'FIRST_COME', label: '선착' },
+    { id: 'FIRST_COME', label: '선착순' },
   ];
 
   return (
     <div className="max-w-6xl mx-auto p-6 min-h-screen">
-      <h1 className="text-2xl font-bold mb-2 text-gray-800">신청 내역</h1>
+      <h1 className="text-xl font-bold mb-2 text-gray-800">신청 내역</h1>
 
-      <div className="flex flex-wrap gap-2 mb-2">
+      <div className="flex flex-wrap gap-1 mb-2">
         {appType.map((type) => (
           <Button
             key={type.id}
@@ -95,9 +95,7 @@ export const EventHistory = () => {
                   className="hover:bg-gray-50 transition-colors"
                 >
                   <td className="px-6 py-6 text-center">
-                    <div className="text-sm font-medium text-gray-800">
-                      {order.date}
-                    </div>
+                    <div className="text-sm text-black">{order.date}</div>
                   </td>
 
                   <td className="px-6 py-6">
@@ -123,27 +121,27 @@ export const EventHistory = () => {
                         </div>
 
                         {/* 제목 */}
-                        <h2 className="font-bold text-black text-base sm:text-lg leading-tight truncate mb-1">
+                        <h2 className="font-semibold text-black text-lg truncate mb-1">
                           서울 마라톤 2026
                         </h2>
 
                         {/* 주소 및 코스 */}
-                        <div className="flex items-center text-gray-500 text-xs sm:text-sm min-w-0 mb-1">
+                        <div className="flex items-center text-font-medium text-sm min-w-0 mb-1">
                           <span className="truncate shrink-0 max-w-[100px] sm:max-w-[150px]">
                             2026.02.28 (토) 오전 9시
                           </span>
                           <span className="mx-1 shrink-0">·</span>
-                          <span className="truncate text-gray-400">
+                          <span className="truncate text-gray-500">
                             서울 여의도 공원
                           </span>
                         </div>
 
                         {/* 날짜 정보 및 하단 영역 */}
                         <div className="mt-auto flex justify-between items-end">
-                          <div className="flex items-center text-gray-400 text-xs sm:text-sm">
+                          <div className="flex items-center text-gray-500 text-sm">
                             <span>10km</span>
                             <span className="mx-1 shrink-0">·</span>
-                            <span className="truncate text-gray-400">
+                            <span className="truncate text-gray-500">
                               5’30’’ ~ 6’30’’/km
                             </span>
                           </div>
@@ -157,9 +155,11 @@ export const EventHistory = () => {
                     <p>~</p>
                     <p>2026.03.13 (금)</p>
                   </td>
-                  <td className="px-6 py-6 text-center">
-                    <p className="text-md font-semibold">응모 완료</p>
-                    <p className="text-sm">당첨 발표일: 2026.02.28 (토)</p>
+                  <td className="px-6 text-center">
+                    <p className="text-base font-semibold pb-1">응모 완료</p>
+                    <p className="text-xs text-font-medium pb-1">
+                      당첨 발표일: 2026.02.28 (토)
+                    </p>
                   </td>
                 </tr>
               ))}

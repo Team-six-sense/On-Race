@@ -4,6 +4,7 @@
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { LuMail } from 'react-icons/lu';
 
 export default function LoginSuccess() {
   const router = useRouter();
@@ -12,16 +13,22 @@ export default function LoginSuccess() {
     <div className="flex flex-col items-center justify-center bg-white p-4">
       <div className="max-w-xl w-full space-y-4 p-10">
         <div>
-          <h2 className="flex text-2xl font-bold text-black">아이디 찾기</h2>
+          <h2 className="flex text-4xl font-bold text-black pb-6">
+            아이디 찾기
+          </h2>
         </div>
 
         <div>
-          <h2 className="font-semifold">전화번호를 통한 아이디 찾기</h2>
-          <div className="bg-gray-50 rounded-sm border border-gray-300 p-3">
-            <p className="text-sm text-gray-500">
+          <h2 className="text-2xl font-bold pb-2">
+            전화번호를 통한 아이디 찾기
+          </h2>
+          <div className="flex items-center border border-gray-100 bg-gray-50 rounded-sm mb-6">
+            <LuMail size={30} className="m-4 text-font-medium" />
+            <span className="text-base text-font-medium">
               가입한 이메일: exam***@***.com
-            </p>
-            <p className="text-sm text-gray-500">가입일: 2026-01-15</p>
+              <br />
+              가입일: 2026-01-15
+            </span>
           </div>
         </div>
 

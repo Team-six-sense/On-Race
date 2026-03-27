@@ -45,24 +45,26 @@ export function EntryInfo({ event }: { event: Event }) {
     <section>
       <div className="space-y-3 mb-4 text-sm">
         <div className="flex">
-          <span className="w-24 font-semibold">장소</span>
-          <span className="flex-1">{event.venue || '서울 광화문 광장'}</span>
+          <span className="w-24 text-base font-semibold">장소</span>
+          <span className="flex-1 text-base">
+            {event.venue || '서울 광화문 광장'}
+          </span>
         </div>
         <div className="flex">
-          <span className="w-24 font-semibold">개최일</span>
-          <span className="flex-1">
+          <span className="w-24 text-base font-semibold">개최일</span>
+          <span className="flex-1 text-base">
             {event.eventAt
               ? `${new Date(event.eventAt).toLocaleDateString('ko-KR')}`
               : '2024.04.20'}
           </span>
         </div>
-        <div className="flex">
-          <span className="w-24 font-semibold">참가비</span>
+        <div className="flex mb-0">
+          <span className="w-24 text-base font-semibold">참가비</span>
           <span
             className={cn(
-              'flex-1',
+              'flex-1 text-base',
               event.discountRate > 0
-                ? 'text-gray-500 line-through'
+                ? 'text-sm text-gray-500 line-through'
                 : 'text-black',
             )}
           >
@@ -71,32 +73,36 @@ export function EntryInfo({ event }: { event: Event }) {
         </div>
         {event.discountRate > 0 && (
           <div className="flex">
-            <span className="w-24 font-semibold"></span>
-            <p className="font-bold text-red-500 mr-2">
-              {event.discountRate}%{' '}
+            <span className="w-24 text-base font-semibold"></span>
+            <p className="text-base font-bold text-font-error mr-2">
+              {event.discountRate}%
             </p>
-            <span className="flex-1">{discountParticipationFee()}</span>
+            <span className="flex-1 text-base">
+              {discountParticipationFee()}
+            </span>
           </div>
         )}
 
         <div className="flex">
-          <span className="w-24 font-semibold">배송정보</span>
-          <div className="flex-1">
+          <span className="w-24 text-base font-semibold">배송정보</span>
+          <div className="flex-1 text-base">
             <p>{event.delivery.schedule}</p>
-            <p className="text-gray-500">{event.delivery.feePolicy}</p>
+            <p className="text-base text-gray-500">
+              {event.delivery.feePolicy}
+            </p>
           </div>
         </div>
         <div className="flex">
-          <span className="w-24 font-semibold">모집 기간</span>
-          <span className="flex-1">
+          <span className="w-24 text-base font-semibold">모집 기간</span>
+          <span className="flex-1 text-base">
             {event.appStartAt
               ? `${new Date(event.appStartAt).toLocaleDateString('ko-KR')} ~ ${new Date(event.appEndAt).toLocaleDateString('ko-KR')}`
               : '2024.03.01 - 2024.03.15'}
           </span>
         </div>
         <div className="flex">
-          <span className="w-24 font-semibold">추첨 발표일</span>
-          <span className="flex-1">
+          <span className="w-24 text-base font-semibold">추첨 발표일</span>
+          <span className="flex-1 text-base">
             {event.appStartAt
               ? `${new Date(event.resultAt).toLocaleDateString('ko-KR')}`
               : '2024.04.01'}
@@ -117,11 +123,11 @@ export function EntryInfo({ event }: { event: Event }) {
           <div className="flex items-center justify-center border border-gray-200 rounded-sm p-4">
             {/* 카테고리 */}
             <div className="flex flex-col flex-1 items-center justify-center">
-              <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">
+              <p className="text-sm text-gray-500 font-medium uppercase tracking-wider">
                 카테고리
               </p>
 
-              <p className="text-lg font-bold">{getTypeLabel(event.type)}</p>
+              <p className="text-base font-bold">{getTypeLabel(event.type)}</p>
             </div>
 
             {/* 중앙 구분선 */}
@@ -129,8 +135,8 @@ export function EntryInfo({ event }: { event: Event }) {
 
             {/* 모집 방식 */}
             <div className="flex flex-col flex-1 items-center justify-center">
-              <p className="text-xs text-gray-500 ">모집 방식</p>
-              <p className="text-lg font-bold">{recruitmentType()}</p>
+              <p className="text-sm text-gray-500 ">모집 방식</p>
+              <p className="text-base font-bold">{recruitmentType()}</p>
             </div>
           </div>
         </div>

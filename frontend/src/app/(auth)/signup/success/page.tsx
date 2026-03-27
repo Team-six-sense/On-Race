@@ -14,18 +14,28 @@ export default function LoginSuccess() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center bg-white p-4">
-      <div className="max-w-xl w-full space-y-4 p-10">
+    <div className="flex items-center justify-center bg-white p-4">
+      <div className="max-w-xl w-full p-10">
         <div>
-          <h2 className="flex text-2xl font-bold text-black">회원가입 완료</h2>
+          <div className="flex text-4xl font-bold text-black mb-8">
+            회원가입 완료
+          </div>
         </div>
         <div>
-          <h2 className="font-semifold">회원가입이 완료되었습니다.</h2>
+          <div className="text-2xl font-medium mb-2">
+            회원가입이 완료되었습니다.
+          </div>
         </div>
 
-        <div className="bg-gray-50 rounded-none border-2 border-gray-300 p-2">
-          <p className="text-sm text-gray-500">이름: 온러닝</p>
-          <p className="text-sm text-gray-500">이메일(아이디): {email}</p>
+        <div className="bg-gray-200 rounded-sm p-4 mb-6 space-y-2">
+          <div className="flex items-center">
+            <p className="w-32 text-base text-black">이름</p>
+            <p className="text-base font-font-medium">온러닝</p>
+          </div>
+          <div className="flex items-center">
+            <p className="w-32 text-base text-black">이메일(아이디)</p>
+            <p className="text-base font-font-medium">{email}</p>
+          </div>
         </div>
 
         <div>

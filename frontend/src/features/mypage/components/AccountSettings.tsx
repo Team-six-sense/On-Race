@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 
 import { useEffect, useState } from 'react';
-import { HiOutlineDotsCircleHorizontal } from 'react-icons/hi';
+import { LuCircleAlert } from 'react-icons/lu';
 
 export function AccountSettings() {
   // 하이드레이션 오류 방지를 위한 마운트 상태 관리
@@ -35,28 +35,34 @@ export function AccountSettings() {
       <section>
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold text-gray-800">회원 정보</h2>
+            <h2 className="text-xl font-bold text-black">회원 정보</h2>
           </div>
         </div>
 
         <div className="flex flex-col gap-4">
           <div className="flex">
-            <span className="w-30 font-semibold text-gray-500">이름</span>
-            <span className="flex-1">-</span>
+            <span className="w-30 text-base font-medium text-font-medium">
+              이름
+            </span>
+            <span className="flex-1 text-base font-medium">-</span>
           </div>
           <div className="flex">
-            <span className="w-30 font-semibold text-gray-500">
+            <span className="w-30 text-base font-medium text-font-medium">
               휴대폰 번호
             </span>
-            <span className="flex-1">010-1234-5678</span>
+            <span className="flex-1 text-base font-medium">010-1234-5678</span>
           </div>
           <div className="flex">
-            <span className="w-30 font-semibold text-gray-500">이메일(ID)</span>
-            <span className="flex-1">u***@email.com</span>
+            <span className="w-30 text-base font-medium text-font-medium">
+              이메일(ID)
+            </span>
+            <span className="flex-1 text-base font-medium">u***@email.com</span>
           </div>
           <div className="flex items-center">
-            <span className="w-30 font-semibold text-gray-500">비밀번호</span>
-            <span className="flex mr-4">******</span>
+            <span className="w-30 text-base font-medium text-font-medium">
+              비밀번호
+            </span>
+            <span className="flex text-base font-medium mr-4">******</span>
             <div>
               <Button
                 variant="outline"
@@ -69,19 +75,23 @@ export function AccountSettings() {
             </div>
           </div>
           <div className="flex">
-            <span className="w-30 font-semibold text-gray-500">
+            <span className="w-30 text-base font-medium text-font-medium">
               본인인증 상태
             </span>
-            <span className="flex-1 font-bold">인증대기</span>
+            <span className="flex-1 text-base font-medium ">인증대기</span>
           </div>
 
-          <div className="p-4 bg-gray-100 border-1 border-gray-100 text-gray-500 rounded-sm">
+          <div className="flex items-center justify-between p-4 bg-red-50 border border-red-100 text-font-error rounded-sm">
             <div className="flex items-center">
-              <HiOutlineDotsCircleHorizontal size={24} className="mr-2" />
+              <LuCircleAlert size={24} className="mr-2" />
               <span>
-                본인인증 정보를 확인하고 있습니다. 잠시만 기다려주시면
-                본인인증이 완료됩니다.
+                최초 1회의 본인인증 이후 모든 서비스 이용이 가능합니다.
               </span>
+            </div>
+            <div className="flex">
+              <Button variant="destructive" rounded="full">
+                인증하기
+              </Button>
             </div>
           </div>
         </div>
@@ -95,7 +105,7 @@ export function AccountSettings() {
         </div>
 
         <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-center text-gray-400">
+          <div className="flex items-center justify-center text-font-medium">
             등록된 배송지가 없습니다
           </div>
           <div className="max-w-2xl mx-auto flex items-center justify-center">
@@ -121,11 +131,14 @@ export function AccountSettings() {
         </div>
 
         <div className="flex flex-col gap-4">
-          <div className="p-4 bg-gray-100 border-1 border-gray-300">
+          <div className="p-4 bg-secondary border-1 border-gray-300">
             {/* 이메일 알림 */}
             <div className="flex items-center justify-between">
               <div>
-                <p>[선택] 마케팅 정보 수신 동의</p>
+                <p className="text-black">
+                  <span className="text-gray-500 pr-1">[선택]</span>
+                  마케팅 정보 수신 동의
+                </p>
                 <p className="text-sm text-gray-500">
                   동의하시면 이벤트 알람, 프로모션 메시지 등의 마케팅 정보를
                   받아보실 수 있습니다.

@@ -11,10 +11,10 @@ export default function LoginSuccess() {
 
   return (
     <div className="flex flex-col items-center justify-center bg-white p-4">
-      <div className="text-green-600 py-6">
-        <HiCheckCircle size={60} />
+      <div className="text-green-500">
+        <HiCheckCircle size={80} />
       </div>
-      <div className="text-2xl text-center p-4">
+      <div className="text-3xl text-center p-4">
         <span className="font-bold">김유저</span>
         <span>
           님의 결제가 <br />
@@ -23,24 +23,27 @@ export default function LoginSuccess() {
       </div>
       <div className="max-w-md w-full  space-y-6 p-4 rounded-sm border-1 border-gray-300 mb-4">
         <div className="flex justify-between items-center mb-4">
-          <span className="text-sm text-gray-500">주문번호</span>
-          <span className="text-sm font-semibold">ORD20260215001</span>
+          <span className="text-xl text-black font-semibold">주문정보</span>
         </div>
         <div className="flex justify-between items-center mb-4">
-          <span className="text-sm text-gray-500">상품명</span>
-          <span className="text-sm font-semibold">서울 마라톤 2026</span>
+          <span className="text-base text-font-medium">주문번호</span>
+          <span className="text-base font-medium">ORD20260215001</span>
         </div>
         <div className="flex justify-between items-center mb-4">
-          <span className="text-sm text-gray-500">결제일자</span>
-          <span className="text-sm font-semibold">2026-02-15 14:30:25</span>
+          <span className="text-base text-font-medium">상품명</span>
+          <span className="text-base font-medium">서울 마라톤 2026</span>
         </div>
         <div className="flex justify-between items-center mb-4">
-          <span className="text-sm text-gray-500">결제수단</span>
-          <span className="text-sm font-semibold">신한카드/일시불</span>
+          <span className="text-base text-font-medium">결제일자</span>
+          <span className="text-base font-medium">2026-02-15 14:30:25</span>
         </div>
         <div className="flex justify-between items-center mb-4">
-          <span className="text-sm text-gray-500">결제 금액</span>
-          <span className="text-sm font-semibold">51,000원</span>
+          <span className="text-base text-font-medium">결제수단</span>
+          <span className="text-base font-medium">신한카드/일시불</span>
+        </div>
+        <div className="flex justify-between items-center mb-4">
+          <span className="text-base text-font-medium">결제 금액</span>
+          <span className="text-base font-medium">51,000원</span>
         </div>
       </div>
 

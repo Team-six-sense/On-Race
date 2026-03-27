@@ -24,7 +24,7 @@ export default function MilestonesContent() {
 
   return (
     <section className="my-4">
-      <div className="w-full bg-black py-12 px-6 flex justify-center max-w-[1200px] mx-auto">
+      <div className="w-full bg-black py-12 px-6 flex justify-center max-w-[1440px] mx-auto">
         <div className="w-full max-w-5xl flex items-center gap-6">
           <div className="flex justify-end pr-14">
             <div className="text-left">
@@ -41,10 +41,8 @@ export default function MilestonesContent() {
           {eventStatus.map((item, index) => (
             <div
               key={index}
-              // flex-1: 모든 카드가 동일한 너비를 가짐
-              // aspect-[265/175]: 지정하신 비율 유지
               className={cn(
-                'flex-1 py-10 rounded-sm flex flex-col items-center justify-center transition-all',
+                'flex-1 py-10 rounded-sm flex flex-col items-center justify-center text-center',
                 item.color,
               )}
             >

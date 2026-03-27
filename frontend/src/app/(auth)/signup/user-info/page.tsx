@@ -66,10 +66,10 @@ export default function SignupForm() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center bg-primary">
       <div className="flex flex-col w-full max-w-xl p-8 ">
-        <div className="text-2xl font-bold py-4">이메일 회원가입</div>
-        <div className="text-lg font-bold py-4">기본 정보 입력</div>
+        <div className="text-4xl font-bold py-4">이메일 회원가입</div>
+        <div className="text-2xl font-bold py-4">기본 정보 입력</div>
 
-        <div className="flex gap-2 space-y-2 mb-2">
+        <div className="flex gap-2 space-y-2 mb-4">
           <Input
             variant="primary"
             label="이름"
@@ -80,7 +80,7 @@ export default function SignupForm() {
         </div>
 
         <p className="text-sm mb-1">이메일 *</p>
-        <div className="flex gap-2 space-y-2 mb-2">
+        <div className="flex gap-2 space-y-2 mb-4">
           <Input
             variant="primary"
             placeholder="example@gmail.com"
@@ -121,7 +121,7 @@ export default function SignupForm() {
           />
         </div>
 
-        <div className="space-y-2 mb-2">
+        <div className="space-y-2 mb-4">
           <Input
             variant="primary"
             placeholder="인증번호를 입력해주세요*"
@@ -140,7 +140,7 @@ export default function SignupForm() {
           />
         </div>
 
-        <div className="space-y-2 mb-2">
+        <div className="space-y-2 mb-6">
           <Input
             variant="primary"
             placeholder="비밀번호를 입력해주세요"
@@ -151,7 +151,7 @@ export default function SignupForm() {
               <Button
                 variant="text"
                 size="iconSm"
-                className="text-gray-400"
+                className="text-font-low"
                 onClick={() => setShowPassword((prev) => !prev)}
               >
                 {showPassword ? <LuEyeOff /> : <LuEye />}
@@ -168,7 +168,7 @@ export default function SignupForm() {
               <Button
                 variant="text"
                 size="iconSm"
-                className="text-gray-400"
+                className="text-font-low"
                 onClick={() => setShowConfirmPassword((prev) => !prev)}
               >
                 {showConfirmPassword ? <LuEyeOff /> : <LuEye />}
@@ -177,7 +177,7 @@ export default function SignupForm() {
           />
         </div>
 
-        <div className="flex space-y-2 gap-2 mb-2">
+        <div className="flex space-y-2 gap-2">
           <Button
             variant="outline"
             rounded="sm"
