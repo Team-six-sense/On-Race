@@ -77,10 +77,9 @@ public class EntryController {
 	@PostMapping("/confirm")
 	public ApiResponse<Void> confirmReservation(
 		@RequestHeader("X-User-Id") Long userId,
-		@PathVariable Long eventId,
 		@RequestParam Long paceId
 	) {
-		entryService.confirmReservation(userId, eventId, paceId);
+		entryService.confirmReservation(userId, paceId);
 		return ApiResponse.success();
 	}
 }

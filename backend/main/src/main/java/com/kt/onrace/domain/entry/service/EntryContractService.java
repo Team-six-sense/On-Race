@@ -88,13 +88,13 @@ public class EntryContractService implements OrderEntryContract {
 	}
 
 	@Override
-	public boolean hasReservation(Long eventId, Long paceId, Long userId) {
+	public boolean hasReservation(Long paceId, Long userId) {
 		return eventStockService.hasReservation(paceId, userId);
 	}
 
 	@Override
 	@Transactional
-	public void confirmReservation(Long userId, Long eventId, Long paceId) {
-		entryService.confirmReservation(userId, eventId, paceId);
+	public void confirmReservation(Long userId, Long paceId) {
+		entryService.confirmReservation(userId, paceId);
 	}
 }

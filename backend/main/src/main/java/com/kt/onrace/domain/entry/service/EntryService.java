@@ -222,13 +222,12 @@ public class EntryService {
 	 */
 	@ServiceLog(slowMs = 2000)
 	@Transactional
-	public void confirmReservation(Long userId, Long eventId, Long paceId) {
+	public void confirmReservation(Long userId, Long paceId) {
 		Entry entry = entryRepository.findByUserIdAndEventPaceId(userId, paceId)
 			.orElseThrow(() -> new BusinessException(BusinessErrorCode.ENTRY_NOT_FOUND));
 
 		Preconditions.validate(entry.isReserved(), BusinessErrorCode.ENTRY_CANNOT_APPLY);
-		Preconditions.validate(
-			eventStockService.hasReservation(paceId, userId),
+		Preconditions.validate(eventStockService.hasReservation(paceId, userId),
 			BusinessErrorCode.ENTRY_RESERVATION_EXPIRED
 		);
 
