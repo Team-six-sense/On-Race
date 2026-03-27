@@ -25,11 +25,11 @@ public class TermDataInitializer implements ApplicationRunner {
 	@Transactional
 	public void run(ApplicationArguments args) {
 		initTerm("이용약관", true,
-			"On-Race 서비스 이용약관 (v1.0)\n\n본 약관은 On-Race 서비스의 이용 조건 및 절차에 관한 사항을 규정합니다.");
+			"본 약관은 On-Race 서비스의 이용 조건 및 절차에 관한 사항을 규정합니다.");
 		initTerm("개인정보처리방침", true,
-			"On-Race 개인정보처리방침 (v1.0)\n\n수집하는 개인정보의 항목, 수집 및 이용목적, 보유 및 이용기간 등을 안내합니다.");
+			"수집하는 개인정보의 항목, 수집 및 이용목적, 보유 및 이용기간 등을 안내합니다.");
 		initTerm("마케팅 수신 동의", false,
-			"On-Race 마케팅 수신 동의 (v1.0)\n\n이벤트, 혜택 등 마케팅 정보를 이메일 및 SMS로 수신하는 것에 동의합니다.");
+			"이벤트, 혜택 등 마케팅 정보를 이메일 및 SMS로 수신하는 것에 동의합니다.");
 
 		log.info("[TermDataInitializer] 약관 시드 데이터 초기화 완료");
 	}
