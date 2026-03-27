@@ -5,8 +5,11 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.kt.onrace.auth.dto.TermDetailResponse;
 import com.kt.onrace.auth.dto.TermResponse;
 import com.kt.onrace.auth.repository.TermVersionRepository;
+import com.kt.onrace.common.exception.BusinessErrorCode;
+import com.kt.onrace.common.exception.BusinessException;
 
 import lombok.RequiredArgsConstructor;
 
@@ -22,5 +25,11 @@ public class TermService {
 			.stream()
 			.map(TermResponse::from)
 			.toList();
+	}
+
+	public TermDetailResponse getTerm(Long termVersionId) {
+		return termVersionRepository.findById(termVersionId)
+			.map(TermDetailResponse::from)
+			.orElseThrow(() -> new BusinessException(BusinessErrorCode.AUTH_TERM_NOT_FOUND));
 	}
 }
