@@ -5,6 +5,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.domain.member.repository.MemberRepository;
+import com.kt.onrace.domain.mypage.dto.MyPageAccountResponseDto;
+import com.kt.onrace.domain.mypage.dto.MyPageApplicationHistoryFilter;
+import com.kt.onrace.domain.mypage.dto.MyPageApplicationHistoryListResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageAddressResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageEntryListResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageOrderDetailResponseDto;
@@ -20,34 +23,44 @@ import lombok.RequiredArgsConstructor;
  */
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
+@Transactional
 public class MyPageService {
 
 	private final MemberRepository memberRepository;
+	private final MyPageAccountQueryService myPageAccountQueryService;
 	private final MyPageQueryService myPageQueryService;
 	private final ApplicationHistoryService applicationHistoryService;
 	private final OrderHistoryService orderHistoryService;
+
+	public MyPageAccountResponseDto getAccount(Long userId) {
+		validateMember(userId);
+		return myPageAccountQueryService.getAccount(userId);
+	}
 
 	public MyPageOverviewResponseDto getOverview(Long userId) {
 		validateMember(userId);
 		return myPageQueryService.getOverview(userId);
 	}
 
-	public MyPageEntryListResponseDto getEntries(Long userId, int page, int size) {
+	@Transactional(readOnly = true)
+	public MyPageApplicationHistoryListResponseDto getEntries(Long userId, String filter, int page, int size) {
 		validateMember(userId);
-		return applicationHistoryService.getEntries(userId, page, size);
+		return applicationHistoryService.getEntries(userId, MyPageApplicationHistoryFilter.from(filter), page, size);
 	}
 
+	@Transactional(readOnly = true)
 	public MyPageEntryListResponseDto getWaitingEntries(Long userId, int page, int size) {
 		validateMember(userId);
 		return applicationHistoryService.getWaitingEntries(userId, page, size);
 	}
 
+	@Transactional(readOnly = true)
 	public MyPageOrderListResponseDto getOrders(Long userId, String tab, int page, int size) {
 		validateMember(userId);
 		return orderHistoryService.getOrders(userId, MyPageOrderTab.from(tab), page, size);
 	}
 
+	@Transactional(readOnly = true)
 	public MyPageOrderDetailResponseDto getOrderDetail(Long userId, String orderNumber) {
 		validateMember(userId);
 		return orderHistoryService.getOrderDetail(userId, orderNumber);

@@ -127,6 +127,24 @@ class AddressServiceTest {
 	}
 
 	@Test
+	@DisplayName("전화번호는 하이픈이 포함되어도 숫자만 남겨 정규화해 저장한다")
+	void createNormalizesPhoneNumber() {
+		AddressDto.Response response = addressService.create(1L, new AddressDto.SaveRequest(
+			"홍길동",
+			"010-1111-2222",
+			"12345",
+			"서울",
+			"101동",
+			"문앞",
+			false,
+			null
+		));
+
+		assertThat(response.phone()).isEqualTo("01011112222");
+		assertThat(addressRepository.findById(response.id()).orElseThrow().getPhone()).isEqualTo("01011112222");
+	}
+
+	@Test
 	@DisplayName("주소 입력 필드가 최대 길이를 초과하면 COMMON_INVALID_PARAMETER 예외가 발생한다")
 	void overlyLongFieldIsRejected() {
 		assertThatThrownBy(() -> addressService.create(1L, new AddressDto.SaveRequest(

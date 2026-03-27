@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.kt.onrace.common.logging.annotation.ApiLog;
 import com.kt.onrace.common.response.ApiResponse;
+import com.kt.onrace.domain.mypage.dto.MyPageAccountResponseDto;
+import com.kt.onrace.domain.mypage.dto.MyPageApplicationHistoryListResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageAddressResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageEntryListResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageOrderDetailResponseDto;
@@ -34,6 +36,13 @@ public class MyPageController {
 
 	private final MyPageService myPageService;
 
+	@GetMapping("/account")
+	public ApiResponse<MyPageAccountResponseDto> getAccount(
+		@RequestHeader("X-User-Id") Long userId
+	) {
+		return ApiResponse.success(myPageService.getAccount(userId));
+	}
+
 	@GetMapping
 	public ApiResponse<MyPageOverviewResponseDto> getOverview(
 		@RequestHeader("X-User-Id") Long userId
@@ -42,12 +51,13 @@ public class MyPageController {
 	}
 
 	@GetMapping("/entries")
-	public ApiResponse<MyPageEntryListResponseDto> getEntries(
+	public ApiResponse<MyPageApplicationHistoryListResponseDto> getEntries(
 		@RequestHeader("X-User-Id") Long userId,
+		@RequestParam(defaultValue = "ALL") String filter,
 		@RequestParam(defaultValue = "0") @Min(0) int page,
 		@RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
 	) {
-		return ApiResponse.success(myPageService.getEntries(userId, page, size));
+		return ApiResponse.success(myPageService.getEntries(userId, filter, page, size));
 	}
 
 	@GetMapping("/waiting-entries")

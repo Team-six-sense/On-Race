@@ -58,6 +58,10 @@ aws:
     bucket: ${AWS_S3_BUCKET}
     presign-expire-seconds: ${AWS_S3_PRESIGN_EXPIRE_SECONDS}
 
+api:
+  url:
+    auth: ${AUTH_SERVICE_URI:http://localhost:8081}
+
 gateway:
   internal:
     secret: ${GATEWAY_INTERNAL_SECRET:onrace-super-secret-key}
