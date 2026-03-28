@@ -54,6 +54,7 @@ import com.kt.onrace.domain.order.entity.OrderPackage;
 import com.kt.onrace.domain.order.entity.OrderStatus;
 import com.kt.onrace.domain.order.repository.OrderPackageRepository;
 import com.kt.onrace.domain.order.repository.OrderRepository;
+import com.kt.onrace.domain.order.service.OrderPrepareTokenService;
 import com.kt.onrace.domain.order.service.OrderService;
 
 @ExtendWith(MockitoExtension.class)
@@ -83,6 +84,9 @@ class OrderServiceTest {
 	@Mock
 	private OrderEntryContract orderEntryContract;
 
+	@Mock
+	private OrderPrepareTokenService orderPrepareTokenService;
+
 	@InjectMocks
 	private OrderService orderService;
 
@@ -101,12 +105,14 @@ class OrderServiceTest {
 			eq(20L), eq(10L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.pace());
 		when(eventPackageRepository.findByEventId(eq(1L))).thenReturn(List.of(fixture.eventPackage()));
 		when(addressRepository.findFirstByUserIdAndIsDefaultTrue(eq(7L))).thenReturn(Optional.of(fixture.defaultAddress()));
+		when(orderPrepareTokenService.issueToken(eq(7L), eq(1L), eq(10L), eq(20L))).thenReturn("signed-prepare-token");
 
 		CheckoutPrepareResponseDto response = orderService.getCheckoutPrepareInfo(
 			new CheckoutPrepareRequestDto(1L, 10L, 20L),
 			7L
 		);
 
+		assertThat(response.prepareToken()).isEqualTo("signed-prepare-token");
 		assertThat(response.orderRequestInfo().eventName()).isEqualTo("서울 마라톤");
 		assertThat(response.orderRequestInfo().courseName()).isEqualTo("하프코스");
 		assertThat(response.packages()).hasSize(1);
@@ -190,6 +196,7 @@ class OrderServiceTest {
 	@DisplayName("checkout은 선택한 배송지 정보를 주문 payload에 반영한다")
 	void checkoutUsesSelectedAddressSnapshot() {
 		TestFixture fixture = createFixture();
+		OrderPrepareTokenService.ValidatedPrepareToken validatedPrepareToken = validatedPrepareToken();
 
 		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(fixture.event());
 		when(eventCourseRepository.findByIdAndEventIdOrThrow(
@@ -199,6 +206,7 @@ class OrderServiceTest {
 		mockCheckoutEligibility(7L, true, null);
 		when(eventPackageRepository.findAllById(eq(List.of(30L)))).thenReturn(List.of(fixture.eventPackage()));
 		when(addressRepository.findByIdAndUserId(eq(101L), eq(7L))).thenReturn(Optional.of(fixture.selectedAddress()));
+		when(orderPrepareTokenService.validatePrepareToken(any(), eq(7L), any())).thenReturn(validatedPrepareToken);
 		when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
 		orderService.checkout(
@@ -233,12 +241,14 @@ class OrderServiceTest {
 		assertThat(savedOrder.getFinalAmount()).isEqualTo(63000L);
 		assertThat(savedOrder.getEntryId()).isEqualTo(1000L);
 		assertThat(savedOrder.getOrderStatus()).isEqualTo(OrderStatus.PENDING);
+		verify(orderPrepareTokenService).consumePrepareToken(eq(validatedPrepareToken));
 	}
 
 	@Test
 	@DisplayName("checkout은 addressId가 없으면 기본 배송지 스냅샷을 사용한다")
 	void checkoutUsesDefaultAddressSnapshotWhenAddressIdMissing() {
 		TestFixture fixture = createFixture();
+		OrderPrepareTokenService.ValidatedPrepareToken validatedPrepareToken = validatedPrepareToken();
 
 		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(fixture.event());
 		when(eventCourseRepository.findByIdAndEventIdOrThrow(
@@ -248,6 +258,7 @@ class OrderServiceTest {
 		mockCheckoutEligibility(7L, true, null);
 		when(eventPackageRepository.findAllById(eq(List.of(30L)))).thenReturn(List.of(fixture.eventPackage()));
 		when(addressRepository.findFirstByUserIdAndIsDefaultTrue(eq(7L))).thenReturn(Optional.of(fixture.defaultAddress()));
+		when(orderPrepareTokenService.validatePrepareToken(any(), eq(7L), any())).thenReturn(validatedPrepareToken);
 		when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
 		orderService.checkout(
@@ -280,6 +291,7 @@ class OrderServiceTest {
 		assertThat(savedOrder.getDetailAddress()).isEqualTo("101동");
 		assertThat(savedOrder.getDeliveryMemo()).isEqualTo("직접 입력 메모");
 		assertThat(savedOrder.getEntryId()).isEqualTo(1000L);
+		verify(orderPrepareTokenService).consumePrepareToken(eq(validatedPrepareToken));
 	}
 
 	@Test
@@ -685,6 +697,13 @@ class OrderServiceTest {
 				.canCheckout(canCheckout)
 				.failureCode(failureCode)
 				.build());
+	}
+
+	private OrderPrepareTokenService.ValidatedPrepareToken validatedPrepareToken() {
+		return new OrderPrepareTokenService.ValidatedPrepareToken(
+			"nonce-123",
+			LocalDateTime.now().plusMinutes(5)
+		);
 	}
 
 	private void setId(Object target, Long id) {

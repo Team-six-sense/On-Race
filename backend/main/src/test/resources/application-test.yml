@@ -18,6 +18,8 @@ jwt:
   refresh-token-expiration: 43200000
 
 order:
+  prepare-token:
+    ttl-seconds: 300
   entry-id:
     monitor:
       enabled: false

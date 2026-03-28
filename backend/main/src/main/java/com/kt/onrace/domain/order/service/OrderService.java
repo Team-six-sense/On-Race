@@ -61,6 +61,7 @@ public class OrderService {
 	private final OrderRepository orderRepository;
 	private final OrderPackageRepository orderPackageRepository;
 	private final OrderEntryContract orderEntryContract;
+	private final OrderPrepareTokenService orderPrepareTokenService;
 
 	@Transactional(readOnly = true)
 	public OrderListResponseDto getOrders(String tab, Long userId) {
@@ -168,7 +169,13 @@ public class OrderService {
 		CheckoutPrepareResponseDto.PaymentDetail paymentDetail = new CheckoutPrepareResponseDto.PaymentDetail(
 			itemTotalAmount, shippingFee, discountAmount, finalAmount);
 
-		String prepareToken = UUID.randomUUID().toString();
+		// prepare 단계에서 선택한 주문 맥락을 checkout 단계와 강하게 묶는다.
+		String prepareToken = orderPrepareTokenService.issueToken(
+			userId,
+			request.eventId(),
+			request.eventCourseId(),
+			request.eventPaceId()
+		);
 		CheckoutPrepareResponseDto.ShippingAddressInfo shippingAddress = resolveShippingAddress(userId);
 		String thumbnailUrl = extractThumbnailUrl(event);
 
@@ -186,6 +193,10 @@ public class OrderService {
 
 	@Transactional
 	public CheckoutResponseDto checkout(CheckoutRequestDto request, Long userId) {
+		// prepare 응답을 받은 사용자와 선택값 그대로 checkout에 들어왔는지 먼저 검증한다.
+		OrderPrepareTokenService.ValidatedPrepareToken validatedPrepareToken =
+			orderPrepareTokenService.validatePrepareToken(request.prepareToken(), userId, request);
+
 		Event event = eventRepository.findByIdOrThrow(request.eventId(), BusinessErrorCode.EVENT_NOT_FOUND);
 
 		EventCourse course = eventCourseRepository.findByIdAndEventIdOrThrow(
@@ -210,6 +221,9 @@ public class OrderService {
 		if (!calculatedFinalAmount.equals(request.expectedFinalAmount())) {
 			throw new BusinessException(BusinessErrorCode.COMMON_INVALID_FORMAT);
 		}
+
+		// 주문 저장 직전에 nonce를 소비해 동일 prepare token 재사용을 막는다.
+		orderPrepareTokenService.consumePrepareToken(validatedPrepareToken);
 
 		String orderNumber = "ORD-" + System.currentTimeMillis() + "-"
 			+ UUID.randomUUID().toString().substring(0, 4).toUpperCase();

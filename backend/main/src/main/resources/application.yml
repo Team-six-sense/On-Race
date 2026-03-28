@@ -67,6 +67,9 @@ gateway:
     secret: ${GATEWAY_INTERNAL_SECRET:onrace-super-secret-key}
 
 order:
+  prepare-token:
+    # checkout prepare token TTL이다. queue pass token TTL, reservation TTL과는 별개다.
+    ttl-seconds: ${MAIN_ORDER_PREPARE_TOKEN_TTL_SECONDS:300}
   entry-id:
     monitor:
       enabled: ${MAIN_ORDER_ENTRY_ID_MONITOR_ENABLED:true}
