@@ -196,25 +196,24 @@ public class OrderService {
 		String orderNumber = "ORD-" + System.currentTimeMillis() + "-"
 			+ UUID.randomUUID().toString().substring(0, 4).toUpperCase();
 
-		Order order = Order.builder()
-			.orderNumber(orderNumber)
-			.userId(userId)
-			.eventCourseId(course.getId())
-			.eventPaceId(pace.getId())
-			.entryId(eligibility.entryId())
-			.orderStatus(OrderStatus.PENDING)
-			.itemTotalAmount(itemTotalAmount)
-			.shippingFee(shippingFee)
-			.discountAmount(discountAmount)
-			.finalAmount(calculatedFinalAmount)
-			.recipientName(shippingAddress.receiverName())
-			.addressLabel(shippingAddress.label())
-			.recipientPhone(shippingAddress.phone())
-			.zipCode(shippingAddress.zipcode())
-			.address(shippingAddress.address1())
-			.detailAddress(shippingAddress.address2())
-			.deliveryMemo(shippingAddress.memo())
-			.build();
+		Order order = Order.createPending(
+			orderNumber,
+			userId,
+			course.getId(),
+			pace.getId(),
+			eligibility.entryId(),
+			itemTotalAmount,
+			shippingFee,
+			discountAmount,
+			calculatedFinalAmount,
+			shippingAddress.receiverName(),
+			shippingAddress.label(),
+			shippingAddress.phone(),
+			shippingAddress.zipcode(),
+			shippingAddress.address1(),
+			shippingAddress.address2(),
+			shippingAddress.memo()
+		);
 
 		for (EventPackage pkg : selectedPackages) {
 			OrderPackage orderPackage = OrderPackage.builder()

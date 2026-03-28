@@ -230,6 +230,7 @@ class OrderServiceTest {
 		assertThat(savedOrder.getDeliveryMemo()).isEqualTo("직접 입력 메모");
 		assertThat(savedOrder.getFinalAmount()).isEqualTo(63000L);
 		assertThat(savedOrder.getEntryId()).isEqualTo(1000L);
+		assertThat(savedOrder.getOrderStatus()).isEqualTo(OrderStatus.PENDING);
 	}
 
 	@Test

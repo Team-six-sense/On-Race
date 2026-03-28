@@ -79,6 +79,45 @@ public class Order extends BaseEntity {
 	@OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
 	private final List<OrderPackage> packages = new ArrayList<>();
 
+	public static Order createPending(
+		String orderNumber,
+		Long userId,
+		Long eventCourseId,
+		Long eventPaceId,
+		Long entryId,
+		Long itemTotalAmount,
+		Long shippingFee,
+		Long discountAmount,
+		Long finalAmount,
+		String recipientName,
+		String addressLabel,
+		String recipientPhone,
+		String zipCode,
+		String address,
+		String detailAddress,
+		String deliveryMemo
+	) {
+		return Order.builder()
+			.orderNumber(orderNumber)
+			.userId(userId)
+			.eventCourseId(eventCourseId)
+			.eventPaceId(eventPaceId)
+			.entryId(entryId)
+			.orderStatus(OrderStatus.PENDING)
+			.itemTotalAmount(itemTotalAmount)
+			.shippingFee(shippingFee)
+			.discountAmount(discountAmount)
+			.finalAmount(finalAmount)
+			.recipientName(recipientName)
+			.addressLabel(addressLabel)
+			.recipientPhone(recipientPhone)
+			.zipCode(zipCode)
+			.address(address)
+			.detailAddress(detailAddress)
+			.deliveryMemo(deliveryMemo)
+			.build();
+	}
+
 	@Builder
 	public Order(String orderNumber, Long userId, Long eventCourseId, Long eventPaceId, Long entryId, OrderStatus orderStatus,
 		Long itemTotalAmount, Long shippingFee, Long discountAmount, Long finalAmount,
@@ -109,13 +148,31 @@ public class Order extends BaseEntity {
 	}
 
 	public void markPaid() {
-		switch (this.orderStatus) {
-			case PENDING -> this.orderStatus = OrderStatus.PAID;
-			case PAID -> {
-				return;
-			}
-			case CANCELLED, EXPIRED, FAILED -> throw new BusinessException(BusinessErrorCode.ORDER_CANNOT_CONFIRM);
+		transitionFromPending(OrderStatus.PAID);
+	}
+
+	public void markCancelled() {
+		transitionFromPending(OrderStatus.CANCELLED);
+	}
+
+	public void markExpired() {
+		transitionFromPending(OrderStatus.EXPIRED);
+	}
+
+	public void markFailed() {
+		transitionFromPending(OrderStatus.FAILED);
+	}
+
+	private void transitionFromPending(OrderStatus targetStatus) {
+		if (this.orderStatus == targetStatus) {
+			return;
 		}
+
+		if (this.orderStatus != OrderStatus.PENDING) {
+			throw new BusinessException(BusinessErrorCode.ORDER_CANNOT_CONFIRM);
+		}
+
+		this.orderStatus = targetStatus;
 	}
 
 }
