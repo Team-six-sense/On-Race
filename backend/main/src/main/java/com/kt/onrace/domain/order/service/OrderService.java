@@ -168,7 +168,7 @@ public class OrderService {
 		EventPace pace = eventPaceRepository.findByIdAndEventCourseIdOrThrow(
 			request.eventPaceId(), request.eventCourseId(), BusinessErrorCode.COMMON_INVALID_FORMAT);
 
-		validateCheckoutEligibility(userId, request, pace);
+		OrderCheckoutEligibility eligibility = validateCheckoutEligibility(userId, request, pace);
 
 		List<EventPackage> selectedPackages = resolveSelectedPackages(request.eventId(), request.selectedPackageIds());
 		ShippingAddressSnapshot shippingAddress = resolveShippingAddressSnapshot(userId, request);
@@ -193,6 +193,7 @@ public class OrderService {
 			.userId(userId)
 			.eventCourseId(course.getId())
 			.eventPaceId(pace.getId())
+			.entryId(eligibility.entryId())
 			.orderStatus(OrderStatus.PENDING)
 			.itemTotalAmount(itemTotalAmount)
 			.shippingFee(shippingFee)
@@ -226,7 +227,7 @@ public class OrderService {
 		return new CheckoutResponseDto(order.getOrderNumber(), orderName, order.getFinalAmount());
 	}
 
-	private void validateCheckoutEligibility(Long userId, CheckoutRequestDto request, EventPace pace) {
+	private OrderCheckoutEligibility validateCheckoutEligibility(Long userId, CheckoutRequestDto request, EventPace pace) {
 		OrderCheckoutEligibility eligibility = orderEntryContract.resolveCheckoutEligibility(
 			userId,
 			request.eventId(),
@@ -236,6 +237,12 @@ public class OrderService {
 		if (!eligibility.canCheckout()) {
 			throw new BusinessException(resolveFailureCode(eligibility.failureCode()));
 		}
+
+		if (eligibility.entryId() == null) {
+			throw new BusinessException(BusinessErrorCode.COMMON_SYSTEM_ERROR);
+		}
+
+		return eligibility;
 	}
 
 	private BusinessErrorCode resolveFailureCode(String failureCode) {

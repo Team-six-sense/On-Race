@@ -229,6 +229,7 @@ class OrderServiceTest {
 		assertThat(savedOrder.getDetailAddress()).isEqualTo("202동");
 		assertThat(savedOrder.getDeliveryMemo()).isEqualTo("직접 입력 메모");
 		assertThat(savedOrder.getFinalAmount()).isEqualTo(63000L);
+		assertThat(savedOrder.getEntryId()).isEqualTo(1000L);
 	}
 
 	@Test
@@ -275,6 +276,7 @@ class OrderServiceTest {
 		assertThat(savedOrder.getAddress()).isEqualTo("서울시 강남구");
 		assertThat(savedOrder.getDetailAddress()).isEqualTo("101동");
 		assertThat(savedOrder.getDeliveryMemo()).isEqualTo("직접 입력 메모");
+		assertThat(savedOrder.getEntryId()).isEqualTo(1000L);
 	}
 
 	@Test
@@ -618,6 +620,7 @@ class OrderServiceTest {
 			.userId(userId)
 			.eventCourseId(eventCourseId)
 			.eventPaceId(eventPaceId)
+			.entryId(1000L)
 			.orderStatus(orderStatus)
 			.itemTotalAmount(60000L)
 			.shippingFee(3000L)

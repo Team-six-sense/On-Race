@@ -752,6 +752,7 @@ class MyPageApiContractTest {
 			.userId(userId)
 			.eventCourseId(bundle.course().getId())
 			.eventPaceId(bundle.pace().getId())
+			.entryId(bundle.pace().getId())
 			.orderStatus(orderStatus)
 			.itemTotalAmount(price)
 			.shippingFee(shippingFee)

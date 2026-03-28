@@ -34,6 +34,9 @@ public class Order extends BaseEntity {
 
 	private Long eventPaceId;
 
+	@Column(nullable = false)
+	private Long entryId;
+
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false)
 	private OrderStatus orderStatus;
@@ -75,7 +78,7 @@ public class Order extends BaseEntity {
 	private final List<OrderPackage> packages = new ArrayList<>();
 
 	@Builder
-	public Order(String orderNumber, Long userId, Long eventCourseId, Long eventPaceId, OrderStatus orderStatus,
+	public Order(String orderNumber, Long userId, Long eventCourseId, Long eventPaceId, Long entryId, OrderStatus orderStatus,
 		Long itemTotalAmount, Long shippingFee, Long discountAmount, Long finalAmount,
 		String recipientName, String addressLabel, String recipientPhone, String zipCode, String address, String detailAddress,
 		String deliveryMemo) {
@@ -83,6 +86,7 @@ public class Order extends BaseEntity {
 		this.userId = userId;
 		this.eventCourseId = eventCourseId;
 		this.eventPaceId = eventPaceId;
+		this.entryId = entryId;
 		this.orderStatus = orderStatus;
 		this.itemTotalAmount = itemTotalAmount;
 		this.shippingFee = shippingFee;
