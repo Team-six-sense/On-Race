@@ -27,6 +27,8 @@ import com.kt.onrace.domain.event.repository.EventCourseRepository;
 import com.kt.onrace.domain.event.repository.EventPaceRepository;
 import com.kt.onrace.domain.event.repository.EventPackageRepository;
 import com.kt.onrace.domain.event.repository.EventRepository;
+import com.kt.onrace.domain.order.contract.OrderCheckoutEligibility;
+import com.kt.onrace.domain.order.contract.OrderEntryContract;
 import com.kt.onrace.domain.order.dto.CheckoutPrepareRequestDto;
 import com.kt.onrace.domain.order.dto.CheckoutPrepareResponseDto;
 import com.kt.onrace.domain.order.dto.CheckoutRequestDto;
@@ -57,6 +59,7 @@ public class OrderService {
 	private final AddressRepository addressRepository;
 	private final OrderRepository orderRepository;
 	private final OrderPackageRepository orderPackageRepository;
+	private final OrderEntryContract orderEntryContract;
 
 	@Transactional(readOnly = true)
 	public OrderListResponseDto getOrders(String tab, Long userId) {
@@ -165,6 +168,8 @@ public class OrderService {
 		EventPace pace = eventPaceRepository.findByIdAndEventCourseIdOrThrow(
 			request.eventPaceId(), request.eventCourseId(), BusinessErrorCode.COMMON_INVALID_FORMAT);
 
+		validateCheckoutEligibility(userId, request, pace);
+
 		List<EventPackage> selectedPackages = resolveSelectedPackages(request.eventId(), request.selectedPackageIds());
 		ShippingAddressSnapshot shippingAddress = resolveShippingAddressSnapshot(userId, request);
 
@@ -219,6 +224,32 @@ public class OrderService {
 		}
 
 		return new CheckoutResponseDto(order.getOrderNumber(), orderName, order.getFinalAmount());
+	}
+
+	private void validateCheckoutEligibility(Long userId, CheckoutRequestDto request, EventPace pace) {
+		OrderCheckoutEligibility eligibility = orderEntryContract.resolveCheckoutEligibility(
+			userId,
+			request.eventId(),
+			pace.getId()
+		);
+
+		if (!eligibility.canCheckout()) {
+			throw new BusinessException(resolveFailureCode(eligibility.failureCode()));
+		}
+	}
+
+	private BusinessErrorCode resolveFailureCode(String failureCode) {
+		if (failureCode == null || failureCode.isBlank()) {
+			return BusinessErrorCode.ENTRY_CANNOT_APPLY;
+		}
+
+		for (BusinessErrorCode errorCode : BusinessErrorCode.values()) {
+			if (errorCode.getCode().equals(failureCode)) {
+				return errorCode;
+			}
+		}
+
+		return BusinessErrorCode.COMMON_SYSTEM_ERROR;
 	}
 
 	private List<EventPackage> resolveSelectedPackages(Long eventId, List<Long> selectedPackageIds) {

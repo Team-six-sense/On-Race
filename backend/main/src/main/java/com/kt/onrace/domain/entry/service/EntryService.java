@@ -11,7 +11,6 @@ import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
 import com.kt.onrace.common.logging.annotation.ServiceLog;
 import com.kt.onrace.common.util.Preconditions;
-import com.kt.onrace.domain.entry.listener.ReservationConfirmedEvent;
 import com.kt.onrace.domain.entry.config.EntryProperties;
 import com.kt.onrace.domain.entry.dto.EntryApplyResponse;
 import com.kt.onrace.domain.entry.dto.EntryOverviewResponse;
@@ -234,7 +233,8 @@ public class EntryService {
 		entry.confirmPayment();
 		eventStockRepository.findByEventPaceIdOrThrow(paceId).confirmStock();
 
-		applicationEventPublisher.publishEvent(new ReservationConfirmedEvent(paceId, userId));
+		// TODO: ReservationConfirmedEvent 복구 후 이벤트 발행 재연결
+		// applicationEventPublisher.publishEvent(new ReservationConfirmedEvent(paceId, userId));
 	}
 
 }

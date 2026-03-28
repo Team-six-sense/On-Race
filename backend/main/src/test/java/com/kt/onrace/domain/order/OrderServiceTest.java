@@ -30,6 +30,8 @@ import com.kt.onrace.domain.event.entity.EventAppType;
 import com.kt.onrace.domain.event.entity.EventCourse;
 import com.kt.onrace.domain.event.entity.EventImage;
 import com.kt.onrace.domain.event.entity.EventImageType;
+import com.kt.onrace.domain.event.entity.EventItem;
+import com.kt.onrace.domain.event.entity.EventItemType;
 import com.kt.onrace.domain.event.entity.EventPackage;
 import com.kt.onrace.domain.event.entity.EventPace;
 import com.kt.onrace.domain.event.entity.EventRegion;
@@ -38,6 +40,8 @@ import com.kt.onrace.domain.event.repository.EventCourseRepository;
 import com.kt.onrace.domain.event.repository.EventPackageRepository;
 import com.kt.onrace.domain.event.repository.EventPaceRepository;
 import com.kt.onrace.domain.event.repository.EventRepository;
+import com.kt.onrace.domain.order.contract.OrderCheckoutEligibility;
+import com.kt.onrace.domain.order.contract.OrderEntryContract;
 import com.kt.onrace.domain.order.dto.CheckoutPrepareRequestDto;
 import com.kt.onrace.domain.order.dto.CheckoutPrepareResponseDto;
 import com.kt.onrace.domain.order.dto.CheckoutRequestDto;
@@ -74,6 +78,9 @@ class OrderServiceTest {
 	@Mock
 	private OrderPackageRepository orderPackageRepository;
 
+	@Mock
+	private OrderEntryContract orderEntryContract;
+
 	@InjectMocks
 	private OrderService orderService;
 
@@ -94,7 +101,7 @@ class OrderServiceTest {
 		when(addressRepository.findFirstByUserIdAndIsDefaultTrue(eq(7L))).thenReturn(Optional.of(fixture.defaultAddress()));
 
 		CheckoutPrepareResponseDto response = orderService.getCheckoutPrepareInfo(
-			new CheckoutPrepareRequestDto(1L, 10L, 20L, null),
+			new CheckoutPrepareRequestDto(1L, 10L, 20L),
 			7L
 		);
 
@@ -108,8 +115,8 @@ class OrderServiceTest {
 	}
 
 	@Test
-	@DisplayName("checkout-info는 선택한 배송지 id가 있으면 해당 배송지를 내려준다")
-	void checkoutPrepareReturnsSelectedAddress() {
+	@DisplayName("checkout-info는 기본 배송지가 없으면 최근 배송지를 내려준다")
+	void checkoutPrepareReturnsLatestAddressWhenDefaultMissing() {
 		TestFixture fixture = createFixture();
 
 		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(fixture.event());
@@ -118,10 +125,11 @@ class OrderServiceTest {
 		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
 			eq(20L), eq(10L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.pace());
 		when(eventPackageRepository.findByEventId(eq(1L))).thenReturn(List.of(fixture.eventPackage()));
-		when(addressRepository.findByIdAndUserId(eq(101L), eq(7L))).thenReturn(Optional.of(fixture.selectedAddress()));
+		when(addressRepository.findFirstByUserIdAndIsDefaultTrue(eq(7L))).thenReturn(Optional.empty());
+		when(addressRepository.findByUserIdOrderByCreatedAtDesc(eq(7L))).thenReturn(List.of(fixture.selectedAddress()));
 
 		CheckoutPrepareResponseDto response = orderService.getCheckoutPrepareInfo(
-			new CheckoutPrepareRequestDto(1L, 10L, 20L, 101L),
+			new CheckoutPrepareRequestDto(1L, 10L, 20L),
 			7L
 		);
 
@@ -131,8 +139,8 @@ class OrderServiceTest {
 	}
 
 	@Test
-	@DisplayName("checkout-info는 잘못된 배송지 id면 ADDRESS_NOT_FOUND 예외가 발생한다")
-	void checkoutPrepareThrowsWhenSelectedAddressDoesNotExist() {
+	@DisplayName("checkout-info는 저장된 배송지가 없으면 빈 배송지 정보를 내려준다")
+	void checkoutPrepareReturnsEmptyWhenAddressDoesNotExist() {
 		TestFixture fixture = createFixture();
 
 		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(fixture.event());
@@ -141,20 +149,21 @@ class OrderServiceTest {
 		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
 			eq(20L), eq(10L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.pace());
 		when(eventPackageRepository.findByEventId(eq(1L))).thenReturn(List.of(fixture.eventPackage()));
-		when(addressRepository.findByIdAndUserId(eq(999L), eq(7L))).thenReturn(Optional.empty());
+		when(addressRepository.findFirstByUserIdAndIsDefaultTrue(eq(7L))).thenReturn(Optional.empty());
+		when(addressRepository.findByUserIdOrderByCreatedAtDesc(eq(7L))).thenReturn(List.of());
 
-		assertThatThrownBy(() -> orderService.getCheckoutPrepareInfo(
-			new CheckoutPrepareRequestDto(1L, 10L, 20L, 999L),
+		CheckoutPrepareResponseDto response = orderService.getCheckoutPrepareInfo(
+			new CheckoutPrepareRequestDto(1L, 10L, 20L),
 			7L
-		))
-			.isInstanceOf(BusinessException.class)
-			.extracting(exception -> ((BusinessException)exception).getErrorCode())
-			.isEqualTo(BusinessErrorCode.ADDRESS_NOT_FOUND);
+		);
+
+		assertThat(response.shippingAddress().hasAddress()).isFalse();
+		assertThat(response.shippingAddress().addressId()).isNull();
 	}
 
 	@Test
-	@DisplayName("checkout-info는 다른 유저 배송지 id면 ADDRESS_NOT_FOUND 예외가 발생한다")
-	void checkoutPrepareThrowsWhenAddressBelongsToAnotherUser() {
+	@DisplayName("checkout-info는 사용자별 주소를 조회하고 없으면 빈 배송지 정보를 내려준다")
+	void checkoutPrepareReturnsEmptyWhenUserHasNoAddress() {
 		TestFixture fixture = createFixture();
 
 		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(fixture.event());
@@ -163,15 +172,16 @@ class OrderServiceTest {
 		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
 			eq(20L), eq(10L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.pace());
 		when(eventPackageRepository.findByEventId(eq(1L))).thenReturn(List.of(fixture.eventPackage()));
-		when(addressRepository.findByIdAndUserId(eq(101L), eq(8L))).thenReturn(Optional.empty());
+		when(addressRepository.findFirstByUserIdAndIsDefaultTrue(eq(8L))).thenReturn(Optional.empty());
+		when(addressRepository.findByUserIdOrderByCreatedAtDesc(eq(8L))).thenReturn(List.of());
 
-		assertThatThrownBy(() -> orderService.getCheckoutPrepareInfo(
-			new CheckoutPrepareRequestDto(1L, 10L, 20L, 101L),
+		CheckoutPrepareResponseDto response = orderService.getCheckoutPrepareInfo(
+			new CheckoutPrepareRequestDto(1L, 10L, 20L),
 			8L
-		))
-			.isInstanceOf(BusinessException.class)
-			.extracting(exception -> ((BusinessException)exception).getErrorCode())
-			.isEqualTo(BusinessErrorCode.ADDRESS_NOT_FOUND);
+		);
+
+		assertThat(response.shippingAddress().hasAddress()).isFalse();
+		assertThat(response.shippingAddress().addressId()).isNull();
 	}
 
 	@Test
@@ -184,6 +194,7 @@ class OrderServiceTest {
 			eq(10L), eq(1L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.course());
 		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
 			eq(20L), eq(10L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.pace());
+		mockCheckoutEligibility(7L, true, null);
 		when(eventPackageRepository.findAllById(eq(List.of(30L)))).thenReturn(List.of(fixture.eventPackage()));
 		when(addressRepository.findByIdAndUserId(eq(101L), eq(7L))).thenReturn(Optional.of(fixture.selectedAddress()));
 		when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -230,6 +241,7 @@ class OrderServiceTest {
 			eq(10L), eq(1L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.course());
 		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
 			eq(20L), eq(10L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.pace());
+		mockCheckoutEligibility(7L, true, null);
 		when(eventPackageRepository.findAllById(eq(List.of(30L)))).thenReturn(List.of(fixture.eventPackage()));
 		when(addressRepository.findFirstByUserIdAndIsDefaultTrue(eq(7L))).thenReturn(Optional.of(fixture.defaultAddress()));
 		when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -275,6 +287,7 @@ class OrderServiceTest {
 			eq(10L), eq(1L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.course());
 		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
 			eq(20L), eq(10L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.pace());
+		mockCheckoutEligibility(7L, true, null);
 		when(eventPackageRepository.findAllById(eq(List.of(30L)))).thenReturn(List.of(fixture.eventPackage()));
 		when(addressRepository.findFirstByUserIdAndIsDefaultTrue(eq(7L))).thenReturn(Optional.empty());
 		when(addressRepository.findByUserIdOrderByCreatedAtDesc(eq(7L))).thenReturn(List.of());
@@ -312,6 +325,7 @@ class OrderServiceTest {
 			eq(10L), eq(1L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.course());
 		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
 			eq(20L), eq(10L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.pace());
+		mockCheckoutEligibility(8L, true, null);
 		when(eventPackageRepository.findAllById(eq(List.of(30L)))).thenReturn(List.of(fixture.eventPackage()));
 		when(addressRepository.findByIdAndUserId(eq(101L), eq(8L))).thenReturn(Optional.empty());
 
@@ -336,6 +350,41 @@ class OrderServiceTest {
 			.isInstanceOf(BusinessException.class)
 			.extracting(exception -> ((BusinessException)exception).getErrorCode())
 			.isEqualTo(BusinessErrorCode.ADDRESS_NOT_FOUND);
+	}
+
+	@Test
+	@DisplayName("checkout은 entry eligibility가 false면 failureCode 기반 예외를 반환한다")
+	void checkoutThrowsWhenEntryEligibilityFails() {
+		TestFixture fixture = createFixture();
+
+		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(fixture.event());
+		when(eventCourseRepository.findByIdAndEventIdOrThrow(
+			eq(10L), eq(1L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.course());
+		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
+			eq(20L), eq(10L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.pace());
+		mockCheckoutEligibility(7L, false, BusinessErrorCode.ENTRY_CANNOT_APPLY.getCode());
+
+		assertThatThrownBy(() -> orderService.checkout(
+			new CheckoutRequestDto(
+				"prepare-token",
+				1L,
+				10L,
+				20L,
+				List.of(),
+				53000L,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				"직접 입력 메모"
+			),
+			7L
+		))
+			.isInstanceOf(BusinessException.class)
+			.extracting(exception -> ((BusinessException)exception).getErrorCode())
+			.isEqualTo(BusinessErrorCode.ENTRY_CANNOT_APPLY);
 	}
 
 	@Test
@@ -483,11 +532,17 @@ class OrderServiceTest {
 		setId(pace, 20L);
 		course.getEventPaces().add(pace);
 
+		EventItem eventItem = EventItem.builder()
+			.name("기념 티셔츠")
+			.price(10000L)
+			.description("기본 옵션")
+			.build();
+		setId(eventItem, 31L);
+
 		EventPackage eventPackage = EventPackage.builder()
 			.event(event)
-			//.name("기념 티셔츠")   // 아이템 구조 변경 으로 인한 임시 주석
-			//.price(10000L)   // 아이템 구조 변경 으로 인한 임시 주석
-			//.description("기본 옵션")   // 아이템 구조 변경 으로 인한 임시 주석
+			.item(eventItem)
+			.itemType(EventItemType.ADDITIONAL)
 			.build();
 		setId(eventPackage, 30L);
 		event.getPackages().add(eventPackage);
@@ -521,6 +576,19 @@ class OrderServiceTest {
 		setId(selectedAddress, 101L);
 
 		return new TestFixture(event, course, pace, eventPackage, defaultAddress, selectedAddress);
+	}
+
+	private void mockCheckoutEligibility(Long userId, boolean canCheckout, String failureCode) {
+		when(orderEntryContract.resolveCheckoutEligibility(eq(userId), eq(1L), eq(20L)))
+			.thenReturn(OrderCheckoutEligibility.builder()
+				.entryId(1000L)
+				.appType(EventAppType.LOTTERY)
+				.currentEntryStatus(com.kt.onrace.domain.entry.entity.EntryStatus.WON)
+				.requiredEntryStatus(com.kt.onrace.domain.entry.entity.EntryStatus.WON)
+				.requiresReservationValidation(false)
+				.canCheckout(canCheckout)
+				.failureCode(failureCode)
+				.build());
 	}
 
 	private void setId(Object target, Long id) {
