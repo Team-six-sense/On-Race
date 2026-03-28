@@ -47,3 +47,9 @@ variable "database_subnets" {
   type        = list(string)
   default     = ["10.0.201.0/24", "10.0.202.0/24"]
 }
+
+variable "single_nat_gateway" {
+  description = "단일 NAT Gateway 사용 여부"
+  type        = bool
+  default     = true
+}

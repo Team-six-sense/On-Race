@@ -24,3 +24,13 @@ output "rds_endpoint" {
   value       = aws_db_instance.this.endpoint
   description = "The endpoint of the raw RDS instance"
 }
+
+output "redis_sg_id" {
+  description = "Redis 보안 그룹 ID"
+  value       = aws_security_group.redis.id
+}
+
+output "rds_proxy_sg_id" {
+  description = "RDS Proxy 보안 그룹 ID"
+  value       = aws_security_group.rds_proxy.id
+}
