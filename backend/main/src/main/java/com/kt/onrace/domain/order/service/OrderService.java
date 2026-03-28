@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -123,7 +124,24 @@ public class OrderService {
 		Order order = orderRepository.findByOrderNumberAndUserId(orderNumber, userId)
 			.orElseThrow(() -> new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND));
 
+		boolean transitionedFromPending = order.getOrderStatus() == OrderStatus.PENDING;
 		order.markPaid();
+		runPaymentConfirmedFollowUp(order, transitionedFromPending);
+	}
+
+	@Transactional
+	public void failPayment(String orderNumber, Long userId) {
+		transitionPendingOrderToTerminal(orderNumber, userId, Order::markFailed);
+	}
+
+	@Transactional
+	public void cancelPayment(String orderNumber, Long userId) {
+		transitionPendingOrderToTerminal(orderNumber, userId, Order::markCancelled);
+	}
+
+	@Transactional
+	public void expirePayment(String orderNumber, Long userId) {
+		transitionPendingOrderToTerminal(orderNumber, userId, Order::markExpired);
 	}
 
 	@Transactional(readOnly = true)
@@ -250,6 +268,31 @@ public class OrderService {
 		}
 
 		return eligibility;
+	}
+
+	private void transitionPendingOrderToTerminal(String orderNumber, Long userId, Consumer<Order> transitionAction) {
+		Order order = orderRepository.findByOrderNumberAndUserId(orderNumber, userId)
+			.orElseThrow(() -> new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND));
+
+		boolean transitionedFromPending = order.getOrderStatus() == OrderStatus.PENDING;
+		transitionAction.accept(order);
+		runPendingRollbackFollowUp(order, transitionedFromPending);
+	}
+
+	private void runPaymentConfirmedFollowUp(Order order, boolean transitionedFromPending) {
+		if (!transitionedFromPending || order.getEntryId() == null) {
+			return;
+		}
+
+		orderEntryContract.handlePaymentConfirmed(order.getEntryId());
+	}
+
+	private void runPendingRollbackFollowUp(Order order, boolean transitionedFromPending) {
+		if (!transitionedFromPending || order.getEntryId() == null) {
+			return;
+		}
+
+		orderEntryContract.rollbackPendingPayment(order.getEntryId());
 	}
 
 	private BusinessErrorCode resolveFailureCode(String failureCode) {

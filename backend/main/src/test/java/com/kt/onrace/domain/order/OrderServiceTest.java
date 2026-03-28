@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
@@ -488,6 +490,7 @@ class OrderServiceTest {
 		orderService.confirmPayment("ORD-CONFIRM-001", 7L);
 
 		assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.PAID);
+		verify(orderEntryContract).handlePaymentConfirmed(1000L);
 	}
 
 	@Test
@@ -500,6 +503,7 @@ class OrderServiceTest {
 		orderService.confirmPayment("ORD-CONFIRM-PAID", 7L);
 
 		assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.PAID);
+		verify(orderEntryContract, never()).handlePaymentConfirmed(any());
 	}
 
 	@Test
@@ -513,6 +517,58 @@ class OrderServiceTest {
 			.isInstanceOf(BusinessException.class)
 			.extracting(exception -> ((BusinessException)exception).getErrorCode())
 			.isEqualTo(BusinessErrorCode.ORDER_CANNOT_CONFIRM);
+	}
+
+	@Test
+	@DisplayName("결제 실패는 pending 주문을 failed로 전이하고 rollback 훅을 한 번 호출한다")
+	void failPaymentTriggersRollbackHookOnce() {
+		Order order = createOrder("ORD-FAIL-001", 7L, 10L, 20L, OrderStatus.PENDING, 53000L);
+
+		when(orderRepository.findByOrderNumberAndUserId(eq("ORD-FAIL-001"), eq(7L))).thenReturn(Optional.of(order));
+
+		orderService.failPayment("ORD-FAIL-001", 7L);
+
+		assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.FAILED);
+		verify(orderEntryContract).rollbackPendingPayment(1000L);
+	}
+
+	@Test
+	@DisplayName("주문 취소는 pending 주문을 cancelled로 전이하고 rollback 훅을 한 번 호출한다")
+	void cancelPaymentTriggersRollbackHookOnce() {
+		Order order = createOrder("ORD-CANCEL-001", 7L, 10L, 20L, OrderStatus.PENDING, 53000L);
+
+		when(orderRepository.findByOrderNumberAndUserId(eq("ORD-CANCEL-001"), eq(7L))).thenReturn(Optional.of(order));
+
+		orderService.cancelPayment("ORD-CANCEL-001", 7L);
+
+		assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.CANCELLED);
+		verify(orderEntryContract).rollbackPendingPayment(1000L);
+	}
+
+	@Test
+	@DisplayName("주문 만료는 pending 주문을 expired로 전이하고 rollback 훅을 한 번 호출한다")
+	void expirePaymentTriggersRollbackHookOnce() {
+		Order order = createOrder("ORD-EXPIRE-001", 7L, 10L, 20L, OrderStatus.PENDING, 53000L);
+
+		when(orderRepository.findByOrderNumberAndUserId(eq("ORD-EXPIRE-001"), eq(7L))).thenReturn(Optional.of(order));
+
+		orderService.expirePayment("ORD-EXPIRE-001", 7L);
+
+		assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.EXPIRED);
+		verify(orderEntryContract).rollbackPendingPayment(1000L);
+	}
+
+	@Test
+	@DisplayName("이미 같은 terminal 상태면 rollback 훅을 다시 호출하지 않는다")
+	void terminalTransitionsAreIdempotent() {
+		Order order = createOrder("ORD-CANCELLED-001", 7L, 10L, 20L, OrderStatus.CANCELLED, 53000L);
+
+		when(orderRepository.findByOrderNumberAndUserId(eq("ORD-CANCELLED-001"), eq(7L))).thenReturn(Optional.of(order));
+
+		orderService.cancelPayment("ORD-CANCELLED-001", 7L);
+
+		assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.CANCELLED);
+		verify(orderEntryContract, never()).rollbackPendingPayment(any());
 	}
 
 	@Test
