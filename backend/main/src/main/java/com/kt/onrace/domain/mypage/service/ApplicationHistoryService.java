@@ -170,7 +170,8 @@ public class ApplicationHistoryService {
 						event.appType.eq(EventAppType.FIRST_COME)
 							.and(entry.status.in(EntryStatus.PRE_SAVED, EntryStatus.RESERVED))
 					)
-			);
+			)
+			.and(noPaidOrderCondition(userId));
 	}
 
 	private BooleanExpression appTypeCondition(MyPageApplicationHistoryFilter filter) {
@@ -188,14 +189,21 @@ public class ApplicationHistoryService {
 
 	private BooleanExpression noPaidOrderCondition(Long userId) {
 		com.kt.onrace.domain.order.entity.QOrder paidOrder = new com.kt.onrace.domain.order.entity.QOrder("paidOrder");
+		com.kt.onrace.domain.event.entity.QEventCourse paidOrderCourse =
+			new com.kt.onrace.domain.event.entity.QEventCourse("paidOrderCourse");
 
+		// entry_id backfill 전까지는 legacy row를 user_id + event_id로 fallback 조회한다.
 		return JPAExpressions.selectOne()
 			.from(paidOrder)
+			.leftJoin(paidOrderCourse).on(paidOrderCourse.id.eq(paidOrder.eventCourseId))
 			.where(
 				paidOrder.userId.eq(userId),
-				paidOrder.eventCourseId.eq(entry.eventCourse.id),
-				paidOrder.eventPaceId.eq(entry.eventPace.id),
-				paidOrder.orderStatus.eq(OrderStatus.PAID)
+				paidOrder.orderStatus.eq(OrderStatus.PAID),
+				paidOrder.entryId.eq(entry.id)
+					.or(
+						paidOrder.entryId.isNull()
+							.and(paidOrderCourse.event.id.eq(entry.event.id))
+					)
 			)
 			.notExists();
 	}

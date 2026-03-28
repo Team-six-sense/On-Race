@@ -36,7 +36,7 @@ public class Order extends BaseEntity {
 
 	private Long eventPaceId;
 
-	@Column(nullable = false)
+	@Column
 	private Long entryId;
 
 	@Enumerated(EnumType.STRING)

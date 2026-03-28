@@ -1,8 +1,8 @@
 # 주문-신청 연동 주의사항 문서
 
 - 작성일: 2026-03-28
-- 상태: P0 반영 후 메모
-- 범위: `checkout` 진입 게이트, `Order.entryId` 저장, 현재 남아 있는 주의사항
+- 상태: P0, MVP 반영 후 메모
+- 범위: `checkout` 진입 게이트, `Order.entryId` 저장, 결제 완료 확정 API, 현재 남아 있는 주의사항
 
 ## 1. 이번에 반영한 내용
 
@@ -19,6 +19,16 @@
 - `Order` 엔티티에 `entryId` 필드를 추가했다.
 - `checkout`에서 `eligibility.entryId()`를 받아 주문에 저장한다.
 - `entryId == null`이면 주문을 만들지 않고 `COMMON_SYSTEM_ERROR`로 실패시킨다.
+
+### 결제 완료 확정 API
+
+- `POST /orders/{orderNumber}/confirm`를 추가했다.
+- `OrderService.confirmPayment()`가 주문을 조회해 `markPaid()`를 호출한다.
+- 상태 전이 규칙은 아래와 같다.
+  - `PENDING -> PAID`: 정상 전이
+  - `PAID -> PAID`: 그대로 성공 처리
+  - `CANCELLED`, `EXPIRED`, `FAILED`: `ORDER_CANNOT_CONFIRM` 예외
+- 즉, MVP 기준 idempotency는 "이미 `PAID`면 다시 성공 응답"으로 처리한다.
 
 ### 임시 컴파일 복구
 
@@ -43,7 +53,7 @@
 즉:
 
 - `entryId 저장 시점`: 주문 생성 시점
-- `PAID 전환 시점`: 아직 미구현
+- `PAID 전환 시점`: `POST /orders/{orderNumber}/confirm`
 - `entry 후속 완료 처리 시점`: 아직 미구현
 
 주의:
@@ -75,9 +85,20 @@
 
 ### payment 완료 후속 처리
 
-- 아직 `PENDING -> PAID`로 바꾸는 order API/service/webhook이 없다.
+- `PENDING -> PAID`로 바꾸는 mock confirm API는 이제 있다.
+- 현재 기준 결제 완료 확정 진입점은 `POST /orders/{orderNumber}/confirm`이다.
+- 이 API는 실제 PG 연동이 아니라 MVP/mock 완료 API다.
 - 아직 order가 결제 완료 후 entry 상태를 바꾸는 호출도 없다.
-- 따라서 지금 단계는 "주문 생성 전 체크"와 "주문-신청 연결 저장"까지만 완료된 상태다.
+- 따라서 지금 단계는 "주문 생성 전 체크", "주문-신청 연결 저장", "주문 PAID 전이"까지 완료된 상태다.
+- 아직 빠진 것은 "결제 완료 후 entry 후속 처리"다.
+
+### confirm API 사용 시 주의사항
+
+- 같은 주문번호를 여러 번 confirm해도 이미 `PAID`면 문제 없이 성공해야 한다.
+- 반대로 `CANCELLED`, `EXPIRED`, `FAILED` 주문을 confirm하면 안 된다.
+- 이 규칙을 위해 `ORDER_CANNOT_CONFIRM` 에러 코드를 추가했다.
+- 아직 `confirmedAt` 같은 결제 완료 시각은 저장하지 않는다.
+- 아직 이 confirm 안에서 PG 서명 검증, amount 검증, transaction id 검증은 하지 않는다.
 
 ### lottery 완료 처리
 
@@ -93,10 +114,10 @@
 
 ## 5. 다음 작업 우선순위
 
-1. `PENDING -> PAID` 결제 완료 확정 API 또는 webhook 추가
-2. 결제 완료 시 order에서 entry 후속 처리 호출
-3. MyPage 신청내역이 `entryId + order 상태`를 기준으로 더 직접적으로 상태 계산하도록 보정
-4. `ReservationConfirmedEvent` 구조 복구 또는 제거 방향 확정
+1. 결제 완료 시 order에서 entry 후속 처리 호출
+2. MyPage 신청내역이 `entryId + order 상태`를 기준으로 더 직접적으로 상태 계산하도록 보정
+3. `ReservationConfirmedEvent` 구조 복구 또는 제거 방향 확정
+4. 실제 PG/webhook 연동 시 confirm API를 외부 결제 검증과 연결
 
 ## 6. 이번 변경 검증 메모
 

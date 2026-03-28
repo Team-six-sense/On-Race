@@ -67,6 +67,7 @@ class MyPageApiContractTest {
 	private static final long ORDER_ONLY_USER_ID = 12L;
 	private static final long ADDRESS_ONLY_USER_ID = 13L;
 	private static final long ACTION_CASE_USER_ID = 14L;
+	private static final long LEGACY_ORDER_USER_ID = 15L;
 	private static final String GATEWAY_TOKEN = "onrace-super-secret-key";
 
 	@LocalServerPort
@@ -128,6 +129,7 @@ class MyPageApiContractTest {
 		createMember(ORDER_ONLY_USER_ID);
 		createMember(ADDRESS_ONLY_USER_ID);
 		createMember(ACTION_CASE_USER_ID);
+		createMember(LEGACY_ORDER_USER_ID);
 
 		stubAuthAccount(MIXED_USER_ID, "runner@example.com", "홍길동", "01012345678", "LOCAL", true, "VERIFIED", true);
 		stubAuthAccount(EMPTY_USER_ID, "empty@example.com", "빈사용자", "01000000000", "LOCAL", true, "UNVERIFIED", false);
@@ -135,6 +137,7 @@ class MyPageApiContractTest {
 		stubAuthAccount(ORDER_ONLY_USER_ID, "naver@example.com", "주문사용자", "01033334444", "NAVER", false, "VERIFIED", true);
 		stubAuthAccount(ADDRESS_ONLY_USER_ID, "address@example.com", "주소사용자", "01022223333", "LOCAL", true, "UNVERIFIED", false);
 		stubAuthAccount(ACTION_CASE_USER_ID, "action@example.com", "상태검증사용자", "01044445555", "LOCAL", true, "VERIFIED", true);
+		stubAuthAccount(LEGACY_ORDER_USER_ID, "legacy@example.com", "레거시주문사용자", "01055556666", "LOCAL", true, "VERIFIED", false);
 
 		LocalDateTime now = LocalDateTime.now();
 
@@ -143,6 +146,7 @@ class MyPageApiContractTest {
 		seedOrderOnlyUser(now);
 		seedAddressOnlyUser();
 		seedActionCaseUser(now);
+		seedLegacyOrderUser(now);
 	}
 
 	@Test
@@ -405,6 +409,20 @@ class MyPageApiContractTest {
 			.containsExactlyInAnyOrder("APPLY", "CHECKOUT", "NONE");
 	}
 
+	@Test
+	void entriesExcludeLegacyPaidOrdersBackfilledByEventFallback() throws Exception {
+		JsonNode overview = get(LEGACY_ORDER_USER_ID, "/mypage");
+		JsonNode entries = get(LEGACY_ORDER_USER_ID, "/mypage/entries");
+		JsonNode orders = get(LEGACY_ORDER_USER_ID, "/mypage/orders");
+
+		assertThat(overview.path("data").path("entries").path("totalCount").asInt()).isZero();
+		assertThat(overview.path("data").path("orders").path("totalCount").asInt()).isEqualTo(1);
+		assertThat(entries.path("data").path("counts").path("all").asInt()).isZero();
+		assertThat(entries.path("data").path("items")).isEmpty();
+		assertThat(textValues(orders.path("data").path("items"), "status"))
+			.containsExactly("결제 완료");
+	}
+
 	private JsonNode get(Long userId, String path) throws Exception {
 		HttpHeaders headers = new HttpHeaders();
 		headers.add("X-User-Id", userId.toString());
@@ -498,7 +516,7 @@ class MyPageApiContractTest {
 			0,
 			300
 		);
-		createEntry(MIXED_USER_ID, appliedBundle, EntryStatus.APPLIED);
+		Entry appliedEntry = createEntry(MIXED_USER_ID, appliedBundle, EntryStatus.APPLIED);
 
 		EventBundle waitingBundle = createEventBundle(
 			"부산 러닝 페스티벌",
@@ -520,7 +538,7 @@ class MyPageApiContractTest {
 		);
 		createEntry(MIXED_USER_ID, waitingBundle, EntryStatus.PRE_SAVED);
 
-		createOrder(MIXED_USER_ID, appliedBundle, OrderStatus.PENDING, "ORD-TEST-0001");
+		createOrder(MIXED_USER_ID, appliedBundle, appliedEntry.getId(), OrderStatus.PENDING, "ORD-TEST-0001");
 	}
 
 	private void seedEntryOnlyUser(LocalDateTime now) {
@@ -624,9 +642,9 @@ class MyPageApiContractTest {
 			50,
 			120
 		);
-		createOrder(ORDER_ONLY_USER_ID, orderBundle, OrderStatus.PENDING, "ORD-SET2-PENDING");
-		createOrder(ORDER_ONLY_USER_ID, orderBundle, OrderStatus.PAID, "ORD-SET2-PAID");
-		createOrder(ORDER_ONLY_USER_ID, orderBundle, OrderStatus.CANCELLED, "ORD-SET2-CANCELLED");
+		createOrder(ORDER_ONLY_USER_ID, orderBundle, null, OrderStatus.PENDING, "ORD-SET2-PENDING");
+		createOrder(ORDER_ONLY_USER_ID, orderBundle, null, OrderStatus.PAID, "ORD-SET2-PAID");
+		createOrder(ORDER_ONLY_USER_ID, orderBundle, null, OrderStatus.CANCELLED, "ORD-SET2-CANCELLED");
 	}
 
 	private void seedAddressOnlyUser() {
@@ -716,6 +734,42 @@ class MyPageApiContractTest {
 		createEntry(ACTION_CASE_USER_ID, firstComeClosedBundle, EntryStatus.PRE_SAVED);
 	}
 
+	private void seedLegacyOrderUser(LocalDateTime now) {
+		EventBundle currentEntryBundle = createEventBundle(
+			"레거시 주문 연결 이벤트",
+			EventType.MARATHON,
+			EventAppType.LOTTERY,
+			now.plusDays(18),
+			now.minusDays(6),
+			now.minusDays(2),
+			now.minusDays(1),
+			EventRegion.SEOUL,
+			"잠실보조경기장",
+			"하프",
+			21097,
+			31000L,
+			"5:40/km",
+			5,
+			40,
+			140
+		);
+		Entry entry = createEntry(LEGACY_ORDER_USER_ID, currentEntryBundle, EntryStatus.WON);
+
+		EventBundle legacyOrderBundle = createSiblingCourseBundle(
+			currentEntryBundle.event(),
+			"10K",
+			10000,
+			26000L,
+			"5:20/km",
+			5,
+			20,
+			160
+		);
+		createOrder(LEGACY_ORDER_USER_ID, legacyOrderBundle, null, OrderStatus.PAID, "ORD-LEGACY-PAID");
+
+		assertThat(entry.getId()).isNotNull();
+	}
+
 	private Address createAddress(Long userId, String label, boolean isDefault, String receiverName, String phone,
 		String zipcode, String address1, String address2, String memo) {
 		return addressRepository.saveAndFlush(Address.builder()
@@ -743,7 +797,7 @@ class MyPageApiContractTest {
 			.build());
 	}
 
-	private Order createOrder(Long userId, EventBundle bundle, OrderStatus orderStatus, String orderNumber) {
+	private Order createOrder(Long userId, EventBundle bundle, Long entryId, OrderStatus orderStatus, String orderNumber) {
 		long price = bundle.course().getPrice();
 		long shippingFee = 3000L;
 
@@ -752,7 +806,7 @@ class MyPageApiContractTest {
 			.userId(userId)
 			.eventCourseId(bundle.course().getId())
 			.eventPaceId(bundle.pace().getId())
-			.entryId(bundle.pace().getId())
+			.entryId(entryId)
 			.orderStatus(orderStatus)
 			.itemTotalAmount(price)
 			.shippingFee(shippingFee)
@@ -766,6 +820,39 @@ class MyPageApiContractTest {
 			.detailAddress("999동")
 			.deliveryMemo("문앞")
 			.build());
+	}
+
+	private EventBundle createSiblingCourseBundle(
+		Event event,
+		String courseName,
+		int distanceMeter,
+		long price,
+		String paceName,
+		int hour,
+		int minutes,
+		int capacity
+	) {
+		EventCourse savedCourse = eventCourseRepository.saveAndFlush(EventCourse.builder()
+			.event(event)
+			.name(courseName)
+			.mapUrl(null)
+			.distanceMeter(distanceMeter)
+			.timeLimit(180)
+			.waterSource(10)
+			.altitude(100)
+			.courseRoute(courseName + " 코스")
+			.price(price)
+			.build());
+
+		EventPace savedPace = eventPaceRepository.saveAndFlush(EventPace.builder()
+			.eventCourse(savedCourse)
+			.name(paceName)
+			.hour(hour)
+			.minutes(minutes)
+			.capacity(capacity)
+			.build());
+
+		return new EventBundle(event, savedCourse, savedPace);
 	}
 
 	private EventBundle createEventBundle(
