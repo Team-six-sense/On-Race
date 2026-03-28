@@ -478,6 +478,43 @@ class OrderServiceTest {
 	}
 
 	@Test
+	@DisplayName("결제 완료 확정은 pending 주문을 paid로 전이한다")
+	void confirmPaymentMarksPendingOrderAsPaid() {
+		Order order = createOrder("ORD-CONFIRM-001", 7L, 10L, 20L, OrderStatus.PENDING, 53000L);
+
+		when(orderRepository.findByOrderNumberAndUserId(eq("ORD-CONFIRM-001"), eq(7L))).thenReturn(Optional.of(order));
+
+		orderService.confirmPayment("ORD-CONFIRM-001", 7L);
+
+		assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.PAID);
+	}
+
+	@Test
+	@DisplayName("결제 완료 확정은 이미 paid 상태면 중복 호출에도 그대로 성공한다")
+	void confirmPaymentIsIdempotentWhenAlreadyPaid() {
+		Order order = createOrder("ORD-CONFIRM-PAID", 7L, 10L, 20L, OrderStatus.PAID, 53000L);
+
+		when(orderRepository.findByOrderNumberAndUserId(eq("ORD-CONFIRM-PAID"), eq(7L))).thenReturn(Optional.of(order));
+
+		orderService.confirmPayment("ORD-CONFIRM-PAID", 7L);
+
+		assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.PAID);
+	}
+
+	@Test
+	@DisplayName("결제 완료 확정은 취소된 주문이면 ORDER_CANNOT_CONFIRM 예외가 발생한다")
+	void confirmPaymentThrowsWhenOrderStatusCannotBeConfirmed() {
+		Order order = createOrder("ORD-CONFIRM-CANCELLED", 7L, 10L, 20L, OrderStatus.CANCELLED, 53000L);
+
+		when(orderRepository.findByOrderNumberAndUserId(eq("ORD-CONFIRM-CANCELLED"), eq(7L))).thenReturn(Optional.of(order));
+
+		assertThatThrownBy(() -> orderService.confirmPayment("ORD-CONFIRM-CANCELLED", 7L))
+			.isInstanceOf(BusinessException.class)
+			.extracting(exception -> ((BusinessException)exception).getErrorCode())
+			.isEqualTo(BusinessErrorCode.ORDER_CANNOT_CONFIRM);
+	}
+
+	@Test
 	@DisplayName("목록 조회는 허용되지 않은 탭이면 ORDER_INVALID_TAB 예외가 발생한다")
 	void getOrdersThrowsWhenTabIsInvalid() {
 		assertThatThrownBy(() -> orderService.getOrders("archived", 7L))

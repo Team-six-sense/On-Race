@@ -45,6 +45,15 @@ public class OrderController {
 		return ApiResponse.success(response);
 	}
 
+	@PostMapping("/{orderNumber}/confirm")
+	public ApiResponse<Void> confirmPayment(
+		@PathVariable String orderNumber,
+		@RequestHeader("X-User-Id") Long userId) {
+
+		orderService.confirmPayment(orderNumber, userId);
+		return ApiResponse.success();
+	}
+
 	@PostMapping("/checkout-info")
 	public ApiResponse<CheckoutPrepareResponseDto> checkoutPrepare(
 		@RequestBody CheckoutPrepareRequestDto request,

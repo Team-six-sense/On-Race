@@ -118,6 +118,14 @@ public class OrderService {
 		);
 	}
 
+	@Transactional
+	public void confirmPayment(String orderNumber, Long userId) {
+		Order order = orderRepository.findByOrderNumberAndUserId(orderNumber, userId)
+			.orElseThrow(() -> new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND));
+
+		order.markPaid();
+	}
+
 	@Transactional(readOnly = true)
 	public CheckoutPrepareResponseDto getCheckoutPrepareInfo(CheckoutPrepareRequestDto request, Long userId) {
 

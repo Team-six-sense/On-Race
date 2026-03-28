@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.kt.onrace.common.entity.BaseEntity;
+import com.kt.onrace.common.exception.BusinessErrorCode;
+import com.kt.onrace.common.exception.BusinessException;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -104,6 +106,16 @@ public class Order extends BaseEntity {
 	public void addPackage(OrderPackage orderPackage) {
 		this.packages.add(orderPackage);
 		orderPackage.setOrder(this);
+	}
+
+	public void markPaid() {
+		switch (this.orderStatus) {
+			case PENDING -> this.orderStatus = OrderStatus.PAID;
+			case PAID -> {
+				return;
+			}
+			case CANCELLED, EXPIRED, FAILED -> throw new BusinessException(BusinessErrorCode.ORDER_CANNOT_CONFIRM);
+		}
 	}
 
 }
