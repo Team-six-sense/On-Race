@@ -55,27 +55,24 @@ public class EventStockService {
 		);
 	}
 
-	/**
-	 * (결제 확정 테스트용 임시 코드입니다 추후에 제가 삭제하겠습니다)
-	 */
+	public long getReservationTtl(Long paceId, Long userId) {
+		String reservationKey = RedisKeyGenerator.reservationKey(paceId, userId);
+		RBucket<String> bucket = redissonClient.getBucket(reservationKey, StringCodec.INSTANCE);
+		return bucket.remainTimeToLive();
+	}
+
 	public void restoreStock(Long paceId) {
 		String stockKey = RedisKeyGenerator.stockKey(paceId);
 		RAtomicLong stock = redissonClient.getAtomicLong(stockKey);
 		stock.incrementAndGet();
 	}
 
-	/**
-	 * (결제 확정 테스트용 임시 코드입니다 추후에 제가 삭제하겠습니다)
-	 */
 	public boolean hasReservation(Long paceId, Long userId) {
 		String reservationKey = RedisKeyGenerator.reservationKey(paceId, userId);
 		RBucket<String> bucket = redissonClient.getBucket(reservationKey, StringCodec.INSTANCE);
 		return bucket.isExists();
 	}
 
-	/**
-	 * (결제 확정 테스트용 임시 코드입니다 추후에 제가 삭제하겠습니다)
-	 */
 	public boolean deleteReservation(Long paceId, Long userId) {
 		String reservationKey = RedisKeyGenerator.reservationKey(paceId, userId);
 		RBucket<String> bucket = redissonClient.getBucket(reservationKey, StringCodec.INSTANCE);

@@ -3,6 +3,7 @@ package com.kt.onrace.domain.entry.service;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -10,6 +11,7 @@ import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
 import com.kt.onrace.common.logging.annotation.ServiceLog;
 import com.kt.onrace.common.util.Preconditions;
+import com.kt.onrace.domain.entry.listener.ReservationConfirmedEvent;
 import com.kt.onrace.domain.entry.config.EntryProperties;
 import com.kt.onrace.domain.entry.dto.EntryApplyResponse;
 import com.kt.onrace.domain.entry.dto.EntryOverviewResponse;
@@ -48,6 +50,7 @@ public class EntryService {
 	private final MemberRepository memberRepository;
 	private final EventStockService eventStockService;
 	private final EventStockRepository eventStockRepository;
+	private final ApplicationEventPublisher applicationEventPublisher;
 
 	@ServiceLog(slowMs = 2000)
 	@Transactional
@@ -214,29 +217,24 @@ public class EntryService {
 	}
 
 	/**
-	 * 결제 확정 — (테스트용 임시 코드입니다 추후에 제가 삭제하겠습니다)
+	 * 결제 확정 — RESERVED → APPLIED 전환, DB 확정 재고 증가
+	 * Redis 예약 키 삭제는 트랜잭션 커밋 후 ReservationConfirmedListener에서 처리
 	 */
 	@ServiceLog(slowMs = 2000)
 	@Transactional
-	public void confirmReservation(Long userId, Long eventId, Long paceId) {
-		log.info("[TEMP-LOG] confirmReservation 시작 - userId={}, paceId={}", userId, paceId);
+	public void confirmReservation(Long userId, Long paceId) {
 		Entry entry = entryRepository.findByUserIdAndEventPaceId(userId, paceId)
 			.orElseThrow(() -> new BusinessException(BusinessErrorCode.ENTRY_NOT_FOUND));
 
-		if (entry.getStatus() == EntryStatus.APPLIED) {
-			log.info("[TEMP-LOG] 이미 APPLIED 상태, 즉시 반환 - userId={}", userId);
-			return;
-		}
-
 		Preconditions.validate(entry.isReserved(), BusinessErrorCode.ENTRY_CANNOT_APPLY);
-
-		boolean deleted = eventStockService.deleteReservation(paceId, userId);
-		log.info("[TEMP-LOG] Redis 예약 키 삭제 결과 - deleted={}", deleted);
-		Preconditions.validate(deleted, BusinessErrorCode.ENTRY_RESERVATION_EXPIRED);
+		Preconditions.validate(eventStockService.hasReservation(paceId, userId),
+			BusinessErrorCode.ENTRY_RESERVATION_EXPIRED
+		);
 
 		entry.confirmPayment();
 		eventStockRepository.findByEventPaceIdOrThrow(paceId).confirmStock();
-		log.info("[TEMP-LOG] confirmReservation 완료 - userId={}, status=APPLIED, confirmedStock++", userId);
+
+		applicationEventPublisher.publishEvent(new ReservationConfirmedEvent(paceId, userId));
 	}
 
 }
