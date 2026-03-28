@@ -1,4 +1,4 @@
-name: "On-Race-Infra-CD" # 요구하신 이름으로 변경
+name: "On-Race-Infra-CD"
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
@@ -27,7 +27,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      # --- [1단계] Base 계층 배포 ---
+      # --- [1단계] Base 계층 (VPC, DB, Redis) ---
       - name: Base Layer - Init & Apply
         working-directory: ./infra/envs/prod/base
         run: |
@@ -39,42 +39,50 @@ jobs:
         working-directory: ./infra/envs/prod/app
         run: terraform init
 
-      # --- [3단계] EKS 클러스터 본체만 우선 배포 ---
+      # --- [3단계] EKS 클러스터 본체 배포 ---
       - name: App Layer - Create EKS Cluster
         working-directory: ./infra/envs/prod/app
         run: terraform apply -auto-approve -target=module.eks
 
-      # --- [4단계] Kubeconfig 갱신 (클러스터 접속 정보 동기화) ---
+      # --- [4단계] Kubeconfig 갱신 ---
       - name: Update Kubeconfig
         run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }}
 
-      # --- [5단계] 핵심 컨트롤러 우선 설치 ---
-      - name: App Layer - Targeted Apply (Controllers)
+      # --- [5단계] ALB 컨트롤러 설치 (Ingress 구동 필수) ---
+      - name: App Layer - Targeted Apply (LB Controller)
         working-directory: ./infra/envs/prod/app
         run: |
           terraform apply -auto-approve \
             -target=module.lb_controller_irsa \
             -target=helm_release.lb_controller
 
-      # [추가] LB 컨트롤러 웹훅이 활성화될 때까지 3분간 강제 대기
       - name: Wait for LB Controller Webhook
         run: sleep 180
 
-      # --- [5-2단계] 나머지 컨트롤러 설치 ---
-      - name: App Layer - Remaining Controllers
+      # --- [5-2단계] 필수 애드온 및 오토스케일러 설치 ---
+      # Grafana/Prometheus의 PV 생성을 위해 EBS CSI와 StorageClass를 먼저 설치합니다.
+      - name: App Layer - Infrastructure Add-ons
         working-directory: ./infra/envs/prod/app
         run: |
           terraform apply -auto-approve \
+            -target=aws_eks_addon.ebs_csi \
+            -target=kubernetes_storage_class_v1.gp3_default \
             -target=module.karpenter \
             -target=helm_release.karpenter \
-            -target=helm_release.keda \
+            -target=helm_release.keda
+
+      # --- [5-3단계] 모니터링 스택 통합 배포 (의존성 해결) ---
+      # Grafana가 의존하는 Loki와 Prometheus를 한 번에 배포하여 그래프 꼬임을 방지합니다.
+      - name: App Layer - Monitoring Stack
+        working-directory: ./infra/envs/prod/app
+        run: |
+          terraform apply -auto-approve \
             -target=module.loki \
             -target=helm_release.loki \
             -target=helm_release.prometheus \
-            -target=aws_eks_addon.ebs_csi \
-            -target=kubernetes_storage_class_v1.gp3_default
+            -target=helm_release.grafana
 
-      # --- [6단계] App Layer 전체 배포 (Manifests 등 나머지) ---
+      # --- [6단계] App Layer 전체 배포 (Manifests, Apps 등) ---
       - name: App Layer - Full Apply
         working-directory: ./infra/envs/prod/app
         run: terraform apply -auto-approve

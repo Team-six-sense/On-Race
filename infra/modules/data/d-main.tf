@@ -1,3 +1,23 @@
+# 랜덤 패스워드 생성
+resource "random_password" "db_password" {
+  length           = 16
+  special          = true
+  override_special = "!#$%&*()-_=+[]{} <>:?"
+}
+
+# Secrets Manager에 암호 저장
+resource "aws_secretsmanager_secret" "db_password" {
+  name = "${var.project_name}-${var.environment}-db-password-v4" # 버전 충돌 방지를 위해 이름 변경 권장
+}
+
+resource "aws_secretsmanager_secret_version" "db_password" {
+  secret_id     = aws_secretsmanager_secret.db_password.id
+  secret_string = jsonencode({
+    username = "admin"
+    password = random_password.db_password.result
+  })
+}
+
 # ==========================================================================
 # 1. Redis 계층 (ElastiCache)
 # ==========================================================================
@@ -32,6 +52,19 @@ resource "aws_elasticache_parameter_group" "this" {
   parameter {
     name  = "maxmemory-policy"
     value = "volatile-lru"
+  }
+
+  # 유휴 커넥션 정리 (60초 동안 응답 없으면 연결 해제)
+  # 좀비 커넥션이 maxclients 한도를 차지하는 것을 방지합니다.
+  parameter {
+    name  = "timeout"
+    value = "60"
+  }
+
+  # TCP Keepalive 설정 (300초마다 연결 상태 확인)
+  parameter {
+    name  = "tcp-keepalive"
+    value = "300"
   }
 }
 
@@ -95,7 +128,7 @@ resource "aws_db_instance" "this" {
   allocated_storage = 20
 
   username = "admin"
-  password = var.db_password # base에서 주입받은 암호 사용
+  password = random_password.db_password.result # 생성된 랜덤 암호 사용
   db_name  = "onrace"
 
   db_subnet_group_name   = aws_db_subnet_group.this.name
@@ -140,7 +173,7 @@ resource "aws_db_proxy" "this" {
   auth {
     auth_scheme = "SECRETS"
     iam_auth    = "DISABLED"
-    secret_arn  = var.db_secret_arn # base에서 주입받은 ARN 사용
+    secret_arn  = aws_secretsmanager_secret.db_password.arn
   }
 }
 
@@ -192,7 +225,7 @@ resource "aws_iam_policy" "rds_proxy_policy" {
           "secretsmanager:DescribeSecret"
         ]
         Effect   = "Allow"
-        Resource = [var.db_secret_arn]
+        Resource = [aws_secretsmanager_secret.db_password.arn]
       }
     ]
   })

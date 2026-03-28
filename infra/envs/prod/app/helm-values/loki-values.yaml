@@ -16,24 +16,22 @@ loki:
   storage:
     type: s3
     bucketNames:
-      chunks: t6-on-race-loki-logs-202020842
-      ruler: t6-on-race-loki-logs-202020842
-      admin: t6-on-race-loki-logs-202020842
+      chunks: "${loki_bucket_name}" # 테라폼에서 주입
+      ruler: "${loki_bucket_name}"
+      admin: "${loki_bucket_name}"
     s3:
       region: ap-northeast-2
-      # S3의 경우 최근 버전에서는 path style이 필수가 아니지만 유지해도 무방합니다.
       s3ForcePathStyle: true
 
   serviceAccount:
     create: true
     name: loki
     annotations:
-      # 테라폼 templatefile 함수가 이 ${loki_role_arn}을 실제 ARN으로 치환합니다.
+      # 테라폼에서 주입하는 동적 ARN
       eks.amazonaws.com/role-arn: "${loki_role_arn}"
 
 deploymentMode: SingleBinary
 
-# SingleBinary 모드 시 충돌 방지를 위한 설정
 read:
   replicas: 0
 write:
@@ -49,5 +47,3 @@ singleBinary:
       memory: 512Mi
     limits:
       memory: 1Gi
-
-# (이하 캐시 및 수집기 설정은 기존과 동일)z

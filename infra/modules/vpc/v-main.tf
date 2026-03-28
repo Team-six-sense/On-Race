@@ -1,3 +1,6 @@
+# 리전 정보를 가져오기 위한 데이터 소스
+data "aws_region" "current" {}
+
 # 1. VPC 생성
 resource "aws_vpc" "this" {
   cidr_block           = var.vpc_cidr
@@ -9,7 +12,7 @@ resource "aws_vpc" "this" {
   }
 }
 
-# 2. Public Subnets (ALB, NAT Gateway, Istio Ingress Proxy 용)
+# 2. Public Subnets (ALB, NAT Gateway 용)
 resource "aws_subnet" "public" {
   count                   = length(var.public_subnets)
   vpc_id                  = aws_vpc.this.id
@@ -19,11 +22,11 @@ resource "aws_subnet" "public" {
 
   tags = {
     Name                     = "${var.project_name}-${var.environment}-public-${var.azs[count.index]}"
-    "kubernetes.io/role/elb" = "1" # [필수] EKS/Istio 외부 로드밸런서 자동 할당 태그
+    "kubernetes.io/role/elb" = "1" # ALB 로드밸런서 자동 할당 태그
   }
 }
 
-# 3. Private Subnets (EKS Worker Nodes, SQS 연동 파드 용)
+# 3. Private Subnets (EKS Worker Nodes, 700개 파드 수용 대역)
 resource "aws_subnet" "private" {
   count             = length(var.private_subnets)
   vpc_id            = aws_vpc.this.id
@@ -32,10 +35,10 @@ resource "aws_subnet" "private" {
 
   tags = {
     Name                              = "${var.project_name}-${var.environment}-private-${var.azs[count.index]}"
-    "kubernetes.io/role/internal-elb" = "1" # [필수] EKS 내부 로드밸런서 자동 할당 태그
+    "kubernetes.io/role/internal-elb" = "1" # 내부 로드밸런서 자동 할당 태그
 
-    # Karpenter가 서브넷을 찾기 위한 필수 식별 태그
-    "karpenter.sh/discovery" = "t6-on-race-prod-cluster"
+    # [필수] Karpenter가 노드를 배치할 서브넷을 식별하기 위한 태그
+    "karpenter.sh/discovery" = "${var.project_name}-${var.environment}-cluster"
   }
 }
 
@@ -60,7 +63,7 @@ resource "aws_internet_gateway" "this" {
   }
 }
 
-# 6. NAT Gateway 및 EIP (single_nat_gateway 변수 제어)
+# 6. NAT Gateway 및 EIP
 resource "aws_eip" "nat" {
   count  = var.single_nat_gateway ? 1 : length(var.azs)
   domain = "vpc"
@@ -77,7 +80,7 @@ resource "aws_nat_gateway" "this" {
   depends_on = [aws_internet_gateway.this]
 }
 
-# 7. Public Route Table & Association (IGW 연결)
+# 7. Public Route Table & Association
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.this.id
 
@@ -95,14 +98,13 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-# 8. Private Route Table & Association (NAT Gateway 연동)
+# 8. Private Route Table & Association
 resource "aws_route_table" "private" {
   count  = length(var.private_subnets)
   vpc_id = aws_vpc.this.id
 
   route {
-    cidr_block = "0.0.0.0/0"
-    # single_nat_gateway 분기 처리에 따른 NAT 매핑
+    cidr_block     = "0.0.0.0/0"
     nat_gateway_id = var.single_nat_gateway ? aws_nat_gateway.this[0].id : aws_nat_gateway.this[count.index].id
   }
 
@@ -115,7 +117,7 @@ resource "aws_route_table_association" "private" {
   route_table_id = aws_route_table.private[count.index].id
 }
 
-# 9. Database Route Table & Association (인터넷 차단, Local 통신만 허용)
+# 9. Database Route Table & Association (격리된 통신)
 resource "aws_route_table" "database" {
   vpc_id = aws_vpc.this.id
   tags   = { Name = "${var.project_name}-${var.environment}-rt-database" }
@@ -127,25 +129,23 @@ resource "aws_route_table_association" "database" {
   route_table_id = aws_route_table.database.id
 }
 
-# 10. VPC Interface Endpoints (비용 절감 핵심 4종 세트)
+# 10. VPC Interface Endpoints (비용 절감 및 보안 핵심 7종 세트)
 locals {
-  # 이름을 services로 변경하세요.
-  services = ["sqs", "sts", "logs", "monitoring"]
+  # KMS 복호화 타임아웃 방지를 위해 kms 추가
+  endpoint_services = ["sqs", "sts", "logs", "monitoring", "ecr.dkr", "ecr.api", "kms"]
 }
 
 resource "aws_vpc_endpoint" "interface" {
-  # 이제 local.services를 정상적으로 찾을 수 있습니다.
-  for_each = toset(local.services)
+  for_each = toset(local.endpoint_services)
 
   vpc_id            = aws_vpc.this.id
   service_name      = "com.amazonaws.${data.aws_region.current.name}.${each.value}"
   vpc_endpoint_type = "Interface"
 
-  # 프라이빗 서브넷에 배치하여 파드들이 내부망으로 통신하게 함
   subnet_ids         = aws_subnet.private[*].id
   security_group_ids = [aws_security_group.vpc_endpoint.id]
 
-  # [필수] 앱 코드 수정 없이 자동으로 엔드포인트를 사용하게 함
+  # [필수] SDK/CLI 호출 시 자동으로 엔드포인트를 타게 함
   private_dns_enabled = true
 
   tags = {
@@ -153,7 +153,7 @@ resource "aws_vpc_endpoint" "interface" {
   }
 }
 
-# S3는 'Gateway' 타입이므로 따로 생성 (이건 완전 무료입니다!)
+# S3 Gateway Endpoint (무료)
 resource "aws_vpc_endpoint" "s3" {
   vpc_id            = aws_vpc.this.id
   service_name      = "com.amazonaws.${data.aws_region.current.name}.s3"
@@ -165,21 +165,17 @@ resource "aws_vpc_endpoint" "s3" {
   }
 }
 
-# 리전 정보를 가져오기 위한 데이터 소스
-data "aws_region" "current" {}
-
-# VPC Endpoint 전용 보안 그룹 (기존 코드 유지 및 최적화)
+# VPC Endpoint 전용 보안 그룹
 resource "aws_security_group" "vpc_endpoint" {
   name        = "${var.project_name}-${var.environment}-vpce-sg"
   description = "Security group for VPC Endpoints"
   vpc_id      = aws_vpc.this.id
 
   ingress {
-    from_port = 443
-    to_port   = 443
-    protocol  = "tcp"
-    # VPC 내부의 모든 통신 허용 (EKS 노드 포함)
-    cidr_blocks = [var.vpc_cidr]
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr] # VPC 내부 통신 허용
   }
 
   egress {

@@ -1,4 +1,4 @@
-# 1. Loki 전용 IAM 역할(IRSA) 모듈
+# 1. Loki 전용 IAM 역할(IRSA) 및 S3 리소스 모듈 호출
 module "loki" {
   source            = "../../../modules/loki"
   project_name      = var.project_name
@@ -6,7 +6,7 @@ module "loki" {
   oidc_provider_arn = module.eks.oidc_provider_arn
 }
 
-# 2. Loki 배포 (템플릿 파일을 사용해 IAM Role ARN을 동적 주입)
+# 2. Loki 배포 (템플릿 파일을 사용해 ARN 및 버킷명 동적 주입)
 resource "helm_release" "loki" {
   name             = "loki"
   repository       = "https://grafana.github.io/helm-charts"
@@ -14,10 +14,11 @@ resource "helm_release" "loki" {
   namespace        = "loki"
   create_namespace = true
 
-  # [핵심] templatefile을 통해 loki-values.yaml 내의 ${loki_role_arn}에 실제 값을 주입
+  # [핵심] templatefile을 통해 변수들을 실제 값으로 치환하여 주입
   values = [
     templatefile("${path.module}/helm-values/loki-values.yaml", {
-      loki_role_arn = module.loki.loki_role_arn
+      loki_role_arn   = module.loki.loki_role_arn
+      loki_bucket_name = module.loki.loki_bucket_name
     })
   ]
 
@@ -64,6 +65,6 @@ resource "helm_release" "grafana" {
     value = "LoadBalancer"
   }
 
-  # [주의] Loki가 먼저 설치되어야 Grafana 데이터 소스 연결이 실패하지 않음
+  # Loki와 Prometheus가 준비된 후 설치
   depends_on = [aws_eks_addon.ebs_csi, helm_release.loki, helm_release.prometheus]
 }

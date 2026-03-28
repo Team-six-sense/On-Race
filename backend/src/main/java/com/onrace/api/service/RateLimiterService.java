@@ -3,7 +3,7 @@ package com.onrace.api.service;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value; // 추가
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Service;
@@ -23,45 +23,53 @@ public class RateLimiterService {
     @Autowired
     private MeterRegistry meterRegistry;
 
-    // [수정] application.yml에서 기본값 100을 읽어옴
     @Value("${tps.limit:100}")
     private int defaultTpsLimit;
 
-    // Redis에 저장할 설정 키 이름
     private static final String CONFIG_KEY = "onrace:config:tps-limit";
 
-    /**
-     * @param groupId 그룹 ID (g1, g2 등)
-     * 인자에서 maxTps를 제거하여 내부적으로 동적 결정하도록 변경
-     */
     public boolean isAllowed(String groupId) {
-        // 1. Redis에서 실시간 TPS 제한 설정값 조회
-        String dynamicLimitStr = redisTemplate.opsForValue().get(CONFIG_KEY);
-        
-        // 2. Redis 값이 있으면 우선 적용, 없으면 yml 설정(100) 적용
-        int currentLimit = (dynamicLimitStr != null) ? Integer.parseInt(dynamicLimitStr) : defaultTpsLimit;
+        int currentLimit = defaultTpsLimit;
 
-        String key = "tps:" + groupId + ":" + (System.currentTimeMillis() / 1000);
-        
         try {
-            // 3. 결정된 currentLimit으로 Lua 스크립트 실행
-            Long result = redisTemplate.execute(tpsLimitScript, 
+            // 1. Redis 설정값 조회 (실무 최적화: 1초 단위 로컬 캐싱 권장)
+            String dynamicLimitStr = redisTemplate.opsForValue().get(CONFIG_KEY);
+            if (dynamicLimitStr != null) {
+                try {
+                    currentLimit = Integer.parseInt(dynamicLimitStr);
+                } catch (NumberFormatException e) {
+                    log.warn("[RateLimiter] 설정값 형식 오류: {}. 기본값 사용", dynamicLimitStr);
+                }
+            }
+
+            // 2. 현재 초 단위 키 생성
+            String key = "tps:" + groupId + ":" + (System.currentTimeMillis() / 1000);
+
+            // 3. Lua 스크립트 실행
+            // [해결] 타입 불일치(Integer vs Long) 방지를 위해 Object로 수신
+            Object result = redisTemplate.execute(tpsLimitScript, 
                     Collections.singletonList(key), 
                     String.valueOf(currentLimit), "2");
-            
-            boolean allowed = (result != null && result == 1L);
 
-            // 4. Prometheus 메트릭 기록 (KEDA 스케일링 소스)
-            String statusTag = allowed ? "allowed" : "rejected";
-            meterRegistry.counter("onrace_tps_requests_total", 
-                    "group", groupId, 
-                    "result", statusTag).increment();
+            // [해결] Number 인터페이스를 활용한 안전한 타입 변환 (NPE 및 ClassCastException 동시 방어)
+            boolean allowed = (result instanceof Number) && ((Number) result).longValue() == 1L;
+
+            // 4. 메트릭 기록 (allowed / rejected)
+            recordMetric(groupId, allowed ? "allowed" : "rejected");
 
             return allowed;
 
         } catch (Exception e) {
-            log.error("[RateLimiter] Redis 연결 오류 - 유입 제어 일시 해제 (Group: {})", groupId, e);
-            return true; // Fail-Open
+            // [Fail-Open] Redis 장애 시 차단하지 않고 허용하며, 'error' 메트릭 기록
+            log.error("[RateLimiter] Redis 장애 발생 - 유입 제어 일시 해제 (Group: {})", groupId, e);
+            recordMetric(groupId, "error"); 
+            return true; 
         }
+    }
+
+    private void recordMetric(String groupId, String resultTag) {
+        meterRegistry.counter("onrace_tps_requests_total", 
+                "group", groupId, 
+                "result", resultTag).increment();
     }
 }
