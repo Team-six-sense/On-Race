@@ -47,6 +47,12 @@ import lombok.RequiredArgsConstructor;
 @Transactional(readOnly = true)
 public class ApplicationHistoryService {
 
+	private static final List<OrderStatus> ORDER_OWNED_APPLICATION_STATUSES = List.of(
+		OrderStatus.PENDING,
+		OrderStatus.PAID,
+		OrderStatus.CANCELLED
+	);
+
 	private final JPAQueryFactory queryFactory;
 	private final ApplyDisplayStatusResolver applyDisplayStatusResolver;
 
@@ -159,7 +165,7 @@ public class ApplicationHistoryService {
 	private BooleanExpression summaryEntriesCondition(Long userId) {
 		return entry.userId.eq(userId)
 			.and(entry.status.in(EntryStatus.APPLIED, EntryStatus.WON, EntryStatus.LOST))
-			.and(noPaidOrderCondition(userId));
+			.and(noOrderOwnedApplicationCondition(userId));
 	}
 
 	private BooleanExpression applicationHistoryCondition(Long userId) {
@@ -171,7 +177,7 @@ public class ApplicationHistoryService {
 							.and(entry.status.in(EntryStatus.PRE_SAVED, EntryStatus.RESERVED))
 					)
 			)
-			.and(noPaidOrderCondition(userId));
+			.and(noOrderOwnedApplicationCondition(userId));
 	}
 
 	private BooleanExpression appTypeCondition(MyPageApplicationHistoryFilter filter) {
@@ -184,25 +190,26 @@ public class ApplicationHistoryService {
 
 	private BooleanExpression waitingEntriesCondition(Long userId) {
 		return entry.userId.eq(userId)
-			.and(entry.status.in(EntryStatus.PRE_SAVED, EntryStatus.RESERVED));
+			.and(entry.status.in(EntryStatus.PRE_SAVED, EntryStatus.RESERVED))
+			.and(noOrderOwnedApplicationCondition(userId));
 	}
 
-	private BooleanExpression noPaidOrderCondition(Long userId) {
-		com.kt.onrace.domain.order.entity.QOrder paidOrder = new com.kt.onrace.domain.order.entity.QOrder("paidOrder");
-		com.kt.onrace.domain.event.entity.QEventCourse paidOrderCourse =
-			new com.kt.onrace.domain.event.entity.QEventCourse("paidOrderCourse");
+	private BooleanExpression noOrderOwnedApplicationCondition(Long userId) {
+		com.kt.onrace.domain.order.entity.QOrder ownedOrder = new com.kt.onrace.domain.order.entity.QOrder("ownedOrder");
+		com.kt.onrace.domain.event.entity.QEventCourse ownedOrderCourse =
+			new com.kt.onrace.domain.event.entity.QEventCourse("ownedOrderCourse");
 
 		// entry_id backfill 전까지는 legacy row를 user_id + event_id로 fallback 조회한다.
 		return JPAExpressions.selectOne()
-			.from(paidOrder)
-			.leftJoin(paidOrderCourse).on(paidOrderCourse.id.eq(paidOrder.eventCourseId))
+			.from(ownedOrder)
+			.leftJoin(ownedOrderCourse).on(ownedOrderCourse.id.eq(ownedOrder.eventCourseId))
 			.where(
-				paidOrder.userId.eq(userId),
-				paidOrder.orderStatus.eq(OrderStatus.PAID),
-				paidOrder.entryId.eq(entry.id)
+				ownedOrder.userId.eq(userId),
+				ownedOrder.orderStatus.in(ORDER_OWNED_APPLICATION_STATUSES),
+				ownedOrder.entryId.eq(entry.id)
 					.or(
-						paidOrder.entryId.isNull()
-							.and(paidOrderCourse.event.id.eq(entry.event.id))
+						ownedOrder.entryId.isNull()
+							.and(ownedOrderCourse.event.id.eq(entry.event.id))
 					)
 			)
 			.notExists();

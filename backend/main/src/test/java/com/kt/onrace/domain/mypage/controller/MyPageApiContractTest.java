@@ -182,21 +182,21 @@ class MyPageApiContractTest {
 		assertThat(account.path("data").path("address").path("defaultAddress").path("address").asText()).isEqualTo("서울시 강남구 101동");
 		assertThat(account.path("data").path("address").path("defaultAddress").path("phone").asText()).isEqualTo("01012345678");
 
-		assertThat(overview.path("data").path("entries").path("totalCount").asInt()).isEqualTo(1);
+		assertThat(overview.path("data").path("entries").path("totalCount").asInt()).isZero();
 		assertThat(overview.path("data").path("waitingEntries").path("totalCount").asInt()).isEqualTo(1);
 		assertThat(overview.path("data").path("orders").path("totalCount").asInt()).isEqualTo(1);
 		assertThat(overview.path("data").path("address").path("hasAddress").asBoolean()).isTrue();
 
 		assertThat(entries.path("data").path("filter").asText()).isEqualTo("ALL");
-		assertThat(entries.path("data").path("counts").path("all").asInt()).isEqualTo(2);
-		assertThat(entries.path("data").path("counts").path("lottery").asInt()).isEqualTo(1);
+		assertThat(entries.path("data").path("counts").path("all").asInt()).isEqualTo(1);
+		assertThat(entries.path("data").path("counts").path("lottery").asInt()).isZero();
 		assertThat(entries.path("data").path("counts").path("firstCome").asInt()).isEqualTo(1);
 		assertThat(entries.path("data").path("page").asInt()).isZero();
 		assertThat(entries.path("data").path("size").asInt()).isEqualTo(20);
-		assertThat(entries.path("data").path("totalCount").asInt()).isEqualTo(2);
+		assertThat(entries.path("data").path("totalCount").asInt()).isEqualTo(1);
 		assertThat(entries.path("data").path("hasNext").asBoolean()).isFalse();
 		assertThat(textValues(entries.path("data").path("items"), "statusDisplayValue"))
-			.containsExactlyInAnyOrder("응모 완료", "사전정보 저장");
+			.containsExactly("사전정보 저장");
 		assertThat(entries.path("data").path("items").get(0).path("thumbnailUrl").asText())
 			.startsWith("https://example.com/thumb/");
 		assertThat(entries.path("data").path("items").get(0).path("eventName").asText()).isNotBlank();
@@ -209,9 +209,9 @@ class MyPageApiContractTest {
 		assertThat(entries.path("data").path("emptyState").path("empty").asBoolean()).isFalse();
 
 		assertThat(lotteryEntries.path("data").path("filter").asText()).isEqualTo("LOTTERY");
-		assertThat(lotteryEntries.path("data").path("totalCount").asInt()).isEqualTo(1);
-		assertThat(textValues(lotteryEntries.path("data").path("items"), "statusDisplayValue"))
-			.containsExactly("응모 완료");
+		assertThat(lotteryEntries.path("data").path("counts").path("lottery").asInt()).isZero();
+		assertThat(lotteryEntries.path("data").path("totalCount").asInt()).isZero();
+		assertThat(lotteryEntries.path("data").path("items")).isEmpty();
 		assertThat(firstComeEntries.path("data").path("filter").asText()).isEqualTo("FIRST_COME");
 		assertThat(firstComeEntries.path("data").path("totalCount").asInt()).isEqualTo(1);
 		assertThat(textValues(firstComeEntries.path("data").path("items"), "statusDisplayValue"))
@@ -407,6 +407,56 @@ class MyPageApiContractTest {
 			.containsExactlyInAnyOrder("신청 가능", "예약 중", "신청 마감");
 		assertThat(actionValues(firstComeEntries.path("data").path("items"), "type"))
 			.containsExactlyInAnyOrder("APPLY", "CHECKOUT", "NONE");
+	}
+
+	@Test
+	void pendingOrdersAreOwnedByOrdersNotApplications() throws Exception {
+		JsonNode overview = get(MIXED_USER_ID, "/mypage");
+		JsonNode entries = get(MIXED_USER_ID, "/mypage/entries");
+		JsonNode orders = get(MIXED_USER_ID, "/mypage/orders?tab=PENDING");
+
+		assertThat(overview.path("data").path("entries").path("totalCount").asInt()).isZero();
+		assertThat(overview.path("data").path("waitingEntries").path("totalCount").asInt()).isEqualTo(1);
+		assertThat(entries.path("data").path("counts").path("all").asInt()).isEqualTo(1);
+		assertThat(textValues(entries.path("data").path("items"), "statusDisplayValue"))
+			.containsExactly("사전정보 저장");
+		assertThat(textValues(orders.path("data").path("items"), "status"))
+			.containsExactly("결제 대기");
+	}
+
+	@Test
+	void waitingEntriesExcludePendingOrdersOwnedByOrderHistory() throws Exception {
+		LocalDateTime now = LocalDateTime.now();
+		EventBundle reservedBundle = createEventBundle(
+			"결제대기 예약 이벤트",
+			EventType.RUNNING,
+			EventAppType.FIRST_COME,
+			now.plusDays(20),
+			now.minusDays(1),
+			now.plusDays(3),
+			null,
+			EventRegion.SEOUL,
+			"광화문광장",
+			"10K",
+			10000,
+			22000L,
+			"5:40/km",
+			5,
+			40,
+			120
+		);
+		Entry reservedEntry = createEntry(ENTRY_ONLY_USER_ID, reservedBundle, EntryStatus.RESERVED);
+		createOrder(ENTRY_ONLY_USER_ID, reservedBundle, reservedEntry.getId(), OrderStatus.PENDING, "ORD-WAITING-PENDING");
+
+		JsonNode overview = get(ENTRY_ONLY_USER_ID, "/mypage");
+		JsonNode waitingEntries = get(ENTRY_ONLY_USER_ID, "/mypage/waiting-entries");
+		JsonNode pendingOrders = get(ENTRY_ONLY_USER_ID, "/mypage/orders?tab=PENDING");
+
+		assertThat(overview.path("data").path("waitingEntries").path("totalCount").asInt()).isEqualTo(1);
+		assertThat(textValues(waitingEntries.path("data").path("items"), "status"))
+			.containsExactly("신청 대기");
+		assertThat(textValues(pendingOrders.path("data").path("items"), "status"))
+			.containsExactly("결제 대기");
 	}
 
 	@Test
