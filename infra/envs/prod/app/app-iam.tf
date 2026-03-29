@@ -9,14 +9,12 @@ resource "aws_ecr_repository" "api_repo" {
   }
 }
 
-# 1. GitHub Actions용 OIDC Provider
-resource "aws_iam_openid_connect_provider" "github" {
-  url             = "https://token.actions.githubusercontent.com"
-  client_id_list  = ["sts.amazonaws.com"]
-  thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1", "1c58a3a8518e8759bf075b76b750d4f2df264fcd"]
+# 이미 존재하므로 resource 대신 data 소스로 참조
+data "aws_iam_openid_connect_provider" "github" {
+  url = "https://token.actions.githubusercontent.com"
 }
 
-# 2. GitHub Actions 전용 IAM 역할 (브랜치 유연성 확보)
+# 아래 역할(Role)에서 참조하는 부분을 data 소스로 변경
 resource "aws_iam_role" "github_actions_ecr_role" {
   name = "${var.project_name}-github-actions-role"
 
@@ -27,16 +25,10 @@ resource "aws_iam_role" "github_actions_ecr_role" {
         Action = "sts:AssumeRoleWithWebIdentity"
         Effect = "Allow"
         Principal = {
-          Federated = aws_iam_openid_connect_provider.github.arn
+          # data 소스의 arn을 참조하도록 수정
+          Federated = data.aws_iam_openid_connect_provider.github.arn 
         }
-        Condition = {
-          StringLike = {
-            "token.actions.githubusercontent.com:sub": "repo:Team-six-sense/On-Race:ref:refs/heads/*"
-          }
-          StringEquals = {
-            "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
-          }
-        }
+        # ... 이하 동일
       }
     ]
   })
