@@ -71,6 +71,9 @@ resource "kubernetes_deployment_v1" "on_race_api" {
     namespace = kubernetes_namespace_v1.app.metadata[0].name
   }
 
+  # 테라폼이 모든 파드가 Running이 될 때까지 기다리지 않고 인프라 생성을 완료합니다.
+  wait_for_rollout = false
+
   spec {
     replicas = 2
     selector {

@@ -2,19 +2,19 @@
 resource "aws_ecr_repository" "api_repo" {
   name                 = "t6-on-race-api"
   image_tag_mutability = "MUTABLE"
-  force_delete         = true # 인프라 일괄 삭제 시 편의를 위해 추가
+  force_delete         = true 
 
   image_scanning_configuration {
     scan_on_push = true
   }
 }
 
-# 이미 존재하므로 resource 대신 data 소스로 참조
+# 1. [수정] GitHub Actions용 OIDC Provider (이미 존재하므로 data 소스로 참조)
 data "aws_iam_openid_connect_provider" "github" {
   url = "https://token.actions.githubusercontent.com"
 }
 
-# 아래 역할(Role)에서 참조하는 부분을 data 소스로 변경
+# 2. GitHub Actions 전용 IAM 역할
 resource "aws_iam_role" "github_actions_ecr_role" {
   name = "${var.project_name}-github-actions-role"
 
@@ -25,16 +25,23 @@ resource "aws_iam_role" "github_actions_ecr_role" {
         Action = "sts:AssumeRoleWithWebIdentity"
         Effect = "Allow"
         Principal = {
-          # data 소스의 arn을 참조하도록 수정
-          Federated = data.aws_iam_openid_connect_provider.github.arn 
+          # data 소스의 arn을 참조
+          Federated = data.aws_iam_openid_connect_provider.github.arn
         }
-        # ... 이하 동일
+        Condition = {
+          StringLike = {
+            "token.actions.githubusercontent.com:sub": "repo:Team-six-sense/On-Race:ref:refs/heads/*"
+          }
+          StringEquals = {
+            "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+          }
+        }
       }
     ]
   })
 }
 
-# 3. ECR Push 최소 권한 정책 (리소스 ARN 동적화)
+# 3. ECR Push 최소 권한 정책
 resource "aws_iam_policy" "ecr_push_policy" {
   name = "${var.project_name}-ecr-push-policy"
   policy = jsonencode({
@@ -54,7 +61,6 @@ resource "aws_iam_policy" "ecr_push_policy" {
           "ecr:UploadLayerPart",
           "ecr:CompleteLayerUpload"
         ]
-        # [수정] 위에서 생성한 ECR 리포지토리의 ARN을 동적으로 참조
         Resource = aws_ecr_repository.api_repo.arn
       }
     ]
@@ -73,7 +79,6 @@ output "github_actions_role_arn" {
   description = "GitHub Actions Workflow의 'role-to-assume'에 넣을 ARN"
 }
 
-# [추가] ECR URL 출력 (app-api.tf 등에서 참조 가능)
 output "ecr_repository_url" {
   value       = aws_ecr_repository.api_repo.repository_url
   description = "생성된 ECR 리포지토리 URL"
