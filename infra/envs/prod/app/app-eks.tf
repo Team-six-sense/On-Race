@@ -42,13 +42,6 @@ module "ebs_csi_irsa" {
   }
 }
 
-# 3. [에러 해결 2] App 네임스페이스 생성 - 누락되었던 부분
-resource "kubernetes_namespace_v1" "app" {
-  metadata { 
-    name = "${var.project_name}-${var.environment}" 
-  }
-  depends_on = [module.eks]
-}
 
 # 4. Karpenter용 태그 주입 (보안 그룹)
 resource "aws_ec2_tag" "eks_sg_karpenter_tag" {
