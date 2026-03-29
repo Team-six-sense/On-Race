@@ -199,6 +199,13 @@ resource "kubernetes_manifest" "karpenter_node_class" {
       amiFamily = "AL2023" # 최신 EKS 최적화 OS
       role      = module.karpenter.node_iam_role_name
 
+      "metadataOptions" = {
+        "httpEndpoint"            = "enabled"
+        "httpProtocolIPv6"        = "disabled"
+        "httpPutResponseHopLimit" = 2 # 파드(aws-node)의 메타데이터 접근 허용
+        "httpTokens"              = "required"
+      }
+
       amiSelectorTerms = [
         { alias = "al2023@latest" }
       ]
