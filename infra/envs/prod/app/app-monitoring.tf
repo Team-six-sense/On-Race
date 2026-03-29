@@ -13,6 +13,8 @@ resource "helm_release" "loki" {
   chart            = "loki"
   namespace        = "loki"
   create_namespace = true
+  
+  timeout          = 600
 
   # [핵심] templatefile을 통해 변수들을 실제 값으로 치환하여 주입
   values = [

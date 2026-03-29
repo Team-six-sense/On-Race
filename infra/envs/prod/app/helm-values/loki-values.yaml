@@ -47,3 +47,25 @@ singleBinary:
       memory: 512Mi
     limits:
       memory: 1Gi
+
+# Chunks Cache 메모리 제한 (기본값 9.8Gi -> 1Gi로 하향)
+chunksCache:
+  enabled: true
+  allocatedMemory: 512
+  resources:
+    requests:
+      cpu: 100m
+      memory: 1Gi
+    limits:
+      memory: 1Gi
+
+# Results Cache 메모리 제한
+resultsCache:
+  enabled: true
+  allocatedMemory: 512
+  resources:
+    requests:
+      cpu: 100m
+      memory: 1Gi
+    limits:
+      memory: 1Gi
