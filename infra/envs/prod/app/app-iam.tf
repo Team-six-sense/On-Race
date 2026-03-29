@@ -1,8 +1,4 @@
-# 현재 AWS 계정 및 리전 정보 조회를 위한 데이터 소스
-data "aws_caller_identity" "current" {}
-data "aws_region" "current" {}
-
-# [추가] 0. ECR 리포지토리 자동 생성
+# 0. ECR 리포지토리 자동 생성
 resource "aws_ecr_repository" "api_repo" {
   name                 = "t6-on-race-api"
   image_tag_mutability = "MUTABLE"

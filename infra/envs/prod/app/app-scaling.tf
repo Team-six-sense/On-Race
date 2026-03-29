@@ -1,6 +1,3 @@
-# 현재 AWS 계정 ID 조회를 위한 데이터 소스
-data "aws_caller_identity" "current" {}
-
 resource "kubernetes_storage_class_v1" "gp3_default" {
   metadata {
     name = "gp3"

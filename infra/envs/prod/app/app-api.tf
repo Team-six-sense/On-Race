@@ -1,14 +1,3 @@
-# 현재 AWS 계정 ID 및 리전 조회를 위한 데이터 소스
-data "aws_caller_identity" "current" {}
-data "aws_region" "current" {}
-
-# 1. API 전용 네임스페이스 생성
-resource "kubernetes_namespace_v1" "app" {
-  metadata {
-    name = "${var.project_name}-${var.environment}"
-  }
-}
-
 # 2. API 파드 전용 IAM 역할 (IRSA) 생성
 module "api_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
