@@ -6,8 +6,14 @@ output "node_iam_role_name" {
   description = "The name of the IAM role for the Karpenter nodes"
 }
 
-# 2. Karpenter 컨트롤러용 IAM 역할 ARN (Helm Chart에서 참조)
-output "controller_role_arn" {
+# 2. Karpenter 컨트롤러용 IAM 역할 ARN (app-scaling.tf의 irsa_arn과 매칭)
+output "irsa_arn" {
   value       = aws_iam_role.karpenter_controller.arn
   description = "The ARN of the IAM role for the Karpenter controller"
+}
+
+# 3. Interruption 큐 이름 (app-scaling.tf의 queue_name과 매칭)
+output "queue_name" {
+  value       = aws_sqs_queue.karpenter.name
+  description = "The name of the SQS queue for Karpenter interruptions"
 }

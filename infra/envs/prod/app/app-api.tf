@@ -248,3 +248,20 @@ resource "kubernetes_service_v1" "on_race_api" {
   wait_for_load_balancer = false 
   depends_on             = [time_sleep.wait_for_lb_controller]
 }
+
+# 9. Redis TLS 통신을 위한 Stunnel 설정 (삭제되었다면 다시 추가)
+resource "kubernetes_config_map_v1" "redis_stunnel_conf" {
+  metadata {
+    name      = "redis-stunnel-conf"
+    namespace = kubernetes_namespace_v1.app.metadata[0].name
+  }
+  data = {
+    "stunnel.conf" = <<EOF
+foreground = yes
+[redis-tls]
+client = yes
+accept = 127.0.0.1:6379
+connect = ${data.terraform_remote_state.base.outputs.redis_endpoint}:6379
+EOF
+  }
+}
