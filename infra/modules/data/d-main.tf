@@ -1,23 +1,3 @@
-# 랜덤 패스워드 생성
-resource "random_password" "db_password" {
-  length           = 16
-  special          = true
-  override_special = "!#$%&*()-_=+[]{} <>:?"
-}
-
-# Secrets Manager에 암호 저장
-resource "aws_secretsmanager_secret" "db_password" {
-  name = "${var.project_name}-${var.environment}-db-password-v4" # 버전 충돌 방지를 위해 이름 변경 권장
-}
-
-resource "aws_secretsmanager_secret_version" "db_password" {
-  secret_id     = aws_secretsmanager_secret.db_password.id
-  secret_string = jsonencode({
-    username = "admin"
-    password = random_password.db_password.result
-  })
-}
-
 # ==========================================================================
 # 1. Redis 계층 (ElastiCache)
 # ==========================================================================
@@ -128,7 +108,7 @@ resource "aws_db_instance" "this" {
   allocated_storage = 20
 
   username = "admin"
-  password = random_password.db_password.result # 생성된 랜덤 암호 사용
+  password = var.db_password # 변수로 전달받은 암호 사용
   db_name  = "onrace"
 
   db_subnet_group_name   = aws_db_subnet_group.this.name
@@ -173,7 +153,7 @@ resource "aws_db_proxy" "this" {
   auth {
     auth_scheme = "SECRETS"
     iam_auth    = "DISABLED"
-    secret_arn  = aws_secretsmanager_secret.db_password.arn
+    secret_arn  = var.db_secret_arn # 상위에서 넘겨받은 시크릿 ARN 참조
   }
 }
 
@@ -225,7 +205,7 @@ resource "aws_iam_policy" "rds_proxy_policy" {
           "secretsmanager:DescribeSecret"
         ]
         Effect   = "Allow"
-        Resource = [aws_secretsmanager_secret.db_password.arn]
+        Resource = [var.db_secret_arn] # 변수로 전달받은 ARN 참조
       }
     ]
   })
