@@ -63,7 +63,156 @@ resource "aws_security_group_rule" "eks_to_redis" {
 }
 
 
+# 7. 메인 API Deployment
+resource "kubernetes_deployment_v1" "on_race_api" {
+  metadata {
+    name      = "on-race-api"
+    namespace = kubernetes_namespace_v1.app.metadata[0].name
+  }
 
+  wait_for_rollout = false
+
+  spec {
+    replicas = 2
+    selector {
+      match_labels = { app = "on-race-api" }
+    }
+
+    template {
+      metadata {
+        labels = { app = "on-race-api" }
+      }
+
+      spec {
+        service_account_name = kubernetes_service_account_v1.api_sa.metadata[0].name
+
+        affinity {
+          node_affinity {
+            required_during_scheduling_ignored_during_execution {
+              node_selector_term {
+                match_expressions {
+                  key      = "karpenter.sh/capacity-type"
+                  operator = "In"
+                  values   = ["on-demand"]
+                }
+              }
+            }
+          }
+        }
+
+        container {
+          name  = "api"
+          image = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com/t6-on-race-api:latest"
+          
+          # [수정] Nginx 기본 포트 80으로 변경
+          port { container_port = 80 }
+
+          # [수정] Nginx는 Java가 아니므로 JVM 옵션은 불필요 (주석 처리 또는 삭제)
+          # env {
+          #   name  = "JAVA_TOOL_OPTIONS"
+          #   value = "-XX:InitialRAMPercentage=75.0 ..."
+          # }
+
+          # DB/SQS/Redis 환경 변수는 유지해도 Nginx가 무시하므로 무방합니다.
+          env { 
+            name = "DB_ENDPOINT" 
+            value = data.terraform_remote_state.base.outputs.rds_proxy_endpoint 
+          }
+          env { 
+            name = "DB_USERNAME" 
+            value = local.db_creds.username 
+          }
+          env { 
+            name = "DB_PASSWORD" 
+            value = local.db_creds.password 
+          }
+          env { 
+            name = "SQS_QUEUE_URL" 
+            value = data.terraform_remote_state.base.outputs.queue_url 
+          }
+          env { 
+            name = "SPRING_REDIS_HOST" 
+            value = "127.0.0.1" 
+          }
+          env { 
+            name = "SPRING_REDIS_PORT" 
+            value = "6379" 
+          }
+
+          resources {
+            requests = { cpu = "200m", memory = "512Mi" } # Nginx는 1Gi까지 필요 없으므로 하향 가능
+            limits   = { cpu = "500m", memory = "1Gi" }
+          }
+
+          # [수정] 헬스 체크 경로 / 및 포트 80으로 변경
+          readiness_probe {
+            http_get {
+              path = "/"
+              port = 80
+            }
+            initial_delay_seconds = 5 # Nginx는 실행이 빠르므로 대기 시간 단축
+            period_seconds        = 10
+          }
+
+          liveness_probe {
+            http_get {
+              path = "/"
+              port = 80
+            }
+            initial_delay_seconds = 10
+            period_seconds        = 15
+          }
+
+          lifecycle {
+            pre_stop {
+              exec { command = ["sh", "-c", "sleep 10"] }
+            }
+          }
+        }
+
+        # Stunnel 사이드카는 구조 유지를 위해 남겨둡니다.
+        container {
+          name  = "stunnel"
+          image = "dweomer/stunnel:latest"
+          port  { container_port = 6379 }
+
+          env {
+            name  = "STUNNEL_SERVICE"
+            value = "redis-tls"
+          }
+          env {
+            name  = "STUNNEL_ACCEPT"
+            value = "127.0.0.1:6379"
+          }
+          env {
+            name  = "STUNNEL_CONNECT"
+            value = "${data.terraform_remote_state.base.outputs.redis_endpoint}:6379"
+          }
+          
+          resources {
+            requests = { cpu = "50m", memory = "64Mi" }
+            limits   = { cpu = "100m", memory = "128Mi" }
+          }
+          volume_mount {
+            name       = "stunnel-conf"
+            mount_path = "/etc/stunnel/stunnel.conf"
+            sub_path   = "stunnel.conf"
+            read_only  = true
+          }
+        }
+
+        volume {
+          name = "stunnel-conf"
+          config_map {
+            name = kubernetes_config_map_v1.redis_stunnel_conf.metadata[0].name
+          }
+        }
+      }
+    }
+  }
+}
+
+/*
 # 7. 메인 API Deployment
 resource "kubernetes_deployment_v1" "on_race_api" {
   metadata {
@@ -87,17 +236,6 @@ resource "kubernetes_deployment_v1" "on_race_api" {
 
       spec {
         service_account_name = kubernetes_service_account_v1.api_sa.metadata[0].name
-
-        init_container {
-          name    = "wait-for-stunnel"
-          image   = "busybox:1.28"
-          # 30회 재시도(약 60초) 후 실패 처리하는 로직 추가
-          command = [
-            "sh", 
-            "-c", 
-            "MAX_RETRIES=30; COUNT=0; until nc -z localhost 6379; do COUNT=$((COUNT + 1)); if [ $COUNT -ge $MAX_RETRIES ]; then echo 'Timeout: Stunnel failed to start.'; exit 1; fi; echo 'Waiting for stunnel... ($COUNT/$MAX_RETRIES)'; sleep 2; done;"
-          ]
-        }
 
         affinity {
           node_affinity {
@@ -216,8 +354,45 @@ resource "kubernetes_deployment_v1" "on_race_api" {
       }
     }
   }
+}*/
+
+# 8. 로드밸런서 서비스
+resource "kubernetes_service_v1" "on_race_api" {
+  metadata {
+    name      = "t6-on-race-api"
+    namespace = kubernetes_namespace_v1.app.metadata[0].name
+    
+    annotations = {
+      "service.beta.kubernetes.io/aws-load-balancer-name"            = "t6-on-race-api-lb"
+      "service.beta.kubernetes.io/aws-load-balancer-type"            = "external"
+      "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type" = "ip"
+      "service.beta.kubernetes.io/aws-load-balancer-scheme"          = "internet-facing"
+      "service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags" = "Project=${var.project_name},Environment=${var.environment}"
+      
+      # [참고] Nginx는 기본적으로 프로메테우스 메트릭을 제공하지 않으므로 
+      # 테스트 중에는 아래 설정을 무시하거나 주석 처리해도 무방합니다.
+      "prometheus.io/scrape" = "false" 
+      "prometheus.io/path"   = "/"
+      "prometheus.io/port"   = "80"
+    }
+  }
+
+  spec {
+    selector = { app = "on-race-api" }
+    port {
+      port        = 80
+      # [수정] Nginx 컨테이너 포트인 80으로 변경
+      target_port = 80 
+      protocol    = "TCP"
+    }
+    type = "LoadBalancer"
+  }
+
+  wait_for_load_balancer = false 
+  depends_on             = [time_sleep.wait_for_lb_controller]
 }
 
+/*
 # 8. 로드밸런서 서비스
 resource "kubernetes_service_v1" "on_race_api" {
   metadata {
@@ -250,7 +425,7 @@ resource "kubernetes_service_v1" "on_race_api" {
 
   wait_for_load_balancer = false 
   depends_on             = [time_sleep.wait_for_lb_controller]
-}
+}*/
 
 # 9. Redis TLS 통신을 위한 Stunnel 설정 (삭제되었다면 다시 추가)
 resource "kubernetes_config_map_v1" "redis_stunnel_conf" {
