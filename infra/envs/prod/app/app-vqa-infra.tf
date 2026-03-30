@@ -76,7 +76,7 @@ module "ai_vqa_irsa" {
   
   oidc_providers = {
     main = {
-      provider_arn               = data.terraform_remote_state.base.outputs.cluster_oidc_provider_arn
+      provider_arn = module.eks.oidc_provider_arn
       namespace_service_accounts = ["${var.namespace}:ai-service-account"]
     }
   }

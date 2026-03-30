@@ -16,11 +16,6 @@ output "private_subnets" {
   value       = module.vpc.private_subnets
 }
 
-output "cluster_oidc_provider_arn" {
-  description = "EKS 클러스터용 OIDC 공급자의 ARN"
-  value       = module.eks.oidc_provider_arn 
-}
-
 output "public_subnets" {
   description = "퍼블릭 서브넷 리스트 (ALB 등 외부 연결용)"
   value       = module.vpc.public_subnets
