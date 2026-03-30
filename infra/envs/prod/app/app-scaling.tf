@@ -276,13 +276,19 @@ resource "kubernetes_manifest" "karpenter_vqa_node_pool" {
     }
     spec = {
       template = {
+        # [수정] labels는 metadata 블록 아래에 위치해야 합니다.
+        metadata = {
+          labels = {
+            "workload" = "vqa"
+          }
+        }
         spec = {
           nodeClassRef = {
             group = "karpenter.k8s.aws"
             kind  = "EC2NodeClass"
             name  = "default"
           }
-          # [핵심] 일반 파드가 이 노드에 뜨지 못하도록 설정
+          # [핵심] taints는 그대로 spec 아래에 둡니다.
           taints = [
             {
               key    = "workload"
@@ -290,10 +296,6 @@ resource "kubernetes_manifest" "karpenter_vqa_node_pool" {
               effect = "NoSchedule"
             }
           ]
-          # [핵심] VQA 파드만 선택해서 뜰 수 있도록 라벨 부여
-          labels = {
-            "workload" = "vqa"
-          }
           requirements = [
             { key = "karpenter.sh/capacity-type", operator = "In", values = ["spot"] },
             { key = "k8s.amazonaws.com/instance-family", operator = "In", values = ["c6a", "c7a"] },
@@ -307,7 +309,7 @@ resource "kubernetes_manifest" "karpenter_vqa_node_pool" {
         consolidateAfter    = "1m"
       }
       limits = {
-        cpu = "200" # VQA 전용 최대 CPU 한도
+        cpu = "200"
       }
     }
   }
