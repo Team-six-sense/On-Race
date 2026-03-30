@@ -265,3 +265,50 @@ resource "kubernetes_manifest" "karpenter_node_pool" {
   }
   depends_on = [kubernetes_manifest.karpenter_node_class]
 }
+
+# 9. VQA 전용 고성능 NodePool (c6a, c7a 전용)
+resource "kubernetes_manifest" "karpenter_vqa_node_pool" {
+  manifest = {
+    apiVersion = "karpenter.sh/v1"
+    kind       = "NodePool"
+    metadata = {
+      name = "vqa-compute"
+    }
+    spec = {
+      template = {
+        spec = {
+          nodeClassRef = {
+            group = "karpenter.k8s.aws"
+            kind  = "EC2NodeClass"
+            name  = "default"
+          }
+          # [핵심] 일반 파드가 이 노드에 뜨지 못하도록 설정
+          taints = [
+            {
+              key    = "workload"
+              value  = "vqa"
+              effect = "NoSchedule"
+            }
+          ]
+          # [핵심] VQA 파드만 선택해서 뜰 수 있도록 라벨 부여
+          labels = {
+            "workload" = "vqa"
+          }
+          requirements = [
+            { key = "karpenter.sh/capacity-type", operator = "In", values = ["spot"] },
+            { key = "k8s.amazonaws.com/instance-family", operator = "In", values = ["c6a", "c7a"] },
+            { key = "kubernetes.io/arch", operator = "In", values = ["amd64"] },
+            { key = "topology.kubernetes.io/zone", operator = "In", values = ["ap-northeast-2a", "ap-northeast-2c"] }
+          ]
+        }
+      }
+      disruption = {
+        consolidationPolicy = "WhenEmptyOrUnderutilized"
+        consolidateAfter    = "1m"
+      }
+      limits = {
+        cpu = "200" # VQA 전용 최대 CPU 한도
+      }
+    }
+  }
+}

@@ -10,3 +10,6 @@ override.tf.json
 
 # App/Test
 test-api-deployment.yaml  # 테스트용 파일은 제외하고 싶다면 추가
+
+# CloudFront Private Key
+app/certs/vqa_private_key.pem
