@@ -23,11 +23,11 @@ export default function Header() {
     const handleScroll = () => {
       if (!isHome) return;
 
-      // 1. 현재 스크롤이 최상단인지 체크
+      // 현재 스크롤이 최상단인지 체크
       const currentScrollY = window.scrollY;
       setIsScrolled(currentScrollY > 50);
 
-      // 2. 스크롤 시작됨을 표시
+      // 스크롤 시작됨을 표시
       setIsScrolling(true);
 
       // 3. 스크롤 멈춤 감지 (200ms 동안 스크롤이 없으면 멈춘 것으로 간주)
@@ -66,7 +66,7 @@ export default function Header() {
             ? cn(
                 'fixed top-0 left-0 text-white',
                 isScrolled
-                  ? 'bg-black/60 backdrop-blur-md shadow-md'
+                  ? 'bg-white text-black backdrop-blur-md'
                   : 'bg-transparent',
                 isVisible
                   ? 'translate-y-0 opacity-100'
@@ -75,13 +75,13 @@ export default function Header() {
             : 'relative bg-white text-black border-b border-gray-100',
         )}
       >
-        <div className="max-w-[1440px] w-full mx-auto flex items-center justify-between h-20 px-20">
+        <div className="max-w-[1440px] w-full mx-auto flex items-center justify-between h-20 px-30">
           {/* 왼쪽: 로고 + 메뉴 */}
           <div className="flex items-center gap-10">
             <Link href="/" className="flex items-center gap-2">
               <Image
                 src={
-                  isHome
+                  isHome && !isScrolled
                     ? '/image/logo/logo_white.png'
                     : '/image/logo/logo_black.png'
                 }
@@ -102,7 +102,7 @@ export default function Header() {
                         href={item.href}
                         className={cn(
                           'text-sm font-bold transition-colors group relative py-1',
-                          isHome
+                          isHome && !isScrolled
                             ? isActive
                               ? 'text-white'
                               : 'text-white/70 hover:text-white'
@@ -131,7 +131,7 @@ export default function Header() {
           <div
             className={cn(
               'flex items-center gap-6 text-xs font-bold',
-              isHome ? 'text-white/80' : 'text-gray-600',
+              isHome && !isScrolled ? 'text-white/80' : 'text-gray-600',
             )}
           >
             {session ? (
@@ -178,7 +178,7 @@ export default function Header() {
 
       {/* 홈 배너 */}
       {isHome && (
-        <section className="relative h-[700px] w-full bg-black overflow-hidden">
+        <section className="relative h-[920px] w-full bg-black overflow-hidden">
           <Image
             src="/image/banner2.png"
             alt="Main Banner"
@@ -187,7 +187,7 @@ export default function Header() {
             className="object-cover opacity-70"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent" />
-          <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-full max-w-[1440px] mx-auto px-20 z-10">
+          <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-full max-w-[1440px] mx-auto px-30 z-10">
             <div className="max-w-xl text-left text-white">
               <h2 className="text-6xl font-bold mb-4 tracking-tight">
                 달림 그 이상의 순간

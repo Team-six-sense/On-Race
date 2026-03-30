@@ -1,4 +1,4 @@
 //EventHistory
-export * from './EventHistory';
-export * from './PaymentHistory';
+export * from './EventHistoryPage';
+export * from './PaymentHistoryPage';
 export * from './AccountSettings';

@@ -17,7 +17,6 @@ export default function ChallengeBanner() {
   return (
     // 배경색은 화면 전체(w-full)를 채웁니다.
     <section className="w-full bg-black overflow-hidden">
-      {/* 내부 콘텐츠는 mx-auto와 max-w-[1200px]로 중앙에 고정합니다. */}
       <div className="flex flex-col items-center justify-center h-[700px] max-w-[1440px] mx-auto w-full text-white">
         {/* 메인 콘텐츠 */}
         <main>

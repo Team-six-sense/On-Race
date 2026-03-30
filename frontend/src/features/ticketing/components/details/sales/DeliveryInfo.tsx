@@ -65,7 +65,7 @@ export function DeliveryInfo({
               배송 일정
             </div>
             <div className="px-4 py-4 text-sm text-gray-900 border-b border-r border-gray-200">
-              {new Date(delivery.deliveryStartAt).toLocaleDateString('ko-KR')} ~{' '}
+              {new Date(delivery.deliveryStartAt).toLocaleDateString('ko-KR')} ~
               {new Date(delivery.deliveryEndAt).toLocaleDateString('ko-KR')}
             </div>
             <div className="bg-gray-100 px-4 py-4 font-medium text-gray-600 border-b border-r border-gray-200">

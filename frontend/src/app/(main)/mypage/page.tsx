@@ -2,8 +2,8 @@
 
 import { Button } from '@/components/ui/button';
 import {
-  EventHistory,
-  PaymentHistory,
+  EventHistoryPage,
+  PaymentHistoryPage,
   AccountSettings,
 } from '@/features/mypage/components';
 import { useState } from 'react';
@@ -23,9 +23,9 @@ export default function MyPage() {
       case 'account':
         return <AccountSettings />;
       case 'event':
-        return <EventHistory />;
+        return <EventHistoryPage />;
       case 'payment':
-        return <PaymentHistory />;
+        return <PaymentHistoryPage />;
       case 'support':
         return <div>고객지원 콘텐츠</div>;
       default:
