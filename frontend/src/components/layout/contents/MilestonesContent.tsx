@@ -23,8 +23,8 @@ export default function MilestonesContent() {
   ];
 
   return (
-    <section className="my-4">
-      <div className="w-full bg-black py-12 px-6 flex justify-center max-w-[1440px] mx-auto">
+    <section className="my-4 bg-black">
+      <div className="w-full bg-black py-20 px-30 flex justify-center max-w-[1440px] mx-auto">
         <div className="w-full max-w-5xl flex items-center gap-6">
           <div className="flex justify-end pr-14">
             <div className="text-left">

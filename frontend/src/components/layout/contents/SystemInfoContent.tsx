@@ -35,8 +35,8 @@ export default function SystemInfoContent() {
     'reveal opacity-0 translate-y-10 transition-all duration-1000 ease-out';
 
   return (
-    <section ref={containerRef}>
-      <div className="relative flex flex-col items-center max-w-[1440px] w-full mx-auto">
+    <section ref={containerRef} className="bg-secondary">
+      <div className="relative flex flex-col items-center max-w-[1440px] w-full mx-auto p-30">
         <div className="absolute inset-0 z-0 pointer-events-none">
           <Image
             src="/image/systemInfo/bg-pattern.svg"
@@ -48,7 +48,7 @@ export default function SystemInfoContent() {
           />
         </div>
 
-        <div className="relative z-10  grid grid-cols-3 gap-x-20 gap-y-4 p-16">
+        <div className="relative z-10 grid grid-cols-3 gap-x-20 gap-y-4">
           {/* 타이틀 구역 */}
           <div className={`col-span-2 self-start ${revealBase}`}>
             <h2 className="text-5xl font-bold mb-3">The Right to Run</h2>

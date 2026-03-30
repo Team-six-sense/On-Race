@@ -76,7 +76,7 @@ export default function Body() {
   return (
     <main className="flex flex-col ">
       {/* --- 이벤트 목록 (Event List) --- */}
-      <section className="p-20 bg-white">
+      <section className="px-30 py-20 bg-white">
         <div className="max-w-[1440px] w-full mx-auto px-6">
           {/* 섹션 타이틀 */}
           <div className="mb-12 flex justify-between items-end">
@@ -98,10 +98,10 @@ export default function Body() {
                   <div className="flex items-center w-full md:w-auto mb-4 md:mb-0">
                     {/* 날짜 영역 (왼쪽) */}
                     <div className="flex flex-col items-center justify-center min-w-[80px] border-r border-gray-200 pr-6 mr-8">
-                      <span className="text-base font-bold text-black">
+                      <span className="text-base text-black">
                         {new Date(event.eventAt).getMonth() + 1}월
                       </span>
-                      <span className="text-3xl font-black text-black">
+                      <span className="text-3xl font-bold text-black">
                         {new Date(event.eventAt).getDate()}
                       </span>
                     </div>
@@ -169,7 +169,6 @@ export default function Body() {
                 variant="outline"
                 rounded="full"
                 size="fit"
-                className="border-font-medium text-font-medium"
                 onClick={() => router.push('/event')}
               >
                 이벤트 전체보기

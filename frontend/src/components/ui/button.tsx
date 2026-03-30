@@ -18,8 +18,8 @@ export const buttonVariants = cva(
         secondary:
           'bg-cta-secondary text-black hover:bg-status-hover-secondary active:bg-status-press-secondary active:scale-95',
         outline:
-          'bg-cta-primary2 text-black hover:bg-status-hover2 active:bg-status-press2 active:scale-95' +
-          ' border border-gray-300',
+          'bg-cta-primary2 text-font-medium hover:bg-status-hover2 active:bg-status-press2 active:scale-95' +
+          ' border border-cta-outline',
         ghost:
           'bg-transparent text-black hover:bg-status-hover2 active:bg-status-press2 active:scale-95',
         link: 'bg-transparent text-black underline underline-offset-4 hover:text-status-hover1 active:text-status-press1 active:scale-95',
