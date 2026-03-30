@@ -152,3 +152,27 @@ module "ai_vqa_irsa" {
   }
   role_policy_arns = { s3_access = aws_iam_policy.ai_s3_access.arn }
 }
+
+# 매크로 탐지용 EC2 IAM 역할 및 인스턴스 프로파일
+resource "aws_iam_role" "ai_ec2_role" {
+  name = "${var.project_name}-ai-ec2-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = { Service = "ec2.amazonaws.com" }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ai_s3_attach" {
+  role       = aws_iam_role.ai_ec2_role.name
+  policy_arn = aws_iam_policy.ai_s3_access.arn
+}
+
+resource "aws_iam_instance_profile" "ai_ec2_profile" {
+  name = "${var.project_name}-ai-ec2-profile"
+  role = aws_iam_role.ai_ec2_role.name
+}
