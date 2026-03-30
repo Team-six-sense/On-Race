@@ -32,3 +32,9 @@ output "nat_public_ips" {
   description = "외부 통신 시 사용되는 NAT Gateway의 퍼블릭 IP (외부 화이트리스팅용)"
   value       = aws_eip.nat[*].public_ip
 }
+
+# S3 Gateway Endpoint ID 출력
+output "s3_gateway_endpoint_id" {
+  description = "S3 Gateway Endpoint의 ID"
+  value       = aws_vpc_endpoint.s3.id
+}

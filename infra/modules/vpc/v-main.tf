@@ -36,9 +36,7 @@ resource "aws_subnet" "private" {
   tags = {
     Name                              = "${var.project_name}-${var.environment}-private-${var.azs[count.index]}"
     "kubernetes.io/role/internal-elb" = "1" # 내부 로드밸런서 자동 할당 태그
-
-    # [필수] Karpenter가 노드를 배치할 서브넷을 식별하기 위한 태그
-    "karpenter.sh/discovery" = "${var.project_name}-${var.environment}-cluster"
+    "karpenter.sh/discovery"          = "${var.project_name}-${var.environment}-cluster" # Karpenter 노드 배치 식별용
   }
 }
 
@@ -129,7 +127,7 @@ resource "aws_route_table_association" "database" {
   route_table_id = aws_route_table.database.id
 }
 
-# 10. VPC Interface Endpoints (비용 절감 및 보안 핵심 7종 세트)
+# 10. VPC Interface & Gateway Endpoints
 locals {
   # KMS 복호화 타임아웃 방지를 위해 kms 추가
   endpoint_services = ["sqs", "sts", "logs", "monitoring", "ecr.dkr", "ecr.api", "kms"]
@@ -149,19 +147,7 @@ resource "aws_vpc_endpoint" "interface" {
   private_dns_enabled = true
 
   tags = {
-    Name = "${var.project_name}-${each.value}-endpoint"
-  }
-}
-
-# S3 Gateway Endpoint (무료)
-resource "aws_vpc_endpoint" "s3" {
-  vpc_id            = aws_vpc.this.id
-  service_name      = "com.amazonaws.${data.aws_region.current.name}.s3"
-  vpc_endpoint_type = "Gateway"
-  route_table_ids   = concat(aws_route_table.private[*].id, [aws_route_table.database.id])
-
-  tags = {
-    Name = "${var.project_name}-s3-endpoint"
+    Name = "${var.project_name}-${var.environment}-${each.value}-endpoint"
   }
 }
 
@@ -185,5 +171,19 @@ resource "aws_security_group" "vpc_endpoint" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = { Name = "${var.project_name}-vpce-sg" }
+  tags = { Name = "${var.project_name}-${var.environment}-vpce-sg" }
+}
+
+# S3 Gateway Endpoint - 중복 통합본
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id            = aws_vpc.this.id
+  service_name      = "com.amazonaws.${data.aws_region.current.name}.s3"
+  vpc_endpoint_type = "Gateway"
+  
+  # Public, Private, Database 라우팅 테이블 모두 통합 반영
+  route_table_ids   = concat([aws_route_table.public.id], aws_route_table.private[*].id, [aws_route_table.database.id])
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-s3-endpoint"
+  }
 }

@@ -38,3 +38,8 @@ variable "single_nat_gateway" {
   type        = bool
   default     = false
 }
+
+output "s3_gateway_endpoint_id" {
+  description = "S3 Gateway Endpoint의 ID"
+  value       = aws_vpc_endpoint.s3.id
+}
