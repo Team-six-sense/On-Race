@@ -19,25 +19,6 @@ jobs:
         with:
           fetch-depth: 0  # Shallow clones should be disabled for better analysis
       
-      # Frontend 빌드 (TypeScript - pnpm)
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'
-      
-      - name: Install pnpm
-        uses: pnpm/action-setup@eae0cfeb286e66ffb5155f1a79b90583a127a68b # v2.4.1
-        with:
-          version: 8
-      
-      - name: Install frontend dependencies
-        working-directory: ./frontend
-        run: pnpm install --frozen-lockfile
-      
-      - name: Build frontend
-        working-directory: ./frontend
-        run: pnpm run build
-      
       # Backend 빌드 (Java 21 - Gradle)
       - name: Setup Java
         uses: actions/setup-java@v3
