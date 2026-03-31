@@ -104,8 +104,8 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           name  = "api"
           image = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com/t6-on-race-api:latest"
           
-          # [수정] Nginx 기본 포트 80으로 변경
-          port { container_port = 80 }
+          #  Nginx 기본 포트 8080으로 변경
+          port { container_port = 8080 }
 
           # [수정] Nginx는 Java가 아니므로 JVM 옵션은 불필요 (주석 처리 또는 삭제)
           # env {
@@ -148,7 +148,7 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           readiness_probe {
             http_get {
               path = "/"
-              port = 80
+              port = 8080
             }
             initial_delay_seconds = 5 # Nginx는 실행이 빠르므로 대기 시간 단축
             period_seconds        = 10
@@ -157,7 +157,7 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           liveness_probe {
             http_get {
               path = "/"
-              port = 80
+              port = 8080
             }
             initial_delay_seconds = 10
             period_seconds        = 15
@@ -373,7 +373,7 @@ resource "kubernetes_service_v1" "on_race_api" {
       # 테스트 중에는 아래 설정을 무시하거나 주석 처리해도 무방합니다.
       "prometheus.io/scrape" = "false" 
       "prometheus.io/path"   = "/"
-      "prometheus.io/port"   = "80"
+      "prometheus.io/port"   = "8080"
     }
   }
 
@@ -382,7 +382,7 @@ resource "kubernetes_service_v1" "on_race_api" {
     port {
       port        = 80
       # [수정] Nginx 컨테이너 포트인 80으로 변경
-      target_port = 80 
+      target_port = 8080
       protocol    = "TCP"
     }
     type = "LoadBalancer"
