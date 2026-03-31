@@ -66,10 +66,6 @@ public class RedisKeyGenerator {
 		return String.format("sms:send_attempt:%s", phoneNumber);
 	}
 
-	public static String smsFindIpAttemptKey(String ip) {
-		return String.format("sms:find:ip_attempt:%s", ip);
-	}
-
 	public static String stockKey(Long paceId) {
 		return String.format("stock:pace:%d", paceId);
 	}

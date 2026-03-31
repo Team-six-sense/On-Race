@@ -32,28 +32,13 @@ public class SmsVerifyService {
 	private final SolapiProperties properties;
 	private final UserRepository userRepository;
 
-	public void sendCodeForFind(String phoneNumber, String clientIp) {
-		checkFindIpRateLimit(clientIp);
-
+	public void sendCodeForFind(String phoneNumber) {
 		boolean exists = userRepository.existsByPhoneNumber(phoneNumber);
 
 		if (exists) {
 			sendSmsCode(phoneNumber);
 		}
 		// 항상 동일한 성공 응답 반환
-	}
-
-	private void checkFindIpRateLimit(String clientIp) {
-		RAtomicLong ipCounter = redissonClient.getAtomicLong(RedisKeyGenerator.smsFindIpAttemptKey(clientIp));
-		long count = ipCounter.incrementAndGet();
-
-		if (count == 1) {
-			ipCounter.expire(Duration.ofMinutes(10));
-		}
-
-		if (count > 5) {
-			throw new BusinessException(BusinessErrorCode.AUTH_FIND_EMAIL_IP_RATE_LIMITED);
-		}
 	}
 
 	public void sendCode(String phoneNumber) {
