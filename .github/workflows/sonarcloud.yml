@@ -38,6 +38,18 @@ jobs:
         working-directory: ./frontend
         run: pnpm run build
 
+      # Backend 테스트 및 JaCoCo 커버리지 리포트 생성
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Run backend tests with coverage
+        working-directory: ./backend
+        run: ./gradlew :auth:test :auth:jacocoTestReport :main:test :main:jacocoTestReport --no-daemon
+        continue-on-error: true
+
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602 # v6
         env:
