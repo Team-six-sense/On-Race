@@ -2,11 +2,14 @@ name: Build and Push to ECR
 
 on:
   push:
-    branches: [ "main" ] # 필요시 feature/infra 등의 브랜치로 변경 가능
+    branches:
+      - main
+      - develop
+  workflow_dispatch: 
 
 env:
   AWS_REGION: ap-northeast-2
-  ECR_REPOSITORY: t6-on-race-api # ECR 리포지토리 이름 확인 필요
+  ECR_REPOSITORY: t6-on-race-api
   IMAGE_TAG: latest
 
 jobs:
@@ -17,7 +20,6 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    # 1. Java 17 설정 (Spring Boot 3 기준)
     - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
@@ -25,14 +27,14 @@ jobs:
         distribution: 'temurin'
         cache: gradle
 
-    # 2. 실행 권한 부여 및 빌드 (테스트 제외로 속도 향상)
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
+      working-directory: ./backend
 
     - name: Build with Gradle
       run: ./gradlew build -x test
+      working-directory: ./backend
 
-    # 3. AWS 자격 증명 설정 (GitHub Secrets에 등록 필수)
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
@@ -40,15 +42,13 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ env.AWS_REGION }}
 
-    # 4. Amazon ECR 로그인
     - name: Login to Amazon ECR
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
 
-    # 5. Docker 이미지 빌드 및 푸시
     - name: Build, tag, and push image to Amazon ECR
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
       run: |
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./backend
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
