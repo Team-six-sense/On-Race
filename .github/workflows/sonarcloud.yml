@@ -19,21 +19,6 @@ jobs:
         with:
           fetch-depth: 0  # Shallow clones should be disabled for better analysis
       
-      # Backend 빌드 (Java 21 - Gradle)
-      - name: Setup Java
-        uses: actions/setup-java@v3
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-      
-      - name: Grant execute permission for gradlew
-        working-directory: ./backend
-        run: chmod +x gradlew
-      
-      - name: Build backend with Gradle
-        working-directory: ./backend
-        run: ./gradlew build -x test
-      
       # SonarCloud 스캔
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@ba3875ecf642b2129de2b589510c81a8b53dbf4e # master
