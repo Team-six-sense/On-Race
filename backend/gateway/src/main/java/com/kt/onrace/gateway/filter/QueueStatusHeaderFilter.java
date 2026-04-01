@@ -33,7 +33,7 @@ public class QueueStatusHeaderFilter extends AbstractGatewayFilterFactory<QueueS
 
 			if (eventId != null) {
 				boolean enabled = queueEventCache.isQueueEnabled(eventId);
-				exchange.getResponse().getHeaders().add(QUEUE_ENABLED_HEADER, String.valueOf(enabled));
+				exchange.getResponse().getHeaders().set(QUEUE_ENABLED_HEADER, String.valueOf(enabled));
 			}
 
 			return chain.filter(exchange);

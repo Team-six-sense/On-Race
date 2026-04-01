@@ -86,7 +86,7 @@ public class EntryController {
 
 	@GetMapping("/stock-check")
 	public ApiResponse<EntryStockCheckResponse> checkStock(
-		@PathVariable String eventId,
+		@PathVariable Long eventId,
 		@RequestParam Long paceId
 		) {
 		return ApiResponse.success(entryService.checkStock(paceId));

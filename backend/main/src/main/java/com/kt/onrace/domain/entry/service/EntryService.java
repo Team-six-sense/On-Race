@@ -225,14 +225,16 @@ public class EntryService {
 	public EntryStockCheckResponse checkStock(Long paceId) {
 		long available = eventStockService.getTempStock(paceId);
 
-		if(available > 0)
+		if(available > 0) {
 			return EntryStockCheckResponse.available(available);
+		}
 
 		long total = eventStockService.getTotalStock(paceId);
 		long confirmed = eventStockService.getConfirmStock(paceId);
 
-		if(confirmed >= total)
+		if(confirmed >= total) {
 			return EntryStockCheckResponse.soldOut();
+		}
 
 		return EntryStockCheckResponse.tempSoldOut();
 	}
