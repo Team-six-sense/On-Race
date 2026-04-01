@@ -11,7 +11,7 @@ import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
 import com.kt.onrace.common.logging.annotation.ServiceLog;
 import com.kt.onrace.common.util.Preconditions;
-import com.kt.onrace.domain.entry.listener.ReservationConfirmedEvent;
+import com.kt.onrace.domain.entry.dto.EntryStockCheckResponse;
 import com.kt.onrace.domain.entry.config.EntryProperties;
 import com.kt.onrace.domain.entry.dto.EntryApplyResponse;
 import com.kt.onrace.domain.entry.dto.EntryOverviewResponse;
@@ -26,6 +26,7 @@ import com.kt.onrace.domain.event.entity.Event;
 import com.kt.onrace.domain.event.entity.EventCourse;
 import com.kt.onrace.domain.event.entity.EventPace;
 import com.kt.onrace.domain.event.entity.EventStatus;
+import com.kt.onrace.domain.event.entity.EventStock;
 import com.kt.onrace.domain.event.repository.EventCourseRepository;
 import com.kt.onrace.domain.event.repository.EventPaceRepository;
 import com.kt.onrace.domain.event.repository.EventRepository;
@@ -154,7 +155,11 @@ public class EntryService {
 
 	@ServiceLog(slowMs = 2000)
 	@Transactional
-	public EntryApplyResponse apply(Long userId, Long eventId, EntryCoursePaceRequest request) {
+	public EntryApplyResponse apply(Long userId, Long eventId, EntryCoursePaceRequest request, Long queuePaceId) {
+		if (queuePaceId != null) {
+			Preconditions.validate(queuePaceId.equals(request.paceId()), BusinessErrorCode.ENTRY_QUEUE_PACE_MISMATCH);
+		}
+
 		memberRepository.findByIdAndIsDeletedFalseOrThrow(userId, BusinessErrorCode.MEMBER_NOT_FOUND);
 
 		Event event = eventRepository.findByIdAndIsViewTrueAndIsDeletedFalseOrThrow(eventId,
@@ -216,6 +221,22 @@ public class EntryService {
 			);
 	}
 
+	@ServiceLog
+	public EntryStockCheckResponse checkStock(Long paceId) {
+		long available = eventStockService.getTempStock(paceId);
+
+		if(available > 0)
+			return EntryStockCheckResponse.available(available);
+
+		long total = eventStockService.getTotalStock(paceId);
+		long confirmed = eventStockService.getConfirmStock(paceId);
+
+		if(confirmed >= total)
+			return EntryStockCheckResponse.soldOut();
+
+		return EntryStockCheckResponse.tempSoldOut();
+	}
+
 	/**
 	 * 결제 확정 — RESERVED → APPLIED 전환, DB 확정 재고 증가
 	 * Redis 예약 키 삭제는 트랜잭션 커밋 후 ReservationConfirmedListener에서 처리
@@ -234,7 +255,8 @@ public class EntryService {
 		entry.confirmPayment();
 		eventStockRepository.findByEventPaceIdOrThrow(paceId).confirmStock();
 
-		applicationEventPublisher.publishEvent(new ReservationConfirmedEvent(paceId, userId));
+		eventStockService.deleteReservation(paceId, userId);
+		eventStockService.confirmStock(paceId);
 	}
 
 }

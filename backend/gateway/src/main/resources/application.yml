@@ -31,6 +31,7 @@ spring:
                 exposed-headers:
                   - Authorization
                   - X-Request-Id
+                  - X-Queue-Enabled
                 allow-credentials: true
                 max-age: 3600
           routes:
@@ -52,16 +53,32 @@ spring:
               predicates:
                 - Path=/queue/**
               filters:
+                - name: BotDetectionFilter
+                  args:
+                    challengeUri: ${CHALLENGE_URI:http://localhost:3000/challenge}
                 - name: RequestRateLimiter
                   args:
                     redis-rate-limiter.replenishRate: 50
                     redis-rate-limiter.burstCapacity: 100
                     redis-rate-limiter.requestedTokens: 1
                     key-resolver: "#{@userOrIpKeyResolver}"
-            - id: ticketing-route
+            - id: entry-apply-lottery-route
               uri: ${MAIN_SERVICE_URI:http://localhost:8082}
               predicates:
-                - Path=/main/tickets/**
+                - Path=/main/events/*/entries/apply/lottery
+              filters:
+                - StripPrefix=1
+                - SetRequestHeader=X-Forwarded-Prefix, /main
+                - name: RequestRateLimiter
+                  args:
+                    redis-rate-limiter.replenishRate: 10
+                    redis-rate-limiter.burstCapacity: 20
+                    redis-rate-limiter.requestedTokens: 1
+                    key-resolver: "#{@userOrIpKeyResolver}"
+            - id: entry-apply-first-come-route
+              uri: ${MAIN_SERVICE_URI:http://localhost:8082}
+              predicates:
+                - Path=/main/events/*/entries/apply/first-come
               filters:
                 - StripPrefix=1
                 - SetRequestHeader=X-Forwarded-Prefix, /main
@@ -73,27 +90,24 @@ spring:
                     key-resolver: "#{@userOrIpKeyResolver}"
                 - name: BotDetectionFilter
                   args:
-                    challengeMode: true
                     challengeUri: ${CHALLENGE_URI:http://localhost:3000/challenge}
                 - name: WaitingRoomFilter
                   args:
                     queueUrl: ${WAITING_ROOM_URI:http://localhost:3000/queue}
-            - id: entry-apply-route
+            - id: stock-check-route
               uri: ${MAIN_SERVICE_URI:http://localhost:8082}
               predicates:
-                - Path=/main/events/*/entries/apply
+                - Path=/main/events/*/entries/stock-check
               filters:
                 - StripPrefix=1
                 - SetRequestHeader=X-Forwarded-Prefix, /main
+                - name: QueueStatusHeaderFilter
                 - name: RequestRateLimiter
                   args:
-                    redis-rate-limiter.replenishRate: 10
-                    redis-rate-limiter.burstCapacity: 20
+                    redis-rate-limiter.replenishRate: 50
+                    redis-rate-limiter.burstCapacity: 100
                     redis-rate-limiter.requestedTokens: 1
                     key-resolver: "#{@userOrIpKeyResolver}"
-                - name: WaitingRoomFilter
-                  args:
-                    queueUrl: ${WAITING_ROOM_URI:http://localhost:3000/queue}
             - id: public-route
               uri: ${MAIN_SERVICE_URI:http://localhost:8082}
               predicates:
