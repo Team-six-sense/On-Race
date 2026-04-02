@@ -1,30 +1,29 @@
-# 1. 빌드 스테이지
-FROM amazoncorretto:17-alpine AS builder
+# 1. 빌드 스테이지 (Java 21)
+FROM amazoncorretto:21-alpine AS builder
+WORKDIR /workspace
+
+# Gradle 설정 파일 복사
+COPY gradlew gradlew.bat settings.gradle build.gradle ./
+COPY gradle ./gradle
+COPY common ./common
+
+# 빌드할 서비스의 build.gradle 및 소스 복사 (build-arg SERVICE 사용)
+ARG SERVICE
+COPY ${SERVICE}/build.gradle ./${SERVICE}/build.gradle
+RUN chmod +x ./gradlew
+
+# 의존성 다운로드 및 빌드
+RUN ./gradlew :${SERVICE}:dependencies --no-daemon
+COPY ${SERVICE} ${SERVICE}
+RUN ./gradlew :${SERVICE}:bootJar --no-daemon \
+    && cp /workspace/${SERVICE}/build/libs/*.jar /workspace/app.jar
+
+# 2. 실행 스테이지 (Java 21)
+FROM amazoncorretto:21-alpine-jdk
 WORKDIR /app
+COPY --from=builder /workspace/app.jar app.jar
 
-# Gradle 래퍼 및 설정 파일 복사
-COPY gradlew .
-COPY gradle gradle
-COPY build.gradle .
-COPY settings.gradle .
-
-# 권한 부여 및 의존성 다운로드
-RUN chmod +x gradlew
-RUN ./gradlew dependencies --no-daemon
-
-# 소스 코드 복사 및 빌드 (테스트 제외)
-COPY src src
-RUN ./gradlew clean build -x test --no-daemon
-
-# 2. 실행 스테이지
-FROM amazoncorretto:17-alpine
-WORKDIR /app
-
-# 빌드된 jar 파일만 복사
-COPY --from=builder /app/build/libs/*.jar app.jar
-
-# EKS app-api.tf 설정에 맞춘 8080 포트 [cite: 592]
 EXPOSE 8080
 
-# JVM 옵션 및 실행 (환경변수는 EKS에서 주입됨 [cite: 596])
+# JVM 옵션은 EKS app-api.tf에서 주입됨
 ENTRYPOINT ["sh", "-c", "java ${JAVA_TOOL_OPTIONS} -jar app.jar"]
