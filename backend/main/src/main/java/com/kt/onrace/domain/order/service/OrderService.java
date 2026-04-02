@@ -85,7 +85,7 @@ public class OrderService {
 				order.getId())
 			.stream()
 			.map(orderPackage -> new OrderDetailResponseDto.PackageInfo(
-				orderPackage.getEventPackageId(),
+				orderPackage.getId(),
 				orderPackage.getName(),
 				orderPackage.getPrice()
 			))
@@ -168,7 +168,10 @@ public class OrderService {
 		List<EventPackage> selectedPackages = resolveSelectedPackages(request.eventId(), request.selectedPackageIds());
 		ShippingAddressSnapshot shippingAddress = resolveShippingAddressSnapshot(userId, request);
 
-		Long itemTotalAmount = course.getPrice() + selectedPackages.stream().mapToLong(EventPackage::getPrice).sum();
+		Long itemTotalAmount = course.getPrice() + selectedPackages.stream()
+			.mapToLong(eventPackage -> eventPackage.getItem().getPrice())
+			.sum();
+
 		// 임시 배송비, 배송지에 따라 달라질 수 있음
 		Long shippingFee = 3000L;
 		// 임시 할인비, 할인 정책에 따라 달라질 수 있음
@@ -204,9 +207,9 @@ public class OrderService {
 
 		for (EventPackage pkg : selectedPackages) {
 			OrderPackage orderPackage = OrderPackage.builder()
-				.eventPackageId(pkg.getId())
-				.price(pkg.getPrice())
-				.name(pkg.getName())
+				.eventItemId(pkg.getItem().getId())
+				.price(pkg.getItem().getPrice())
+				.name(pkg.getItem().getName())
 				.build();
 			order.addPackage(orderPackage);
 		}
@@ -227,6 +230,7 @@ public class OrderService {
 		}
 
 		List<EventPackage> selectedPackages = eventPackageRepository.findAllById(selectedPackageIds);
+
 		boolean hasInvalidPackage = selectedPackages.size() != selectedPackageIds.size()
 			|| selectedPackages.stream().anyMatch(pkg -> !pkg.getEvent().getId().equals(eventId));
 

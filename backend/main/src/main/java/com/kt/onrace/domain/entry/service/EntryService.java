@@ -11,16 +11,15 @@ import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
 import com.kt.onrace.common.logging.annotation.ServiceLog;
 import com.kt.onrace.common.util.Preconditions;
-import com.kt.onrace.domain.entry.listener.ReservationConfirmedEvent;
 import com.kt.onrace.domain.entry.config.EntryProperties;
 import com.kt.onrace.domain.entry.dto.EntryApplyResponse;
-import com.kt.onrace.domain.entry.dto.EntryOverviewResponse;
+import com.kt.onrace.domain.entry.dto.EntryCountResult;
 import com.kt.onrace.domain.entry.dto.EntryCoursePaceRequest;
+import com.kt.onrace.domain.entry.dto.EntryOverviewResponse;
 import com.kt.onrace.domain.entry.dto.EntryPreSaveResponse;
 import com.kt.onrace.domain.entry.dto.EntryRateResponse;
 import com.kt.onrace.domain.entry.entity.Entry;
 import com.kt.onrace.domain.entry.entity.EntryStatus;
-import com.kt.onrace.domain.entry.dto.EntryCountResult;
 import com.kt.onrace.domain.entry.repository.EntryRepository;
 import com.kt.onrace.domain.event.entity.Event;
 import com.kt.onrace.domain.event.entity.EventCourse;
@@ -57,17 +56,21 @@ public class EntryService {
 	public EntryPreSaveResponse savePreSave(Long userId, Long eventId, EntryCoursePaceRequest request) {
 		memberRepository.findByIdAndIsDeletedFalseOrThrow(userId, BusinessErrorCode.MEMBER_NOT_FOUND);
 
-		Event event = eventRepository.findByIdAndIsViewTrueAndIsDeletedFalseOrThrow(eventId, BusinessErrorCode.EVENT_NOT_FOUND);
+		Event event = eventRepository.findByIdAndIsViewTrueAndIsDeletedFalseOrThrow(eventId,
+			BusinessErrorCode.EVENT_NOT_FOUND);
 
 		Preconditions.validate(event.getStatus() == EventStatus.READY, BusinessErrorCode.EVENT_NOT_IN_STANDBY);
 
-		EventCourse course = eventCourseRepository.findByIdAndEventIdOrThrow(request.courseId(), eventId, BusinessErrorCode.ENTRY_COURSE_NOT_FOUND);
+		EventCourse course = eventCourseRepository.findByIdAndEventIdOrThrow(request.courseId(), eventId,
+			BusinessErrorCode.ENTRY_COURSE_NOT_FOUND);
 
-		EventPace pace = eventPaceRepository.findByIdAndEventCourseIdOrThrow(request.paceId(), request.courseId(), BusinessErrorCode.ENTRY_PACE_NOT_FOUND);
+		EventPace pace = eventPaceRepository.findByIdAndEventCourseIdOrThrow(request.paceId(), request.courseId(),
+			BusinessErrorCode.ENTRY_PACE_NOT_FOUND);
 
 		Entry entry = entryRepository.findByUserIdAndEventId(userId, eventId)
 			.map(e -> {
-				Preconditions.validate(e.getStatus() == EntryStatus.PRE_SAVED, BusinessErrorCode.ENTRY_EVENT_NOT_IN_STANDBY);
+				Preconditions.validate(e.getStatus() == EntryStatus.PRE_SAVED,
+					BusinessErrorCode.ENTRY_EVENT_NOT_IN_STANDBY);
 				e.updatePreSave(course, pace);
 				return e;
 			})
@@ -135,7 +138,8 @@ public class EntryService {
 
 		EntryCountResult counts = entryRepository.countTotalAndAppliedByPaceId(paceId);
 
-		return EntryRateResponse.of(counts.totalCount(), counts.appliedCount(), pace.getCapacity(), pace.getEventCourse().getPrice());
+		return EntryRateResponse.of(counts.totalCount(), counts.appliedCount(), pace.getCapacity(),
+			pace.getEventCourse().getPrice());
 	}
 
 	@ServiceLog(slowMs = 2000)
@@ -145,7 +149,8 @@ public class EntryService {
 
 		Entry entry = entryRepository.findByUserIdAndEventIdOrThrow(userId, eventId, BusinessErrorCode.ENTRY_NOT_FOUND);
 
-		Preconditions.validate(entry.getStatus() == EntryStatus.PRE_SAVED, BusinessErrorCode.ENTRY_EVENT_NOT_IN_STANDBY);
+		Preconditions.validate(entry.getStatus() == EntryStatus.PRE_SAVED,
+			BusinessErrorCode.ENTRY_EVENT_NOT_IN_STANDBY);
 
 		entryRepository.deleteByUserIdAndEventId(userId, eventId);
 
@@ -204,7 +209,8 @@ public class EntryService {
 				switch (e.getStatus()) {
 					case APPLIED -> throw new BusinessException(BusinessErrorCode.ENTRY_ALREADY_APPLIED);
 					case RESERVED -> throw new BusinessException(BusinessErrorCode.ENTRY_ALREADY_RESERVED);
-					case PRE_SAVED -> {} // 그대로 반환함
+					case PRE_SAVED -> {
+					} // 그대로 반환함
 					default -> throw new BusinessException(BusinessErrorCode.ENTRY_CANNOT_APPLY);
 				}
 				return e;
@@ -234,7 +240,7 @@ public class EntryService {
 		entry.confirmPayment();
 		eventStockRepository.findByEventPaceIdOrThrow(paceId).confirmStock();
 
-		applicationEventPublisher.publishEvent(new ReservationConfirmedEvent(paceId, userId));
+		// applicationEventPublisher.publishEvent(new ReservationConfirmedEvent(paceId, userId));
 	}
 
 }

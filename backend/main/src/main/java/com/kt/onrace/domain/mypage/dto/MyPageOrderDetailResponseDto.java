@@ -48,7 +48,7 @@ public record MyPageOrderDetailResponseDto(
 	 * 주문에 포함된 패키지 한 건의 이름과 금액 정보를 표현한다.
 	 */
 	public record PackageInfo(
-		Long eventPackageId,
+		Long eventItemId,
 		String name,
 		Long price
 	) {

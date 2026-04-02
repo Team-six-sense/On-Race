@@ -23,7 +23,7 @@ public class EventItemOption extends BaseEntity {
 	@JoinColumn(name = "item_id", nullable = false)
 	private EventItem item;
 
-	@Column(nullable = false, length = 20)
+	@Column(name = "`option`", nullable = false, length = 20)
 	private String option;
 
 	@Builder

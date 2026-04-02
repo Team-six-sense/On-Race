@@ -1,6 +1,6 @@
 package com.kt.onrace.domain.mypage.service;
 
-import static com.kt.onrace.domain.order.entity.QOrder.order;
+import static com.kt.onrace.domain.order.entity.QOrder.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -81,14 +81,17 @@ public class OrderHistoryService {
 
 		OrderLookup lookup = buildOrderLookup(List.of(currentOrder));
 		EventCourse course = lookup.courseById().get(currentOrder.getEventCourseId());
-		EventPace pace = currentOrder.getEventPaceId() != null ? lookup.paceById().get(currentOrder.getEventPaceId()) : null;
-		Event currentEvent = course != null && course.getEvent() != null ? lookup.eventById().get(course.getEvent().getId()) : null;
+		EventPace pace =
+			currentOrder.getEventPaceId() != null ? lookup.paceById().get(currentOrder.getEventPaceId()) : null;
+		Event currentEvent =
+			course != null && course.getEvent() != null ? lookup.eventById().get(course.getEvent().getId()) : null;
 		MyPageStatusDto status = displayStatusResolver.resolveOrderStatus(currentOrder);
 
-		List<MyPageOrderDetailResponseDto.PackageInfo> packages = orderPackageRepository.findByOrderIdOrderByIdAsc(currentOrder.getId())
+		List<MyPageOrderDetailResponseDto.PackageInfo> packages = orderPackageRepository.findByOrderIdOrderByIdAsc(
+				currentOrder.getId())
 			.stream()
 			.map(orderPackage -> new MyPageOrderDetailResponseDto.PackageInfo(
-				orderPackage.getEventPackageId(),
+				orderPackage.getEventItemId(),
 				orderPackage.getName(),
 				orderPackage.getPrice()
 			))
@@ -159,7 +162,7 @@ public class OrderHistoryService {
 		Map<Long, EventCourse> courseById = courseIds.isEmpty()
 			? Map.of()
 			: eventCourseRepository.findAllById(courseIds).stream()
-				.collect(Collectors.toMap(EventCourse::getId, Function.identity()));
+			.collect(Collectors.toMap(EventCourse::getId, Function.identity()));
 
 		Set<Long> paceIds = orders.stream()
 			.map(Order::getEventPaceId)
@@ -168,7 +171,7 @@ public class OrderHistoryService {
 		Map<Long, EventPace> paceById = paceIds.isEmpty()
 			? Map.of()
 			: eventPaceRepository.findAllById(paceIds).stream()
-				.collect(Collectors.toMap(EventPace::getId, Function.identity()));
+			.collect(Collectors.toMap(EventPace::getId, Function.identity()));
 
 		Set<Long> eventIds = courseById.values().stream()
 			.map(EventCourse::getEvent)
@@ -179,15 +182,17 @@ public class OrderHistoryService {
 		Map<Long, Event> eventById = eventIds.isEmpty()
 			? Map.of()
 			: eventRepository.findAllById(eventIds).stream()
-				.collect(Collectors.toMap(Event::getId, Function.identity()));
+			.collect(Collectors.toMap(Event::getId, Function.identity()));
 
 		return new OrderLookup(courseById, paceById, eventById);
 	}
 
 	private MyPageOrderItemDto toOrderItem(Order currentOrder, OrderLookup lookup) {
 		EventCourse course = lookup.courseById().get(currentOrder.getEventCourseId());
-		EventPace pace = currentOrder.getEventPaceId() != null ? lookup.paceById().get(currentOrder.getEventPaceId()) : null;
-		Event currentEvent = course != null && course.getEvent() != null ? lookup.eventById().get(course.getEvent().getId()) : null;
+		EventPace pace =
+			currentOrder.getEventPaceId() != null ? lookup.paceById().get(currentOrder.getEventPaceId()) : null;
+		Event currentEvent =
+			course != null && course.getEvent() != null ? lookup.eventById().get(course.getEvent().getId()) : null;
 		MyPageStatusDto status = displayStatusResolver.resolveOrderStatus(currentOrder);
 
 		return new MyPageOrderItemDto(
