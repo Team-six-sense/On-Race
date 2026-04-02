@@ -84,7 +84,7 @@ public class OrderHistoryService {
 				currentOrder.getId())
 				.stream()
 				.map(orderPackage -> MyPageOrderDetailResponseDto.PackageInfo.of(
-						orderPackage.getEventPackageId(),
+						orderPackage.getEventItemId(),
 						orderPackage.getName(),
 						orderPackage.getPrice()))
 				.toList();
@@ -145,25 +145,23 @@ public class OrderHistoryService {
 		};
 	}
 
-	<<<<<<<HEAD
+	private MyPageOrderItemDto toOrderItem(Order currentOrder) {
+		MyPageStatusDto status = displayStatusResolver.resolveOrderStatus(currentOrder);
 
-	private OrderLookup buildOrderLookup(List<Order> orders) {
-		Set<Long> courseIds = orders.stream()
-			.map(Order::getEventCourseId)
-			.filter(Objects::nonNull)
-			currentOrder.getOrderNumber(),
-			status.statusText(),
-			status.actionType(),
-			status.actionLabel(),
-			status.actionEnabled(),
-			null,
-			currentOrder.getEventTitle(),
-			currentOrder.getCourseName(),
-			currentOrder.getPaceName(),
-			currentOrder.getFinalAmount(),
-			currentOrder.getCreatedAt(),
-			resolvePaymentDeadlineAt(currentOrder)
-		);
+		return MyPageOrderItemDto.of(
+				currentOrder.getOrderNumber(),
+				currentOrder.getEventId(),
+				status.statusText(),
+				status.actionType(),
+				status.actionLabel(),
+				status.actionEnabled(),
+				null,
+				currentOrder.getEventTitle(),
+				currentOrder.getCourseName(),
+				currentOrder.getPaceName(),
+				currentOrder.getFinalAmount(),
+				currentOrder.getCreatedAt(),
+				resolvePaymentDeadlineAt(currentOrder));
 	}
 
 	private MyPagePaymentHistoryItemDto toPaymentHistoryItem(Order currentOrder) {
