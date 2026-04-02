@@ -220,11 +220,6 @@ class OrderServiceTest {
 				List.of(30L),
 				63000L,
 				101L,
-				null,
-				null,
-				null,
-				null,
-				null,
 				"직접 입력 메모"
 			),
 			7L
@@ -282,11 +277,6 @@ class OrderServiceTest {
 				List.of(30L),
 				63000L,
 				null,
-				null,
-				null,
-				null,
-				null,
-				null,
 				"직접 입력 메모"
 			),
 			7L
@@ -336,11 +326,6 @@ class OrderServiceTest {
 				List.of(30L),
 				63000L,
 				null,
-				"직접입력",
-				"01012345678",
-				"12345",
-				"서울 어딘가",
-				"101동",
 				"직접 입력 메모"
 			),
 			7L
@@ -374,11 +359,6 @@ class OrderServiceTest {
 				List.of(30L),
 				63000L,
 				101L,
-				null,
-				null,
-				null,
-				null,
-				null,
 				"직접 입력 메모"
 			),
 			8L
@@ -409,11 +389,6 @@ class OrderServiceTest {
 				20L,
 				List.of(),
 				53000L,
-				null,
-				null,
-				null,
-				null,
-				null,
 				null,
 				"직접 입력 메모"
 			),

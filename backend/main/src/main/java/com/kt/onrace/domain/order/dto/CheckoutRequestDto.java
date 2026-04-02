@@ -1,7 +1,9 @@
 package com.kt.onrace.domain.order.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record CheckoutRequestDto(
 	String prepareToken,
 	Long eventId,
@@ -10,11 +12,6 @@ public record CheckoutRequestDto(
 	List<Long> selectedPackageIds,
 	Long expectedFinalAmount,
 	Long addressId,
-	String recipientName,
-	String recipientPhone,
-	String zipCode,
-	String address,
-	String detailAddress,
 	String deliveryMemo
 ) {
 }
