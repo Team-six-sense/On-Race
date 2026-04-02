@@ -16,3 +16,10 @@ jwt:
   secret: test-secret-key-1234567890-1234567890-1234567890
   access-token-expiration: 300000
   refresh-token-expiration: 43200000
+
+order:
+  prepare-token:
+    ttl-seconds: 300
+  entry-id:
+    monitor:
+      enabled: false

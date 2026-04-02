@@ -39,19 +39,5 @@ public class EventPackage extends BaseEntity {
 		this.item = item;
 		this.itemType = itemType;
 	}
-
-	/*
-	* 추후 주문/결제 진행하시는 분 제거 부탁드립니다 -> 패키지/아이템 구조 변경으로 인한 필드 제거로 인해 컴파일안되서 되어있는 코드입니다
-	* */
-	public String getName() {
-		return item.getName();
-	}
-
-	public long getPrice() {
-		return item.getPrice();
-	}
-
-	public String getDescription() {
-		return item.getDescription();
-	}
+	
 }

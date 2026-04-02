@@ -5,6 +5,8 @@ import java.util.List;
 
 import com.kt.onrace.domain.event.entity.Event;
 import com.kt.onrace.domain.event.entity.EventCourse;
+import com.kt.onrace.domain.event.entity.EventItemOption;
+import com.kt.onrace.domain.event.entity.EventItemType;
 import com.kt.onrace.domain.event.entity.EventPace;
 import com.kt.onrace.domain.event.entity.EventPackage;
 
@@ -42,7 +44,9 @@ public record CheckoutPrepareResponseDto(
 					pace.getName(),
 					course.getPrice()))
 			.packages(packages.stream()
-				.map(p -> new PackageInfo(p.getId(), p.getName(), p.getPrice(), p.getDescription()))
+				.map(p -> new PackageInfo(p.getId(), p.getItemType(), p.getItem().getName(), p.getItem().getPrice(),
+					p.getItem().getDescription(), p.getItem().getSizes().stream().map(
+					EventItemOption::getOption).toList()))
 				.toList())
 			.paymentDetail(paymentDetail)
 			.shippingAddress(shippingAddress)
@@ -63,9 +67,11 @@ public record CheckoutPrepareResponseDto(
 
 	public record PackageInfo(
 		Long id,
+		EventItemType itemType,
 		String name,
 		Long price,
-		String description
+		String description,
+		List<String> options
 	) {
 	}
 

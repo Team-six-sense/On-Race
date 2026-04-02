@@ -16,8 +16,6 @@ import com.kt.onrace.domain.address.dto.AddressDto;
 import com.kt.onrace.domain.address.service.AddressService;
 import com.kt.onrace.domain.mypage.client.AuthAccountClient;
 import com.kt.onrace.domain.mypage.dto.MyPageAccountResponseDto;
-import com.kt.onrace.domain.mypage.dto.MyPageAccountType;
-import com.kt.onrace.domain.mypage.dto.MyPageVerificationStatus;
 
 @ExtendWith(MockitoExtension.class)
 class MyPageAccountQueryServiceTest {
@@ -28,18 +26,15 @@ class MyPageAccountQueryServiceTest {
 	@Mock
 	private AddressService addressService;
 
-	private MyPageAddressQueryService myPageAddressQueryService;
-
 	private MyPageAccountQueryService myPageAccountQueryService;
 
 	@BeforeEach
 	void setUp() {
-		myPageAddressQueryService = new MyPageAddressQueryService(addressService);
-		myPageAccountQueryService = new MyPageAccountQueryService(authAccountClient, myPageAddressQueryService);
+		myPageAccountQueryService = new MyPageAccountQueryService(authAccountClient, addressService);
 	}
 
 	@Test
-	@DisplayName("계정 요약은 auth 원천값과 기본 배송지 요약을 함께 조립한다")
+	@DisplayName("계정 요약은 auth 원천값과 배송지 목록을 함께 조립한다")
 	void getAccountReturnsAccountSummary() {
 		when(authAccountClient.getMyInfo(7L)).thenReturn(
 			new AuthAccountClient.AccountSummary(
@@ -52,27 +47,28 @@ class MyPageAccountQueryServiceTest {
 				true
 			)
 		);
-		when(addressService.getDefault(7L)).thenReturn(new AddressDto.DefaultResponse(true, defaultAddress()));
+		when(addressService.list(7L)).thenReturn(List.of(defaultAddress(), officeAddress()));
 
 		MyPageAccountResponseDto response = myPageAccountQueryService.getAccount(7L);
 
-		assertThat(response.accountType()).isEqualTo(MyPageAccountType.EMAIL);
+		assertThat(response.id()).isEqualTo(7L);
 		assertThat(response.name()).isEqualTo("홍길동");
-		assertThat(response.phone()).isEqualTo("01012345678");
-		assertThat(response.authProvider()).isEqualTo("LOCAL");
+		assertThat(response.phoneNumber()).isEqualTo("01012345678");
 		assertThat(response.email()).isEqualTo("runner@example.com");
-		assertThat(response.canChangePassword()).isTrue();
-		assertThat(response.verificationStatus()).isEqualTo(MyPageVerificationStatus.COMPLETED);
-		assertThat(response.marketingConsent()).isTrue();
-		assertThat(response.address().hasAddress()).isTrue();
-		assertThat(response.address().defaultAddress().receiverName()).isEqualTo("홍길동");
-		assertThat(response.address().defaultAddress().label()).isEqualTo("집");
-		assertThat(response.address().defaultAddress().address()).isEqualTo("서울시 강남구 101동 1203호");
-		assertThat(response.address().defaultAddress().phone()).isEqualTo("01012345678");
+		assertThat(response.isPassAuth()).isTrue();
+		assertThat(response.addressList()).hasSize(2);
+		assertThat(response.addressList().get(0).receiverName()).isEqualTo("홍길동");
+		assertThat(response.addressList().get(0).label()).isEqualTo("집");
+		assertThat(response.addressList().get(0).phoneNumber()).isEqualTo("01012345678");
+		assertThat(response.addressList().get(0).zipcode()).isEqualTo("06236");
+		assertThat(response.addressList().get(0).address1()).isEqualTo("서울시 강남구");
+		assertThat(response.addressList().get(0).address2()).isEqualTo("101동 1203호");
+		assertThat(response.addressList().get(0).memo()).isEqualTo("문앞");
+		assertThat(response.addressList().get(0).isDefault()).isTrue();
 	}
 
 	@Test
-	@DisplayName("기본 배송지가 없으면 hasAddress=false와 defaultAddress=null을 반환한다")
+	@DisplayName("배송지가 없으면 빈 배열을 반환한다")
 	void getAccountReturnsEmptyAddressWhenDefaultAddressMissing() {
 		when(authAccountClient.getMyInfo(8L)).thenReturn(
 			new AuthAccountClient.AccountSummary(
@@ -85,18 +81,17 @@ class MyPageAccountQueryServiceTest {
 				false
 			)
 		);
-		when(addressService.getDefault(8L)).thenReturn(AddressDto.DefaultResponse.empty());
+		when(addressService.list(8L)).thenReturn(List.of());
 
 		MyPageAccountResponseDto response = myPageAccountQueryService.getAccount(8L);
 
-		assertThat(response.accountType()).isEqualTo(MyPageAccountType.EMAIL);
-		assertThat(response.verificationStatus()).isEqualTo(MyPageVerificationStatus.PENDING);
-		assertThat(response.address().hasAddress()).isFalse();
-		assertThat(response.address().defaultAddress()).isNull();
+		assertThat(response.id()).isEqualTo(8L);
+		assertThat(response.isPassAuth()).isFalse();
+		assertThat(response.addressList()).isEmpty();
 	}
 
 	@Test
-	@DisplayName("SNS 계정은 accountType=SNS, canChangePassword=false, UNVERIFIED는 PENDING으로 매핑한다")
+	@DisplayName("인증 상태가 VERIFIED가 아니면 isPassAuth=false로 매핑한다")
 	void getAccountNormalizesSnsAccountFields() {
 		when(authAccountClient.getMyInfo(9L)).thenReturn(
 			new AuthAccountClient.AccountSummary(
@@ -109,14 +104,13 @@ class MyPageAccountQueryServiceTest {
 				true
 			)
 		);
-		when(addressService.getDefault(9L)).thenReturn(new AddressDto.DefaultResponse(true, defaultAddress()));
+		when(addressService.list(9L)).thenReturn(List.of(defaultAddress()));
 
 		MyPageAccountResponseDto response = myPageAccountQueryService.getAccount(9L);
 
-		assertThat(response.accountType()).isEqualTo(MyPageAccountType.SNS);
-		assertThat(response.authProvider()).isEqualTo("KAKAO");
-		assertThat(response.canChangePassword()).isFalse();
-		assertThat(response.verificationStatus()).isEqualTo(MyPageVerificationStatus.PENDING);
+		assertThat(response.id()).isEqualTo(9L);
+		assertThat(response.isPassAuth()).isFalse();
+		assertThat(response.addressList()).hasSize(1);
 	}
 
 	private AddressDto.Response defaultAddress() {
@@ -130,6 +124,20 @@ class MyPageAccountQueryServiceTest {
 			"101동 1203호",
 			"문앞",
 			true
+		);
+	}
+
+	private AddressDto.Response officeAddress() {
+		return new AddressDto.Response(
+			2L,
+			"회사",
+			"홍길동",
+			"01099998888",
+			"04799",
+			"서울시 성동구",
+			"8층",
+			"리셉션",
+			false
 		);
 	}
 }

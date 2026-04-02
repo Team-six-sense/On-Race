@@ -49,6 +49,7 @@ public enum BusinessErrorCode implements ErrorCode {
 	AUTH_LOGIN_FAIL_CAPTCHA(HttpStatus.UNAUTHORIZED, "AUTH_030", "비정상적인 로그인 시도가 감지되었습니다. CAPTCHA를 완료해주세요."),
 	AUTH_REQUIRED_TERM_NOT_AGREED(HttpStatus.BAD_REQUEST, "AUTH_031", "필수 약관에 동의해 주세요."),
 	AUTH_TERM_NOT_FOUND(HttpStatus.NOT_FOUND, "AUTH_032", "약관 정보를 찾을 수 없습니다."),
+	AUTH_FIND_EMAIL_IP_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "AUTH_033", "비정상적인 아이디 찾기 시도가 감지되었습니다. 잠시 후 다시 시도해주세요."),
 
 	// MEDIA
 	MEDIA_UNSUPPORTED_CONTENT_TYPE(HttpStatus.BAD_REQUEST, "MDA_001", "허용되지 않은 Content_type 입니다."),
@@ -97,6 +98,7 @@ public enum BusinessErrorCode implements ErrorCode {
 	// ORDER
 	ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "ORD_001", "주문 정보를 찾을 수 없습니다."),
 	ORDER_INVALID_TAB(HttpStatus.BAD_REQUEST, "ORD_002", "유효하지 않은 주문 조회 탭입니다."),
+	ORDER_CANNOT_CONFIRM(HttpStatus.BAD_REQUEST, "ORD_003", "현재 주문 상태에서는 결제 완료 처리할 수 없습니다."),
 
 	// MEMBER
 	MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MBR_001", "회원을 찾을 수 없습니다."),
