@@ -1,0 +1,12 @@
+# macro_detection
+/macro_detection/data
+/macro_detection/models
+
+# 로그 파일
+/macro_detection/app/logs
+
+# Python 관련 불필요한 파일들
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
