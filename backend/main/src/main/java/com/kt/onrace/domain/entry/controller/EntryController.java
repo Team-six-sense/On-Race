@@ -17,6 +17,7 @@ import com.kt.onrace.domain.entry.dto.EntryOverviewResponse;
 import com.kt.onrace.domain.entry.dto.EntryCoursePaceRequest;
 import com.kt.onrace.domain.entry.dto.EntryPreSaveResponse;
 import com.kt.onrace.domain.entry.dto.EntryRateResponse;
+import com.kt.onrace.domain.entry.dto.EntryStockCheckResponse;
 import com.kt.onrace.domain.entry.service.EntryService;
 
 import jakarta.validation.Valid;
@@ -64,13 +65,31 @@ public class EntryController {
 		return ApiResponse.success(entryService.deletePreSave(userId, eventId));
 	}
 
-	@PostMapping("/apply")
-	public ApiResponse<EntryApplyResponse> apply(
+	@PostMapping("/apply/lottery")
+	public ApiResponse<EntryApplyResponse> applyLottery(
 		@RequestHeader("X-User-Id") Long userId,
 		@PathVariable Long eventId,
 		@Valid @RequestBody EntryCoursePaceRequest request
 	) {
-		return ApiResponse.success(entryService.apply(userId, eventId, request));
+		return ApiResponse.success(entryService.apply(userId, eventId, request, null));
+	}
+
+	@PostMapping("/apply/first-come")
+	public ApiResponse<EntryApplyResponse> applyFirstCome(
+		@RequestHeader("X-User-Id") Long userId,
+		@RequestHeader(value = "X-Queue-Pace-Id", required = false) Long queuePaceId,
+		@PathVariable Long eventId,
+		@Valid @RequestBody EntryCoursePaceRequest request
+	) {
+		return ApiResponse.success(entryService.apply(userId, eventId, request, queuePaceId));
+	}
+
+	@GetMapping("/stock-check")
+	public ApiResponse<EntryStockCheckResponse> checkStock(
+		@PathVariable Long eventId,
+		@RequestParam Long paceId
+		) {
+		return ApiResponse.success(entryService.checkStock(paceId));
 	}
 
 	// TODO: 결제 API 연동 후 제거 — 테스트용 임시 API입니다 추후에 제가 삭제하겠습니다
