@@ -47,7 +47,7 @@ jobs:
 
       - name: Run backend tests with coverage
         working-directory: ./backend
-        run: ./gradlew :auth:test :auth:jacocoTestReport :main:test :main:jacocoTestReport --no-daemon
+        run: ./gradlew classes :auth:test :auth:jacocoTestReport :main:test :main:jacocoTestReport --no-daemon
         continue-on-error: true
 
       - name: SonarQube Scan

@@ -69,7 +69,7 @@ class SmsVerifyServiceFindEmailTest {
 		assertThatCode(() -> smsVerifyService.sendCodeForFind("01012345678", "1.2.3.4"))
 			.doesNotThrowAnyException();
 
-		then(ipCounter).should(never()).expire(any());
+		then(ipCounter).should(never()).expire(any(Duration.class));
 	}
 
 	@Test
@@ -100,10 +100,10 @@ class SmsVerifyServiceFindEmailTest {
 	@Test
 	@DisplayName("가입된 전화번호: SMS 발송")
 	@SuppressWarnings("unchecked")
-	void sendCodeForFind_registeredPhone_sendsSms() {
+	void sendCodeForFind_registeredPhone_sendsSms() throws Exception {
 		RAtomicLong sendAttemptCounter = mock(RAtomicLong.class);
 		RAtomicLong verifyAttemptCounter = mock(RAtomicLong.class);
-		RBucket<String> codeBucket = mock(RBucket.class);
+		RBucket codeBucket = mock(RBucket.class);
 
 		given(redissonClient.getAtomicLong(RedisKeyGenerator.smsFindIpAttemptKey("1.2.3.4"))).willReturn(ipCounter);
 		given(ipCounter.incrementAndGet()).willReturn(1L);
@@ -122,7 +122,7 @@ class SmsVerifyServiceFindEmailTest {
 
 		smsVerifyService.sendCodeForFind("01012345678", "1.2.3.4");
 
-		then(messageService).should().send(any(), isNull());
+		then(messageService).should().send(any(com.solapi.sdk.message.model.Message.class), isNull());
 	}
 
 	@Test

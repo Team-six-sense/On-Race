@@ -88,7 +88,6 @@ public class OrderHistoryService {
 				orderPackage.getName(),
 				orderPackage.getPrice()))
 			.toList();
-
 		return MyPageOrderDetailResponseDto.of(
 			currentOrder.getEventId(),
 			currentOrder.getOrderNumber(),
