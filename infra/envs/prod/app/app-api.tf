@@ -175,7 +175,6 @@ resource "kubernetes_deployment_v1" "on_race_api" {
             value = "${data.terraform_remote_state.base.outputs.redis_endpoint}:6379"
           }
 
-
           resources {
             requests = { cpu = "50m", memory = "64Mi" }
             limits   = { cpu = "100m", memory = "128Mi" }
