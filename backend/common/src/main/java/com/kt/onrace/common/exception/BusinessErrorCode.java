@@ -86,6 +86,7 @@ public enum BusinessErrorCode implements ErrorCode {
 	ENTRY_RESERVATION_EXPIRED(HttpStatus.BAD_REQUEST, "ENT_009", "만료되었습니다. 다시 신청해주세요."),
 	ENTRY_ALREADY_RESERVED(HttpStatus.CONFLICT, "ENT_010", "이미 선점한 이벤트입니다."),
 	ENTRY_EVENT_ALREADY_ENDED(HttpStatus.BAD_REQUEST, "ENT_011", "종료된 이벤트입니다."),
+	ENTRY_QUEUE_PACE_MISMATCH(HttpStatus.BAD_REQUEST, "ENT_012", "대기열 토큰의 페이스와 신청 페이스가 일치하지 않습니다."),
 
 	// STOCK
 	STOCK_NOT_FOUND(HttpStatus.NOT_FOUND, "STK_001", "재고 정보를 찾을 수 없습니다."),

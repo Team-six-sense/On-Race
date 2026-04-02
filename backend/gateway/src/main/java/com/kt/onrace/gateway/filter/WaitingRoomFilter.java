@@ -1,6 +1,7 @@
 package com.kt.onrace.gateway.filter;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -11,6 +12,7 @@ import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFac
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
@@ -32,7 +34,9 @@ public class WaitingRoomFilter extends AbstractGatewayFilterFactory<WaitingRoomF
 	private final QueueEventCache queueEventCache;
 
 	private static final String PASS_TOKEN_HEADER = "X-Queue-Token";
+	private static final String QUEUE_PACE_ID_HEADER = "X-Queue-Pace-Id";
 	private static final String QUEUE_PASS_TYPE = "QUEUE_PASS";
+	private static final String CLAIM_PACE_ID = "CLAIM_PACE_ID";
 	private static final Pattern EVENT_ID_PATTERN = Pattern.compile("/events/(\\d+)/");
 
 	public WaitingRoomFilter(GatewayProperties gatewayProperties, QueueEventCache queueEventCache) {
@@ -57,11 +61,15 @@ public class WaitingRoomFilter extends AbstractGatewayFilterFactory<WaitingRoomF
 
 			String passToken = exchange.getRequest().getHeaders().getFirst(PASS_TOKEN_HEADER);
 
-			if (passToken == null || !isValidQueuePassToken(passToken)) {
+			Optional<Long> paceId = extractPaceIdFromToken(passToken);
+			if (paceId.isEmpty()) {
 				return sendQueueRequired(exchange, config);
 			}
 
-			return chain.filter(exchange);
+			ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
+				.header(QUEUE_PACE_ID_HEADER, String.valueOf(paceId.get()))
+				.build();
+			return chain.filter(exchange.mutate().request(mutatedRequest).build());
 		};
 	}
 
@@ -90,16 +98,25 @@ public class WaitingRoomFilter extends AbstractGatewayFilterFactory<WaitingRoomF
 		return response.writeWith(Mono.just(buffer));
 	}
 
-	private boolean isValidQueuePassToken(String token) {
+	private Optional<Long> extractPaceIdFromToken(String token) {
+		if (token == null) {
+			return Optional.empty();
+		}
 		try {
 			Claims claims = Jwts.parser()
 				.verifyWith(queueTokenKey)
 				.build()
 				.parseSignedClaims(token)
 				.getPayload();
-			return QUEUE_PASS_TYPE.equals(claims.get("type", String.class));
+
+			if (!QUEUE_PASS_TYPE.equals(claims.get("type", String.class))) {
+				return Optional.empty();
+			}
+
+			Long paceId = claims.get(CLAIM_PACE_ID, Long.class);
+			return Optional.ofNullable(paceId);
 		} catch (JwtException | IllegalArgumentException e) {
-			return false;
+			return Optional.empty();
 		}
 	}
 
