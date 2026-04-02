@@ -22,6 +22,7 @@ import com.kt.onrace.auth.dto.TokenRefreshResponse;
 import com.kt.onrace.auth.dto.WithdrawRequest;
 import com.kt.onrace.auth.service.AuthService;
 import com.kt.onrace.common.logging.annotation.ApiLog;
+import com.kt.onrace.common.util.ClientIpResolver;
 import com.kt.onrace.common.response.ApiResponse;
 import com.kt.onrace.common.swagger.SwaggerAssistance;
 
@@ -42,7 +43,10 @@ public class AuthController extends SwaggerAssistance {
 
 	@Operation(summary = "이메일 중복 확인", description = "회원가입 전 이메일 중복 여부 확인 (true: 중복, false: 사용 가능)")
 	@GetMapping("/check-email")
-	public ApiResponse<Boolean> checkEmail(@RequestParam @Email String email) {
+	public ApiResponse<Boolean> checkEmail(@RequestParam @Email String email, HttpServletRequest httpRequest) {
+		String clientIp = ClientIpResolver.getClientIp(httpRequest);
+		String captchaToken = httpRequest.getHeader("X-Captcha-Token");
+		authService.checkEmailRateLimit(clientIp, captchaToken);
 		return ApiResponse.success(authService.isEmailDuplicate(email));
 	}
 

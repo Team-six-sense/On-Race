@@ -50,6 +50,9 @@ public class AuthService {
 	private static final int LOGIN_FAIL_CAPTCHA_THRESHOLD = 10;
 	private static final long LOGIN_FAIL_TTL_MINUTES = 30;
 
+	private static final int EMAIL_CHECK_RATE_LIMIT = 5;
+	private static final long EMAIL_CHECK_RATE_LIMIT_TTL_MINUTES = 10;
+
 	private final UserRepository userRepository;
 	private final TermVersionRepository termVersionRepository;
 	private final TermUserRepository termUserRepository;
@@ -62,6 +65,7 @@ public class AuthService {
 	private final SmsVerifyService smsVerifyService;
 	private final LoginHistoryService loginHistoryService;
 	private final RedissonClient redissonClient;
+	private final CaptchaVerifyService captchaVerifyService;
 
 	@Transactional
 	public SignupResponse signup(SignupRequest request) {
@@ -167,6 +171,25 @@ public class AuthService {
 
 	private void resetLoginFailCount(String email) {
 		redissonClient.getAtomicLong(RedisKeyGenerator.loginFailCountKey(email)).delete();
+	}
+
+	public void checkEmailRateLimit(String clientIp, String captchaToken) {
+		String key = RedisKeyGenerator.emailCheckRateLimitKey(clientIp);
+		RAtomicLong counter = redissonClient.getAtomicLong(key);
+		long count = counter.incrementAndGet();
+
+		if (count == 1) {
+			counter.expire(Duration.ofMinutes(EMAIL_CHECK_RATE_LIMIT_TTL_MINUTES));
+		}
+
+		if (count > EMAIL_CHECK_RATE_LIMIT) {
+			if (captchaToken == null || captchaToken.isBlank()) {
+				throw new BusinessException(BusinessErrorCode.AUTH_EMAIL_CHECK_RATE_LIMIT);
+			}
+			if (!captchaVerifyService.verify(captchaToken)) {
+				throw new BusinessException(BusinessErrorCode.AUTH_INVALID_CAPTCHA);
+			}
+		}
 	}
 
 	@Transactional

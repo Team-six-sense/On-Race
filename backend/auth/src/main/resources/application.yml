@@ -92,3 +92,6 @@ solapi:
   api-secret: ${SOLAPI_API_SECRET:dummy_secret}
   sender: ${SOLAPI_SENDER:01012345678}
 
+recaptcha:
+  secret-key: ${RECAPTCHA_SECRET_KEY:dummy}
+
