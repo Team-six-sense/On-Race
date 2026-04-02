@@ -17,7 +17,7 @@ export default function ChallengeBanner() {
   return (
     // 배경색은 화면 전체(w-full)를 채웁니다.
     <section className="w-full bg-black overflow-hidden">
-      <div className="flex flex-col items-center justify-center h-[700px] max-w-[1440px] mx-auto w-full text-white">
+      <div className="flex flex-col items-center justify-center h-[700px] max-w-7xl mx-auto w-full text-white">
         {/* 메인 콘텐츠 */}
         <main>
           <div className="flex flex-col justify-center items-center space-y-4 ">
@@ -31,7 +31,7 @@ export default function ChallengeBanner() {
           </div>
         </main>
 
-        {/* 슬라이더 영역: 부모의 max-w-[1200px]를 상속받아 그 안에서만 이미지가 보입니다. */}
+        {/* 슬라이더 영역 */}
         <div className="w-full overflow-hidden bg-black py-10">
           <div className="rolling-container flex gap-4">
             {/* 원본 세트 */}

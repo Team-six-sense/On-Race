@@ -1,88 +1,36 @@
-'use client';
+// features/ticketing/hooks/useQueue.ts
+import { useQuery } from '@tanstack/react-query';
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { getQueueStatus } from '../services/getQueueStatus';
+import { QueueResponse } from '../types';
 
 export const useQueue = (eventId: string) => {
-  const router = useRouter();
-  const [status, setStatus] = useState<any>(null);
-  const [progress, setProgress] = useState(0);
+  // 사용자가 수동으로 멈췄는지 확인하는 상태
+  const [isStoppedByUser, setIsStoppedByUser] = useState(false);
 
-  const initialPosition = useRef<number | null>(null);
-  const isRedirecting = useRef(false);
-  const timerRef = useRef<NodeJS.Timeout | null>(null); // 타이머 관리를 위한 Ref
+  const query = useQuery<QueueResponse>({
+    queryKey: ['queue', eventId],
+    queryFn: () => getQueueStatus(eventId) as Promise<QueueResponse>,
+    // 사용자가 멈추지 않았을 때만 폴링 진행
+    refetchInterval: (query) => {
+      if (isStoppedByUser) return false;
+      if (query.state.data?.status === 'passed') return false;
+      return 2000;
+    },
+    refetchIntervalInBackground: true,
+    // 사용자가 중단했다면 아예 쿼리 자체를 비활성화(선택 사항)
+    enabled: !isStoppedByUser,
+  });
 
-  const resetQueue = () => {
-    initialPosition.current = null;
-    isRedirecting.current = false;
-    setStatus(null);
-    setProgress(0);
-    if (timerRef.current) clearTimeout(timerRef.current);
+  return {
+    ...query,
+    status: query.isLoading ? null : query.data,
+    progress: query.data
+      ? Math.min(100, 100 - (query.data as any).position)
+      : 0,
+    // 수동 중단 함수
+    stopPolling: () => setIsStoppedByUser(true),
+    isStoppedByUser,
   };
-
-  useEffect(() => {
-    let smoothProgressTimer: NodeJS.Timeout;
-
-    const fetchStatus = async () => {
-      // 리다이렉트 중이면 더 이상 API를 호출하지 않음
-      if (isRedirecting.current) return;
-
-      try {
-        const data: any = await getQueueStatus(eventId);
-
-        if (initialPosition.current === null) {
-          initialPosition.current = data.position;
-        }
-
-        setStatus(data);
-
-        // 대기 종료 조건
-        if (data.position <= 0) {
-          isRedirecting.current = true;
-          setProgress(100);
-
-          // 이동 전 모든 타이머 정리
-          clearInterval(smoothProgressTimer);
-
-          // 결제 페이지로 이동
-          router.push(`/ticketing/${eventId}/payment`);
-          return;
-        }
-
-        const startPos = initialPosition.current ?? data.position;
-        const currentPos = data.position;
-        const baseProgress =
-          startPos > 0 ? ((startPos - currentPos) / startPos) * 100 : 0;
-
-        if (progress < baseProgress) {
-          setProgress(Math.min(baseProgress, 99)); // 100%는 이동 직전에만
-        }
-
-        // 폴링 간격: 0.1초는 서버에 부하가 큽니다. 보통 1~3초를 권장합니다.
-        timerRef.current = setTimeout(fetchStatus, 1000);
-      } catch (error) {
-        console.error('Queue fetch error:', error);
-        // 에러 시 재시도 로직
-        timerRef.current = setTimeout(fetchStatus, 5000);
-      }
-    };
-
-    smoothProgressTimer = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 99) return prev;
-        return prev + 0.05;
-      });
-    }, 200);
-
-    fetchStatus();
-
-    // 언마운트 시 클린업 (이동 시 자동으로 실행됨)
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-      clearInterval(smoothProgressTimer);
-    };
-  }, [eventId, router]); // router 의존성 추가
-
-  return { status, progress, resetQueue };
 };

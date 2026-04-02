@@ -36,7 +36,7 @@ export default function SystemInfoContent() {
 
   return (
     <section ref={containerRef} className="bg-secondary">
-      <div className="relative flex flex-col items-center max-w-[1440px] w-full mx-auto p-30">
+      <div className="relative flex flex-col items-center max-w-7xl w-full mx-auto p-30">
         <div className="absolute inset-0 z-0 pointer-events-none">
           <Image
             src="/image/systemInfo/bg-pattern.svg"

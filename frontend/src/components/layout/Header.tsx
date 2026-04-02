@@ -30,7 +30,7 @@ export default function Header() {
       // 스크롤 시작됨을 표시
       setIsScrolling(true);
 
-      // 3. 스크롤 멈춤 감지 (200ms 동안 스크롤이 없으면 멈춘 것으로 간주)
+      // 스크롤 멈춤 감지
       if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
 
       scrollTimeout.current = setTimeout(() => {
@@ -75,7 +75,11 @@ export default function Header() {
             : 'relative bg-white text-black border-b border-gray-100',
         )}
       >
-        <div className="max-w-[1440px] w-full mx-auto flex items-center justify-between h-20 px-30">
+        <div
+          className={cn(
+            'max-w-7xl w-full mx-auto flex items-center justify-between h-20 px-30',
+          )}
+        >
           {/* 왼쪽: 로고 + 메뉴 */}
           <div className="flex items-center gap-10">
             <Link href="/" className="flex items-center gap-2">
@@ -101,7 +105,7 @@ export default function Header() {
                       <Link
                         href={item.href}
                         className={cn(
-                          'text-sm font-bold transition-colors group relative py-1',
+                          'text-xl font-bold transition-colors group relative py-1',
                           isHome && !isScrolled
                             ? isActive
                               ? 'text-white'
@@ -136,16 +140,18 @@ export default function Header() {
           >
             {session ? (
               <div className="flex items-center gap-4">
-                <span>반갑습니다 {session.user?.name} 님!</span>
+                <span className="text-sm">
+                  반갑습니다 {session.user?.name} 님!
+                </span>
                 <button
                   onClick={() => signOut({ callbackUrl: '/login' })}
-                  className="hover:text-current opacity-80 hover:opacity-100 cursor-pointer"
+                  className="text-sm hover:text-current opacity-80 hover:opacity-100 cursor-pointer"
                 >
                   로그아웃
                 </button>
                 <Link
                   href="/mypage"
-                  className="hover:text-current opacity-80 hover:opacity-100"
+                  className="text-sm hover:text-current opacity-80 hover:opacity-100"
                 >
                   마이페이지
                 </Link>
@@ -154,13 +160,13 @@ export default function Header() {
               <div className="flex items-center gap-4">
                 <Link
                   href="/login"
-                  className="hover:text-current opacity-80 hover:opacity-100"
+                  className="text-sm hover:text-current opacity-80 hover:opacity-100"
                 >
                   로그인
                 </Link>
                 <Link
                   href="/signup/email/agree"
-                  className="hover:text-current opacity-80 hover:opacity-100"
+                  className="text-sm hover:text-current opacity-80 hover:opacity-100"
                 >
                   회원가입
                 </Link>
@@ -168,9 +174,9 @@ export default function Header() {
             )}
             <Link
               href="/support"
-              className="hover:text-current opacity-80 hover:opacity-100"
+              className="text-sm hover:text-current opacity-80 hover:opacity-100"
             >
-              고객센터
+              고객지원
             </Link>
           </div>
         </div>
@@ -187,7 +193,7 @@ export default function Header() {
             className="object-cover opacity-70"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent" />
-          <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-full max-w-[1440px] mx-auto px-30 z-10">
+          <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-full max-w-7xl mx-auto px-30 z-10">
             <div className="max-w-xl text-left text-white">
               <h2 className="text-6xl font-bold mb-4 tracking-tight">
                 달림 그 이상의 순간

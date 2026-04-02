@@ -16,7 +16,8 @@ import {
 } from '@/types/constants';
 import { useEventStore } from '@/features/event/store/useEventStore';
 import { cn } from '@/lib/utils';
-import { LuSearch } from 'react-icons/lu';
+import { LuCircleAlert, LuSearch } from 'react-icons/lu';
+import { formatKoreanDate } from '@/features/ticketing/utils/date';
 
 function EventContent() {
   const searchParams = useSearchParams();
@@ -99,16 +100,16 @@ function EventContent() {
   };
 
   return (
-    <div className="min-h-screen bg-primary1">
+    <div className="min-h-screen bg-primary1 mx-30">
       {/* Header */}
       <header className="text-black py-6 px-4">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold">이벤트</h2>
           <div className="my-2 h-[2px] bg-black"></div>
         </div>
       </header>
 
-      <main className="max-w-[1100px] mx-auto px-6 pb-20 space-y-6">
+      <main className="max-w-7xl mx-auto pb-20 space-y-6">
         <EventFilter
           setSearchTerm={setSearchTerm}
           setSearchDate={setSearchDate}
@@ -116,11 +117,11 @@ function EventContent() {
           setSearchDistance={setSearchDistance}
         />
 
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1 mx-10">
           {TYPE.map((type) => (
             <Button
               key={type.id}
-              variant={searchType === type.id ? 'primary1' : 'outline'}
+              variant="outline"
               size="fit"
               rounded="full"
               onClick={() => {
@@ -129,10 +130,10 @@ function EventContent() {
               className={`
             ${
               searchType === type.id
-                ? '' // 선택되었을 때 스타일
-                : 'border-gray-400' // 비선택 스타일
+                ? 'border-2 text-black border-black' // 선택되었을 때 스타일
+                : 'border text-font-low border-cta-outline' // 비선택 스타일
             }
-            border
+             font-medium
           `}
             >
               {type.label}
@@ -140,7 +141,7 @@ function EventContent() {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mx-10">
           {filteredEvents.map((event) => (
             <div
               key={event.id}
@@ -195,13 +196,7 @@ function EventContent() {
                     </div>
                     {/* 날짜 정보 */}
                     <div className="flex items-center text-font-low text-sm">
-                      <span>
-                        {new Date(event.eventAt).toLocaleDateString('ko-KR', {
-                          year: 'numeric',
-                          month: '2-digit',
-                          day: '2-digit',
-                        })}
-                      </span>
+                      <span>{formatKoreanDate(event.eventAt)}</span>
                     </div>
                   </div>
                 </div>
@@ -225,13 +220,11 @@ function EventContent() {
 
         {/* Empty State (기존 유지) */}
         {filteredEvents.length === 0 && (
-          <div className="text-center py-32 border-2 border-dashed border-slate-200 rounded-3xl bg-white">
-            <LuSearch className="mx-auto text-slate-200 mb-4" size={48} />
-            <p className="text-slate-400 font-bold text-lg">
-              검색 결과가 없습니다.
-            </p>
-            <p className="text-slate-400 text-sm">
-              다른 키워드로 검색해 보시겠어요?
+          <div className="text-center p-30 bg-white">
+            <LuCircleAlert className="mx-auto text-gray-300 mb-4" size={48} />
+            <p className="text-font-medium font-medium text-lg">
+              검색 결과가 없습니다 <br />
+              다른 키워드로 다시 검색해 주세요
             </p>
           </div>
         )}

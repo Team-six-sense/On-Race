@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radioGroup';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,25 +10,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { Label } from '@/components/shadcn/label';
+import {
+  loadTossPayments,
+  TossPaymentsPayment,
+} from '@tosspayments/tosspayments-sdk';
 import { MdAccessTime } from 'react-icons/md';
-import { LuCircleAlert } from 'react-icons/lu';
 import { DeliveryFeeTooltip } from '@/features/ticketing/components/DeliveryFeeTooltip';
+
+const clientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY!;
 
 export default function CheckoutPage() {
   const params = useParams();
-  const router = useRouter();
   const [selectedOption, setSelectedOption] = useState('none');
+  const [payment, setPayment] = useState<TossPaymentsPayment | null>(null);
   const [selectedPayment, setSelectedPayment] = useState('card');
 
   // 데이터 설정
   const marathonItem = {
     id: 1,
-    title: '2024 제10회 서울 릴레이 마라톤',
+    title: '서울 마라톤 2026',
     course: 'Half Course (21.0975km)',
     pace: '05:00 (Sub-5 페이스러너)',
-    price: 55000,
+    price: 51000,
     image: '/image/default.png',
     options: [
       { id: 'option1', label: '기념 티셔츠 (기본 구성)', price: 0 },
@@ -44,6 +49,55 @@ export default function CheckoutPage() {
   const optionPrice =
     marathonItem.options.find((o) => o.id === selectedOption)?.price || 0;
   const total = marathonItem.price + optionPrice;
+
+  useEffect(() => {
+    async function fetchPayment() {
+      try {
+        // SDK 초기화
+        const tossPayments = await loadTossPayments(clientKey);
+
+        // 결제 객체 설정 (고객 ID는 실제 서비스의 유저 ID 혹은 고유값 사용)
+        const paymentInstance = tossPayments.payment({
+          customerKey: 'ANONYMOUS', // 비회원일 경우 ANONYMOUS
+        });
+
+        setPayment(paymentInstance);
+      } catch (error) {
+        console.error('Error fetching payment instance:', error);
+      }
+    }
+
+    fetchPayment();
+  }, []);
+
+  const requestPayment = async () => {
+    if (!payment) return;
+
+    try {
+      // 결제창 띄우기
+      await payment.requestPayment({
+        method: 'CARD', // 결제 수단 (CARD, TRANSFER, MOBILE_PHONE 등)
+        amount: {
+          currency: 'KRW',
+          value: marathonItem.price, // 결제 금액
+        },
+        orderId: `order-${Math.random().toString(36).slice(2, 11)}`, // 주문 ID (고유값)
+        orderName: marathonItem.title, // 주문 명
+        successUrl: `${window.location.origin}/ticketing/${params.id}/payment/completed`, // 결제 성공 리다이렉트 URL
+        failUrl: `${window.location.origin}/payment/fail`, // 결제 실패 리다이렉트 URL
+        customerEmail: 'customer@example.com',
+        customerName: '김토스',
+        card: {
+          useEscrow: false,
+          flowMode: 'DEFAULT',
+          useCardPoint: false,
+          useAppCardOnly: false,
+        },
+      });
+    } catch (error) {
+      console.error('Payment request failed:', error);
+    }
+  };
 
   // 공통 섹션 컴포넌트 (좌측 헤더 | 우측 내용)
   const FormSection = ({
@@ -365,11 +419,12 @@ export default function CheckoutPage() {
               <div>
                 <Button
                   rounded="full"
-                  onClick={() =>
-                    router.push(`/ticketing/${params.id}/completed`)
-                  }
+                  onClick={requestPayment}
+                  // onClick={() =>
+                  //   router.push(`/ticketing/${params.id}/completed`)
+                  // }
                 >
-                  45,000원 결제하기
+                  {Number(marathonItem.price).toLocaleString()}원 결제하기
                 </Button>
               </div>
             </div>

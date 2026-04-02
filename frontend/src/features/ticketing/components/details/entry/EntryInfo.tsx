@@ -1,6 +1,7 @@
 'use client';
 
 import { Event } from '@/features/event/types';
+import { formatKoreanDate } from '@/features/ticketing/utils/date';
 import { cn } from '@/lib/utils';
 import { getTypeLabel } from '@/types/constants';
 import { useEffect, useState } from 'react';
@@ -53,9 +54,7 @@ export function EntryInfo({ event }: { event: Event }) {
         <div className="flex">
           <span className="w-24 text-base font-semibold">개최일</span>
           <span className="flex-1 text-base">
-            {event.eventAt
-              ? `${new Date(event.eventAt).toLocaleDateString('ko-KR')}`
-              : '2024.04.20'}
+            {formatKoreanDate(event.eventAt, true)}
           </span>
         </div>
         <div className="flex mb-0">
@@ -95,17 +94,14 @@ export function EntryInfo({ event }: { event: Event }) {
         <div className="flex">
           <span className="w-24 text-base font-semibold">모집 기간</span>
           <span className="flex-1 text-base">
-            {event.appStartAt
-              ? `${new Date(event.appStartAt).toLocaleDateString('ko-KR')} ~ ${new Date(event.appEndAt).toLocaleDateString('ko-KR')}`
-              : '2024.03.01 - 2024.03.15'}
+            {formatKoreanDate(event.appStartAt)} ~{' '}
+            {formatKoreanDate(event.appEndAt)}
           </span>
         </div>
         <div className="flex">
           <span className="w-24 text-base font-semibold">추첨 발표일</span>
           <span className="flex-1 text-base">
-            {event.appStartAt
-              ? `${new Date(event.resultAt).toLocaleDateString('ko-KR')}`
-              : '2024.04.01'}
+            {formatKoreanDate(event.resultAt, true)}
           </span>
         </div>
         {/* {event.status !== 'UPCOMING' && (
@@ -120,7 +116,7 @@ export function EntryInfo({ event }: { event: Event }) {
           </div>
         )} */}
         <div className="flex-1">
-          <div className="flex items-center justify-center border border-gray-200 rounded-sm p-4">
+          <div className="flex items-center justify-center border border-gray-200 rounded-sm p-4 my-4">
             {/* 카테고리 */}
             <div className="flex flex-col flex-1 items-center justify-center">
               <p className="text-sm text-gray-500 font-medium uppercase tracking-wider">
