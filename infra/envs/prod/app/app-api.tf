@@ -98,12 +98,30 @@ resource "kubernetes_deployment_v1" "on_race_api" {
             value = "-XX:InitialRAMPercentage=75.0 -XX:MaxRAMPercentage=75.0 -XX:MinRAMPercentage=75.0"
           }
 
-          env { name = "DB_ENDPOINT"; value = data.terraform_remote_state.base.outputs.rds_proxy_endpoint }
-          env { name = "DB_USERNAME"; value = local.db_creds.username }
-          env { name = "DB_PASSWORD"; value = local.db_creds.password }
-          env { name = "SQS_QUEUE_URL"; value = data.terraform_remote_state.base.outputs.queue_url }
-          env { name = "SPRING_REDIS_HOST"; value = "127.0.0.1" }
-          env { name = "SPRING_REDIS_PORT"; value = "6379" }
+          env {
+            name  = "DB_ENDPOINT"
+            value = data.terraform_remote_state.base.outputs.rds_proxy_endpoint
+          }
+          env {
+            name  = "DB_USERNAME"
+            value = local.db_creds.username
+          }
+          env {
+            name  = "DB_PASSWORD"
+            value = local.db_creds.password
+          }
+          env {
+            name  = "SQS_QUEUE_URL"
+            value = data.terraform_remote_state.base.outputs.queue_url
+          }
+          env {
+            name  = "SPRING_REDIS_HOST"
+            value = "127.0.0.1"
+          }
+          env {
+            name  = "SPRING_REDIS_PORT"
+            value = "6379"
+          }
 
           # [리소스 할당] Java 앱은 최소 1Gi 이상의 메모리가 안정적입니다.
           resources {
