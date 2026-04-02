@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -27,6 +28,8 @@ import com.kt.onrace.domain.event.repository.EventCourseRepository;
 import com.kt.onrace.domain.event.repository.EventPaceRepository;
 import com.kt.onrace.domain.event.repository.EventPackageRepository;
 import com.kt.onrace.domain.event.repository.EventRepository;
+import com.kt.onrace.domain.order.contract.OrderCheckoutEligibility;
+import com.kt.onrace.domain.order.contract.OrderEntryContract;
 import com.kt.onrace.domain.order.dto.CheckoutPrepareRequestDto;
 import com.kt.onrace.domain.order.dto.CheckoutPrepareResponseDto;
 import com.kt.onrace.domain.order.dto.CheckoutRequestDto;
@@ -57,6 +60,8 @@ public class OrderService {
 	private final AddressRepository addressRepository;
 	private final OrderRepository orderRepository;
 	private final OrderPackageRepository orderPackageRepository;
+	private final OrderEntryContract orderEntryContract;
+	private final OrderPrepareTokenService orderPrepareTokenService;
 
 	@Transactional(readOnly = true)
 	public OrderListResponseDto getOrders(String tab, Long userId) {
@@ -115,6 +120,31 @@ public class OrderService {
 		);
 	}
 
+	@Transactional
+	public void confirmPayment(String orderNumber, Long userId) {
+		Order order = orderRepository.findByOrderNumberAndUserId(orderNumber, userId)
+			.orElseThrow(() -> new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND));
+
+		boolean transitionedFromPending = order.getOrderStatus() == OrderStatus.PENDING;
+		order.markPaid();
+		runPaymentConfirmedFollowUp(order, transitionedFromPending);
+	}
+
+	@Transactional
+	public void failPayment(String orderNumber, Long userId) {
+		transitionPendingOrderToTerminal(orderNumber, userId, Order::markFailed);
+	}
+
+	@Transactional
+	public void cancelPayment(String orderNumber, Long userId) {
+		transitionPendingOrderToTerminal(orderNumber, userId, Order::markCancelled);
+	}
+
+	@Transactional
+	public void expirePayment(String orderNumber, Long userId) {
+		transitionPendingOrderToTerminal(orderNumber, userId, Order::markExpired);
+	}
+
 	@Transactional(readOnly = true)
 	public CheckoutPrepareResponseDto getCheckoutPrepareInfo(CheckoutPrepareRequestDto request, Long userId) {
 
@@ -139,7 +169,13 @@ public class OrderService {
 		CheckoutPrepareResponseDto.PaymentDetail paymentDetail = new CheckoutPrepareResponseDto.PaymentDetail(
 			itemTotalAmount, shippingFee, discountAmount, finalAmount);
 
-		String prepareToken = UUID.randomUUID().toString();
+		// prepare 단계에서 선택한 주문 맥락을 checkout 단계와 강하게 묶는다.
+		String prepareToken = orderPrepareTokenService.issueToken(
+			userId,
+			request.eventId(),
+			request.eventCourseId(),
+			request.eventPaceId()
+		);
 		CheckoutPrepareResponseDto.ShippingAddressInfo shippingAddress = resolveShippingAddress(userId);
 		String thumbnailUrl = extractThumbnailUrl(event);
 
@@ -157,6 +193,10 @@ public class OrderService {
 
 	@Transactional
 	public CheckoutResponseDto checkout(CheckoutRequestDto request, Long userId) {
+		// prepare 응답을 받은 사용자와 선택값 그대로 checkout에 들어왔는지 먼저 검증한다.
+		OrderPrepareTokenService.ValidatedPrepareToken validatedPrepareToken =
+			orderPrepareTokenService.validatePrepareToken(request.prepareToken(), userId, request);
+
 		Event event = eventRepository.findByIdOrThrow(request.eventId(), BusinessErrorCode.EVENT_NOT_FOUND);
 
 		EventCourse course = eventCourseRepository.findByIdAndEventIdOrThrow(
@@ -164,6 +204,8 @@ public class OrderService {
 
 		EventPace pace = eventPaceRepository.findByIdAndEventCourseIdOrThrow(
 			request.eventPaceId(), request.eventCourseId(), BusinessErrorCode.COMMON_INVALID_FORMAT);
+
+		OrderCheckoutEligibility eligibility = validateCheckoutEligibility(userId, request, pace);
 
 		List<EventPackage> selectedPackages = resolveSelectedPackages(request.eventId(), request.selectedPackageIds());
 		ShippingAddressSnapshot shippingAddress = resolveShippingAddressSnapshot(userId, request);
@@ -180,27 +222,29 @@ public class OrderService {
 			throw new BusinessException(BusinessErrorCode.COMMON_INVALID_FORMAT);
 		}
 
+		// 주문 저장 직전에 nonce를 소비해 동일 prepare token 재사용을 막는다.
+		orderPrepareTokenService.consumePrepareToken(validatedPrepareToken);
+
 		String orderNumber = "ORD-" + System.currentTimeMillis() + "-"
 			+ UUID.randomUUID().toString().substring(0, 4).toUpperCase();
 
-		Order order = Order.builder()
-			.orderNumber(orderNumber)
-			.userId(userId)
-			.eventCourseId(course.getId())
-			.eventPaceId(pace.getId())
-			.orderStatus(OrderStatus.PENDING)
-			.itemTotalAmount(itemTotalAmount)
-			.shippingFee(shippingFee)
-			.discountAmount(discountAmount)
-			.finalAmount(calculatedFinalAmount)
-			.recipientName(shippingAddress.receiverName())
-			.addressLabel(shippingAddress.label())
-			.recipientPhone(shippingAddress.phone())
-			.zipCode(shippingAddress.zipcode())
-			.address(shippingAddress.address1())
-			.detailAddress(shippingAddress.address2())
-			.deliveryMemo(shippingAddress.memo())
-			.build();
+		Order order = Order.createPending(
+			orderNumber,
+			userId,
+			eligibility.entryId(),
+			new Order.OrderSelection(course.getId(), pace.getId()),
+			buildOrderEventSnapshot(event, course, pace),
+			new Order.PaymentSnapshot(itemTotalAmount, shippingFee, discountAmount, calculatedFinalAmount),
+			new Order.RecipientSnapshot(
+				shippingAddress.receiverName(),
+				shippingAddress.label(),
+				shippingAddress.phone(),
+				shippingAddress.zipcode(),
+				shippingAddress.address1(),
+				shippingAddress.address2(),
+				shippingAddress.memo()
+			)
+		);
 
 		for (EventPackage pkg : selectedPackages) {
 			OrderPackage orderPackage = OrderPackage.builder()
@@ -219,6 +263,63 @@ public class OrderService {
 		}
 
 		return new CheckoutResponseDto(order.getOrderNumber(), orderName, order.getFinalAmount());
+	}
+
+	private OrderCheckoutEligibility validateCheckoutEligibility(Long userId, CheckoutRequestDto request, EventPace pace) {
+		OrderCheckoutEligibility eligibility = orderEntryContract.resolveCheckoutEligibility(
+			userId,
+			request.eventId(),
+			pace.getId()
+		);
+
+		if (!eligibility.canCheckout()) {
+			throw new BusinessException(resolveFailureCode(eligibility.failureCode()));
+		}
+
+		if (eligibility.entryId() == null) {
+			throw new BusinessException(BusinessErrorCode.COMMON_SYSTEM_ERROR);
+		}
+
+		return eligibility;
+	}
+
+	private void transitionPendingOrderToTerminal(String orderNumber, Long userId, Consumer<Order> transitionAction) {
+		Order order = orderRepository.findByOrderNumberAndUserId(orderNumber, userId)
+			.orElseThrow(() -> new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND));
+
+		boolean transitionedFromPending = order.getOrderStatus() == OrderStatus.PENDING;
+		transitionAction.accept(order);
+		runPendingRollbackFollowUp(order, transitionedFromPending);
+	}
+
+	private void runPaymentConfirmedFollowUp(Order order, boolean transitionedFromPending) {
+		if (!transitionedFromPending || order.getEntryId() == null) {
+			return;
+		}
+
+		orderEntryContract.handlePaymentConfirmed(order.getEntryId());
+	}
+
+	private void runPendingRollbackFollowUp(Order order, boolean transitionedFromPending) {
+		if (!transitionedFromPending || order.getEntryId() == null) {
+			return;
+		}
+
+		orderEntryContract.rollbackPendingPayment(order.getEntryId());
+	}
+
+	private BusinessErrorCode resolveFailureCode(String failureCode) {
+		if (failureCode == null || failureCode.isBlank()) {
+			return BusinessErrorCode.ENTRY_CANNOT_APPLY;
+		}
+
+		for (BusinessErrorCode errorCode : BusinessErrorCode.values()) {
+			if (errorCode.getCode().equals(failureCode)) {
+				return errorCode;
+			}
+		}
+
+		return BusinessErrorCode.COMMON_SYSTEM_ERROR;
 	}
 
 	private List<EventPackage> resolveSelectedPackages(Long eventId, List<Long> selectedPackageIds) {
@@ -289,6 +390,19 @@ public class OrderService {
 			address.getAddress1(),
 			address.getAddress2(),
 			overrideMemo != null ? overrideMemo : address.getMemo()
+		);
+	}
+
+	private Order.OrderEventSnapshot buildOrderEventSnapshot(Event event, EventCourse course, EventPace pace) {
+		return new Order.OrderEventSnapshot(
+			event.getId(),
+			event.getTitle(),
+			event.getAppType(),
+			event.getStatus(),
+			event.getEventAt(),
+			event.getVenue(),
+			course.getName(),
+			pace != null ? pace.getName() : null
 		);
 	}
 

@@ -98,6 +98,7 @@ public enum BusinessErrorCode implements ErrorCode {
 	// ORDER
 	ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "ORD_001", "주문 정보를 찾을 수 없습니다."),
 	ORDER_INVALID_TAB(HttpStatus.BAD_REQUEST, "ORD_002", "유효하지 않은 주문 조회 탭입니다."),
+	ORDER_CANNOT_CONFIRM(HttpStatus.BAD_REQUEST, "ORD_003", "현재 주문 상태에서는 결제 완료 처리할 수 없습니다."),
 
 	// MEMBER
 	MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MBR_001", "회원을 찾을 수 없습니다."),
