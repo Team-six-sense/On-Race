@@ -3,7 +3,6 @@ package com.kt.onrace.domain.entry.service;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,7 +48,6 @@ public class EntryService {
 	private final MemberRepository memberRepository;
 	private final EventStockService eventStockService;
 	private final EventStockRepository eventStockRepository;
-	private final ApplicationEventPublisher applicationEventPublisher;
 
 	@ServiceLog(slowMs = 2000)
 	@Transactional
@@ -57,31 +55,30 @@ public class EntryService {
 		memberRepository.findByIdAndIsDeletedFalseOrThrow(userId, BusinessErrorCode.MEMBER_NOT_FOUND);
 
 		Event event = eventRepository.findByIdAndIsViewTrueAndIsDeletedFalseOrThrow(eventId,
-			BusinessErrorCode.EVENT_NOT_FOUND);
+				BusinessErrorCode.EVENT_NOT_FOUND);
 
 		Preconditions.validate(event.getStatus() == EventStatus.READY, BusinessErrorCode.EVENT_NOT_IN_STANDBY);
 
 		EventCourse course = eventCourseRepository.findByIdAndEventIdOrThrow(request.courseId(), eventId,
-			BusinessErrorCode.ENTRY_COURSE_NOT_FOUND);
+				BusinessErrorCode.ENTRY_COURSE_NOT_FOUND);
 
 		EventPace pace = eventPaceRepository.findByIdAndEventCourseIdOrThrow(request.paceId(), request.courseId(),
-			BusinessErrorCode.ENTRY_PACE_NOT_FOUND);
+				BusinessErrorCode.ENTRY_PACE_NOT_FOUND);
 
 		Entry entry = entryRepository.findByUserIdAndEventId(userId, eventId)
-			.map(e -> {
-				Preconditions.validate(e.getStatus() == EntryStatus.PRE_SAVED,
-					BusinessErrorCode.ENTRY_EVENT_NOT_IN_STANDBY);
-				e.updatePreSave(course, pace);
-				return e;
-			})
-			.orElseGet(() -> Entry.builder()
-				.userId(userId)
-				.event(event)
-				.eventCourse(course)
-				.eventPace(pace)
-				.status(EntryStatus.PRE_SAVED)
-				.build()
-			);
+				.map(e -> {
+					Preconditions.validate(e.getStatus() == EntryStatus.PRE_SAVED,
+							BusinessErrorCode.ENTRY_EVENT_NOT_IN_STANDBY);
+					e.updatePreSave(course, pace);
+					return e;
+				})
+				.orElseGet(() -> Entry.builder()
+						.userId(userId)
+						.event(event)
+						.eventCourse(course)
+						.eventPace(pace)
+						.status(EntryStatus.PRE_SAVED)
+						.build());
 
 		entryRepository.save(entry);
 
@@ -93,53 +90,51 @@ public class EntryService {
 		Event event = eventRepository.findEventWithCoursesAndPacesOrThrow(eventId, BusinessErrorCode.EVENT_NOT_FOUND);
 
 		List<EntryOverviewResponse.CourseOptionDto> courses = event.getCourses().stream()
-			.map(EntryOverviewResponse.CourseOptionDto::from)
-			.toList();
+				.map(EntryOverviewResponse.CourseOptionDto::from)
+				.toList();
 
 		// 비로그인 사용자일 경우(코스/페이스 목록만 반환)
 		if (userId == null) {
 			return EntryOverviewResponse.builder()
-				.hasEntry(false)
-				.entry(null)
-				.courses(courses)
-				.rateInfo(null)
-				.build();
+					.hasEntry(false)
+					.entry(null)
+					.courses(courses)
+					.rateInfo(null)
+					.build();
 		}
 
 		// 로그인 사용자(사전정보 조회 포함임)
 		return entryRepository.findByUserIdAndEventId(userId, eventId)
-			.map(entry -> {
-				EntryCountResult counts = entryRepository.countTotalAndAppliedByPaceId(entry.getEventPace().getId());
+				.map(entry -> {
+					EntryCountResult counts = entryRepository
+							.countTotalAndAppliedByPaceId(entry.getEventPace().getId());
 
-				return EntryOverviewResponse.builder()
-					.hasEntry(true)
-					.entry(EntryOverviewResponse.EntryDto.from(entry))
-					.courses(courses)
-					.rateInfo(EntryOverviewResponse.RateInfoDto.of(
-						counts.totalCount(), counts.appliedCount(),
-						entry.getEventPace().getCapacity(), entry.getEventCourse().getPrice()
-					))
-					.build();
-			})
-			.orElseGet(() -> EntryOverviewResponse.builder()
-				.hasEntry(false)
-				.entry(null)
-				.courses(courses)
-				.rateInfo(null)
-				.build()
-			);
+					return EntryOverviewResponse.builder()
+							.hasEntry(true)
+							.entry(EntryOverviewResponse.EntryDto.from(entry))
+							.courses(courses)
+							.rateInfo(EntryOverviewResponse.RateInfoDto.of(
+									counts.totalCount(), counts.appliedCount(),
+									entry.getEventPace().getCapacity(), entry.getEventCourse().getPrice()))
+							.build();
+				})
+				.orElseGet(() -> EntryOverviewResponse.builder()
+						.hasEntry(false)
+						.entry(null)
+						.courses(courses)
+						.rateInfo(null)
+						.build());
 	}
 
 	@ServiceLog(slowMs = 2000)
 	public EntryRateResponse getEntryRate(Long eventId, Long courseId, Long paceId) {
 		EventPace pace = eventPaceRepository.findWithCourseOrThrow(
-			paceId, courseId, eventId, BusinessErrorCode.ENTRY_PACE_NOT_FOUND
-		);
+				paceId, courseId, eventId, BusinessErrorCode.ENTRY_PACE_NOT_FOUND);
 
 		EntryCountResult counts = entryRepository.countTotalAndAppliedByPaceId(paceId);
 
 		return EntryRateResponse.of(counts.totalCount(), counts.appliedCount(), pace.getCapacity(),
-			pace.getEventCourse().getPrice());
+				pace.getEventCourse().getPrice());
 	}
 
 	@ServiceLog(slowMs = 2000)
@@ -150,7 +145,7 @@ public class EntryService {
 		Entry entry = entryRepository.findByUserIdAndEventIdOrThrow(userId, eventId, BusinessErrorCode.ENTRY_NOT_FOUND);
 
 		Preconditions.validate(entry.getStatus() == EntryStatus.PRE_SAVED,
-			BusinessErrorCode.ENTRY_EVENT_NOT_IN_STANDBY);
+				BusinessErrorCode.ENTRY_EVENT_NOT_IN_STANDBY);
 
 		entryRepository.deleteByUserIdAndEventId(userId, eventId);
 
@@ -163,18 +158,18 @@ public class EntryService {
 		memberRepository.findByIdAndIsDeletedFalseOrThrow(userId, BusinessErrorCode.MEMBER_NOT_FOUND);
 
 		Event event = eventRepository.findByIdAndIsViewTrueAndIsDeletedFalseOrThrow(eventId,
-			BusinessErrorCode.EVENT_NOT_FOUND);
+				BusinessErrorCode.EVENT_NOT_FOUND);
 
 		LocalDateTime now = LocalDateTime.now();
 		Preconditions.validate(event.getEventAt().isAfter(now), BusinessErrorCode.ENTRY_EVENT_ALREADY_ENDED);
 		Preconditions.validate(!now.isBefore(event.getAppStartAt()) && !now.isAfter(event.getAppEndAt()),
-			BusinessErrorCode.ENTRY_NOT_IN_PERIOD);
+				BusinessErrorCode.ENTRY_NOT_IN_PERIOD);
 
 		EventCourse course = eventCourseRepository.findByIdAndEventIdOrThrow(request.courseId(), eventId,
-			BusinessErrorCode.ENTRY_COURSE_NOT_FOUND);
+				BusinessErrorCode.ENTRY_COURSE_NOT_FOUND);
 
 		EventPace pace = eventPaceRepository.findByIdAndEventCourseIdOrThrow(request.paceId(), request.courseId(),
-			BusinessErrorCode.ENTRY_PACE_NOT_FOUND);
+				BusinessErrorCode.ENTRY_PACE_NOT_FOUND);
 
 		return switch (event.getAppType()) {
 			case LOTTERY -> applyLottery(userId, event, course, pace);
@@ -205,42 +200,37 @@ public class EntryService {
 
 	private Entry getCreateEntry(Long userId, Event event) {
 		return entryRepository.findByUserIdAndEventId(userId, event.getId())
-			.map(e -> {
-				switch (e.getStatus()) {
-					case APPLIED -> throw new BusinessException(BusinessErrorCode.ENTRY_ALREADY_APPLIED);
-					case RESERVED -> throw new BusinessException(BusinessErrorCode.ENTRY_ALREADY_RESERVED);
-					case PRE_SAVED -> {
-					} // 그대로 반환함
-					default -> throw new BusinessException(BusinessErrorCode.ENTRY_CANNOT_APPLY);
-				}
-				return e;
-			})
-			.orElseGet(() -> Entry.builder()
-				.userId(userId)
-				.event(event)
-				.build()
-			);
+				.map(e -> {
+					switch (e.getStatus()) {
+						case APPLIED -> throw new BusinessException(BusinessErrorCode.ENTRY_ALREADY_APPLIED);
+						case RESERVED -> throw new BusinessException(BusinessErrorCode.ENTRY_ALREADY_RESERVED);
+						case PRE_SAVED -> {
+						} // 그대로 반환함
+						default -> throw new BusinessException(BusinessErrorCode.ENTRY_CANNOT_APPLY);
+					}
+					return e;
+				})
+				.orElseGet(() -> Entry.builder()
+						.userId(userId)
+						.event(event)
+						.build());
 	}
 
 	/**
 	 * 결제 확정 — RESERVED → APPLIED 전환, DB 확정 재고 증가
-	 * Redis 예약 키 삭제는 트랜잭션 커밋 후 ReservationConfirmedListener에서 처리
 	 */
 	@ServiceLog(slowMs = 2000)
 	@Transactional
 	public void confirmReservation(Long userId, Long paceId) {
 		Entry entry = entryRepository.findByUserIdAndEventPaceId(userId, paceId)
-			.orElseThrow(() -> new BusinessException(BusinessErrorCode.ENTRY_NOT_FOUND));
+				.orElseThrow(() -> new BusinessException(BusinessErrorCode.ENTRY_NOT_FOUND));
 
 		Preconditions.validate(entry.isReserved(), BusinessErrorCode.ENTRY_CANNOT_APPLY);
 		Preconditions.validate(eventStockService.hasReservation(paceId, userId),
-			BusinessErrorCode.ENTRY_RESERVATION_EXPIRED
-		);
+				BusinessErrorCode.ENTRY_RESERVATION_EXPIRED);
 
 		entry.confirmPayment();
 		eventStockRepository.findByEventPaceIdOrThrow(paceId).confirmStock();
-
-		// applicationEventPublisher.publishEvent(new ReservationConfirmedEvent(paceId, userId));
 	}
 
 }

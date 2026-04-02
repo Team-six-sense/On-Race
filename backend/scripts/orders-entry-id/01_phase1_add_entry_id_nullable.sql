@@ -1,0 +1,2 @@
+ALTER TABLE orders
+    ADD COLUMN entry_id BIGINT NULL;
