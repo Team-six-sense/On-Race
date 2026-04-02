@@ -131,13 +131,19 @@ resource "kubernetes_deployment_v1" "on_race_api" {
 
           # [헬스체크] 스프링 부트 Actuator 경로 사용
           readiness_probe {
-            http_get { path = "/actuator/health"; port = 8080 }
+            http_get { 
+              path = "/actuator/health"
+              port = 8080 
+            }
             initial_delay_seconds = 30
             period_seconds        = 10
           }
 
           liveness_probe {
-            http_get { path = "/actuator/health/liveness"; port = 8080 }
+            http_get { 
+              path = "/actuator/health/liveness"
+              port = 8080 
+            }
             initial_delay_seconds = 60
             period_seconds        = 15
           }
