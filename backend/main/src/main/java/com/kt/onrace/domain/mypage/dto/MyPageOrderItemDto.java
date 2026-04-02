@@ -21,4 +21,35 @@ public record MyPageOrderItemDto(
 	LocalDateTime orderedAt,
 	LocalDateTime paymentDeadlineAt
 ) {
+	public static MyPageOrderItemDto of(
+		String orderNumber,
+		Long eventId,
+		String status,
+		String actionType,
+		String actionLabel,
+		boolean actionEnabled,
+		String thumbnailUrl,
+		String title,
+		String courseName,
+		String paceName,
+		Long finalAmount,
+		LocalDateTime orderedAt,
+		LocalDateTime paymentDeadlineAt
+	) {
+		return new MyPageOrderItemDto(
+			orderNumber,
+			eventId,
+			status,
+			actionType,
+			actionLabel,
+			actionEnabled,
+			thumbnailUrl,
+			title,
+			courseName,
+			paceName,
+			finalAmount,
+			orderedAt,
+			paymentDeadlineAt
+		);
+	}
 }
