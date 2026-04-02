@@ -3,6 +3,8 @@ package com.kt.onrace.auth.service;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 
 import lombok.RequiredArgsConstructor;
@@ -23,10 +25,14 @@ public class CaptchaVerifyService {
 			return false;
 		}
 
+		MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+		body.add("secret", secretKey);
+		body.add("response", token);
+
 		RecaptchaResponse response = restClient.post()
 				.uri(VERIFY_URL)
 				.contentType(MediaType.APPLICATION_FORM_URLENCODED)
-				.body("secret=" + secretKey + "&response=" + token)
+				.body(body)
 				.retrieve()
 				.body(RecaptchaResponse.class);
 
