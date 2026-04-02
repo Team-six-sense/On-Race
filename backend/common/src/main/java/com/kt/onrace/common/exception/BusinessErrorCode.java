@@ -50,6 +50,8 @@ public enum BusinessErrorCode implements ErrorCode {
 	AUTH_REQUIRED_TERM_NOT_AGREED(HttpStatus.BAD_REQUEST, "AUTH_031", "필수 약관에 동의해 주세요."),
 	AUTH_TERM_NOT_FOUND(HttpStatus.NOT_FOUND, "AUTH_032", "약관 정보를 찾을 수 없습니다."),
 	AUTH_FIND_EMAIL_IP_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "AUTH_033", "비정상적인 아이디 찾기 시도가 감지되었습니다. 잠시 후 다시 시도해주세요."),
+	AUTH_EMAIL_CHECK_RATE_LIMIT(HttpStatus.TOO_MANY_REQUESTS, "AUTH_034", "요청 횟수를 초과했습니다. CAPTCHA 인증이 필요합니다."),
+	AUTH_INVALID_CAPTCHA(HttpStatus.BAD_REQUEST, "AUTH_035", "CAPTCHA 인증에 실패했습니다. 다시 시도해주세요."),
 
 	// MEDIA
 	MEDIA_UNSUPPORTED_CONTENT_TYPE(HttpStatus.BAD_REQUEST, "MDA_001", "허용되지 않은 Content_type 입니다."),

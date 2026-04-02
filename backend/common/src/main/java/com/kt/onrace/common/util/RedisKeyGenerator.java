@@ -43,6 +43,10 @@ public class RedisKeyGenerator {
 		return String.format("login:fail_count:%s", email);
 	}
 
+	public static String emailCheckRateLimitKey(String ip) {
+		return String.format("email_check:rate_limit:%s", ip);
+	}
+
 	public static String emailSendCountKey(String email, String date) {
 		return String.format("email:send_count:%s:%s", email, date);
 	}
