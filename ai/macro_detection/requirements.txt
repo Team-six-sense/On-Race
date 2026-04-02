@@ -1,0 +1,12 @@
+# Web Framework & Server
+fastapi
+uvicorn
+
+# Macro Detection Libraries
+xgboost
+pydantic
+
+# public
+pandas
+numpy
+requests
