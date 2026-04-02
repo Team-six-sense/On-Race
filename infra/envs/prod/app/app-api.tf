@@ -160,6 +160,22 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           name  = "stunnel"
           image = "dweomer/stunnel:latest"
           port  { container_port = 6379 }
+
+          # stunnel 실행에 필요한 필수 환경 변수
+          env {
+            name  = "STUNNEL_SERVICE"
+            value = "redis-tls"
+          }
+          env {
+            name  = "STUNNEL_ACCEPT"
+            value = "127.0.0.1:6379"
+          }
+          env {
+            name  = "STUNNEL_CONNECT"
+            value = "${data.terraform_remote_state.base.outputs.redis_endpoint}:6379"
+          }
+
+
           resources {
             requests = { cpu = "50m", memory = "64Mi" }
             limits   = { cpu = "100m", memory = "128Mi" }
