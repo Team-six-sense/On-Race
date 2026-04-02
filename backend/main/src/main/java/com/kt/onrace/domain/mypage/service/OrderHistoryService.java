@@ -43,13 +43,13 @@ public class OrderHistoryService {
 
 	public List<MyPagePaymentHistoryItemDto> getPaymentHistories(Long userId, MyPageOrderTab tab) {
 		List<Order> orders = queryFactory.selectFrom(order)
-				.where(order.userId.eq(userId), statusCondition(tab))
-				.orderBy(order.createdAt.desc())
-				.fetch();
+			.where(order.userId.eq(userId), statusCondition(tab))
+			.orderBy(order.createdAt.desc())
+			.fetch();
 
 		return orders.stream()
-				.map(this::toPaymentHistoryItem)
-				.toList();
+			.map(this::toPaymentHistoryItem)
+			.toList();
 	}
 
 	public MyPageOrderListResponseDto getOrders(Long userId, MyPageOrderTab tab, int page, int size) {
@@ -61,73 +61,73 @@ public class OrderHistoryService {
 		}
 
 		List<Order> orders = queryFactory.selectFrom(order)
-				.where(order.userId.eq(userId), statusCondition(tab))
-				.orderBy(order.createdAt.desc())
-				.offset(MyPagePagingPolicy.offset(page, size))
-				.limit(size)
-				.fetch();
+			.where(order.userId.eq(userId), statusCondition(tab))
+			.orderBy(order.createdAt.desc())
+			.offset(MyPagePagingPolicy.offset(page, size))
+			.limit(size)
+			.fetch();
 
 		List<MyPageOrderItemDto> items = orders.stream()
-				.map(this::toOrderItem)
-				.toList();
+			.map(this::toOrderItem)
+			.toList();
 
 		return MyPageOrderListResponseDto.of(page, size, totalCount, items);
 	}
 
 	public MyPageOrderDetailResponseDto getOrderDetail(Long userId, String orderNumber) {
 		Order currentOrder = orderRepository.findByOrderNumberAndUserId(orderNumber, userId)
-				.orElseThrow(() -> new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND));
+			.orElseThrow(() -> new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND));
 
 		MyPageStatusDto status = displayStatusResolver.resolveOrderStatus(currentOrder);
 
 		List<MyPageOrderDetailResponseDto.PackageInfo> packages = orderPackageRepository.findByOrderIdOrderByIdAsc(
 				currentOrder.getId())
-				.stream()
-				.map(orderPackage -> MyPageOrderDetailResponseDto.PackageInfo.of(
-						orderPackage.getEventPackageId(),
-						orderPackage.getName(),
-						orderPackage.getPrice()))
-				.toList();
+			.stream()
+			.map(orderPackage -> MyPageOrderDetailResponseDto.PackageInfo.of(
+				orderPackage.getEventItemId(),
+				orderPackage.getName(),
+				orderPackage.getPrice()))
+			.toList();
 
 		return MyPageOrderDetailResponseDto.of(
-				currentOrder.getEventId(),
-				currentOrder.getOrderNumber(),
-				status.statusText(),
-				status.actionType(),
-				status.actionLabel(),
-				status.actionEnabled(),
-				currentOrder.getCreatedAt(),
-				resolvePaymentDeadlineAt(currentOrder),
-				currentOrder.getEventTitle(),
-				null,
-				currentOrder.getCourseName(),
-				currentOrder.getPaceName(),
-				currentOrder.getItemTotalAmount(),
-				currentOrder.getShippingFee(),
-				currentOrder.getDiscountAmount(),
-				currentOrder.getFinalAmount(),
-				currentOrder.getRecipientName(),
-				currentOrder.getAddressLabel(),
-				currentOrder.getRecipientPhone(),
-				currentOrder.getZipCode(),
-				currentOrder.getAddress(),
-				currentOrder.getDetailAddress(),
-				currentOrder.getDeliveryMemo(),
-				null,
-				false,
-				null,
-				null,
-				displayStatusResolver.canCancel(currentOrder.getOrderStatus()),
-				displayStatusResolver.canRefund(currentOrder.getOrderStatus()),
-				displayStatusResolver.canExchange(currentOrder.getOrderStatus()),
-				packages);
+			currentOrder.getEventId(),
+			currentOrder.getOrderNumber(),
+			status.statusText(),
+			status.actionType(),
+			status.actionLabel(),
+			status.actionEnabled(),
+			currentOrder.getCreatedAt(),
+			resolvePaymentDeadlineAt(currentOrder),
+			currentOrder.getEventTitle(),
+			null,
+			currentOrder.getCourseName(),
+			currentOrder.getPaceName(),
+			currentOrder.getItemTotalAmount(),
+			currentOrder.getShippingFee(),
+			currentOrder.getDiscountAmount(),
+			currentOrder.getFinalAmount(),
+			currentOrder.getRecipientName(),
+			currentOrder.getAddressLabel(),
+			currentOrder.getRecipientPhone(),
+			currentOrder.getZipCode(),
+			currentOrder.getAddress(),
+			currentOrder.getDetailAddress(),
+			currentOrder.getDeliveryMemo(),
+			null,
+			false,
+			null,
+			null,
+			displayStatusResolver.canCancel(currentOrder.getOrderStatus()),
+			displayStatusResolver.canRefund(currentOrder.getOrderStatus()),
+			displayStatusResolver.canExchange(currentOrder.getOrderStatus()),
+			packages);
 	}
 
 	private long countOrders(Long userId, MyPageOrderTab tab) {
 		Long count = queryFactory.select(order.count())
-				.from(order)
-				.where(order.userId.eq(userId), statusCondition(tab))
-				.fetchOne();
+			.from(order)
+			.where(order.userId.eq(userId), statusCondition(tab))
+			.fetchOne();
 
 		return count == null ? 0 : count;
 	}
@@ -145,41 +145,20 @@ public class OrderHistoryService {
 		};
 	}
 
-	<<<<<<<HEAD
-
-	private OrderLookup buildOrderLookup(List<Order> orders) {
-		Set<Long> courseIds = orders.stream()
-			.map(Order::getEventCourseId)
-			.filter(Objects::nonNull)
-			currentOrder.getOrderNumber(),
-			status.statusText(),
-			status.actionType(),
-			status.actionLabel(),
-			status.actionEnabled(),
-			null,
-			currentOrder.getEventTitle(),
-			currentOrder.getCourseName(),
-			currentOrder.getPaceName(),
-			currentOrder.getFinalAmount(),
-			currentOrder.getCreatedAt(),
-			resolvePaymentDeadlineAt(currentOrder)
-		);
-	}
-
 	private MyPagePaymentHistoryItemDto toPaymentHistoryItem(Order currentOrder) {
 		return MyPagePaymentHistoryItemDto.of(
-				currentOrder.getOrderNumber(),
-				currentOrder.getEventId(),
-				currentOrder.getEventTitle(),
-				currentOrder.getEventAppType(),
-				currentOrder.getEventStatus(),
-				resolveOrderStatusLabel(currentOrder.getOrderStatus()),
-				currentOrder.getCreatedAt(),
-				currentOrder.getEventAt(),
-				currentOrder.getEventVenue(),
-				currentOrder.getCourseName(),
-				currentOrder.getPaceName(),
-				currentOrder.getFinalAmount());
+			currentOrder.getOrderNumber(),
+			currentOrder.getEventId(),
+			currentOrder.getEventTitle(),
+			currentOrder.getEventAppType(),
+			currentOrder.getEventStatus(),
+			resolveOrderStatusLabel(currentOrder.getOrderStatus()),
+			currentOrder.getCreatedAt(),
+			currentOrder.getEventAt(),
+			currentOrder.getEventVenue(),
+			currentOrder.getCourseName(),
+			currentOrder.getPaceName(),
+			currentOrder.getFinalAmount());
 	}
 
 	private String resolveOrderStatusLabel(OrderStatus orderStatus) {
@@ -198,4 +177,25 @@ public class OrderHistoryService {
 
 		return null;
 	}
+
+	private MyPageOrderItemDto toOrderItem(Order currentOrder) {
+		MyPageStatusDto status = displayStatusResolver.resolveOrderStatus(currentOrder);
+
+		return MyPageOrderItemDto.of(
+			currentOrder.getOrderNumber(),
+			currentOrder.getEventId(),
+			status.statusText(),
+			status.actionType(),
+			status.actionLabel(),
+			status.actionEnabled(),
+			null,
+			currentOrder.getEventTitle(),
+			currentOrder.getCourseName(),
+			currentOrder.getPaceName(),
+			currentOrder.getFinalAmount(),
+			currentOrder.getCreatedAt(),
+			resolvePaymentDeadlineAt(currentOrder)
+		);
+	}
+
 }
