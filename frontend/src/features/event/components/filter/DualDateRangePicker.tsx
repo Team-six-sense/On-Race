@@ -168,7 +168,7 @@ export default function IndependentDualPicker({ onChange, className }: Props) {
             </Button>
             <div className="flex gap-2">
               <Button
-                variant="outline"
+                variant="secondary"
                 size="fit"
                 rounded="full"
                 onClick={() => setIsOpen(false)}

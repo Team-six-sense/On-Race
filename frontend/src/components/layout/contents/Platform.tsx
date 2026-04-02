@@ -54,7 +54,7 @@ export default function Platform() {
 
   return (
     <section className="py-20 bg-white overflow-hidden">
-      <div className="max-w-[1440px] mx-auto w-full px-6">
+      <div className="max-w-7xl mx-auto w-full px-6">
         {/* 상단 텍스트 영역 */}
         <div className="mb-12">
           <h2 className="text-4xl font-bold mb-4">
