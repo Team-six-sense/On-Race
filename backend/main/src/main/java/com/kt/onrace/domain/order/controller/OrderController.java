@@ -18,6 +18,7 @@ import com.kt.onrace.domain.order.dto.OrderDetailResponseDto;
 import com.kt.onrace.domain.order.dto.OrderListResponseDto;
 import com.kt.onrace.domain.order.service.OrderService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -45,6 +46,15 @@ public class OrderController {
 		return ApiResponse.success(response);
 	}
 
+	@PostMapping("/{orderNumber}/confirm")
+	public ApiResponse<Void> confirmPayment(
+		@PathVariable String orderNumber,
+		@RequestHeader("X-User-Id") Long userId) {
+
+		orderService.confirmPayment(orderNumber, userId);
+		return ApiResponse.success();
+	}
+
 	@PostMapping("/checkout-info")
 	public ApiResponse<CheckoutPrepareResponseDto> checkoutPrepare(
 		@RequestBody CheckoutPrepareRequestDto request,
@@ -57,7 +67,7 @@ public class OrderController {
 
 	@PostMapping("/checkout")
 	public ApiResponse<CheckoutResponseDto> checkout(
-		@RequestBody CheckoutRequestDto request,
+		@Valid @RequestBody CheckoutRequestDto request,
 		@RequestHeader("X-User-Id") Long userId) {
 
 		CheckoutResponseDto response = orderService.checkout(request, userId);

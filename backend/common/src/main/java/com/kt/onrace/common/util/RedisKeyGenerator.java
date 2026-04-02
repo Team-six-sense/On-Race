@@ -2,10 +2,7 @@ package com.kt.onrace.common.util;
 
 public class RedisKeyGenerator {
 
-	public static String lockKey(String resource, Long id) {
-		return String.format("lock:%s:%d", resource, id);
-	}
-
+	// AUTH
 	public static String refreshTokenKey(Long userId) {
 		return String.format("refresh_token:%d", userId);
 	}
@@ -70,24 +67,34 @@ public class RedisKeyGenerator {
 		return String.format("sms:send_attempt:%s", phoneNumber);
 	}
 
-	public static String stockKey(Long paceId) {
-		return String.format("stock:pace:%d", paceId);
+	public static String smsFindIpAttemptKey(String ip) {
+		return String.format("sms:find:ip_attempt:%s", ip);
+	}
+
+	// STOCK
+	public static String totalStockKey(Long paceId) {
+		return String.format("stock:total:pace:%d", paceId);
+	}
+
+	public static String tempStockKey(Long paceId) {
+		return String.format("stock:temp:pace:%d", paceId);
+	}
+
+	public static String confirmStockKey(Long paceId) {
+		return String.format("stock:confirm:pace:%d", paceId);
 	}
 
 	public static String reservationKey(Long paceId, Long userId) {
-		return String.format("reservation:%d:%d", paceId, userId);
+		return String.format("stock:reservation:%d:%d", paceId, userId);
 	}
 
-	public static String stockInitializedKey(Long paceId) {
-		return String.format("stock:initialized:%d", paceId);
-	}
-
+	// QUEUE
 	public static String queueWaiting(Long paceId) {
-		return "queue:waiting:" + paceId;
+		return String.format("queue:waiting:%d", paceId);
 	}
 
 	public static String queuePass(Long paceId, Long userId) {
-		return "queue:pass:" + paceId + ":" + userId;
+		return String.format("queue:pass:%d:%d", paceId, userId);
 	}
 
 	public static String queueBatchLock() {
@@ -96,5 +103,9 @@ public class RedisKeyGenerator {
 
 	public static String queueActivePaces() {
 		return "queue:active-paces";
+	}
+
+	public static String queueEnableChange() {
+		return "queue:event:enabled:changed";
 	}
 }

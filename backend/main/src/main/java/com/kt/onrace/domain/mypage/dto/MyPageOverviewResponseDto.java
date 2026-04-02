@@ -10,6 +10,15 @@ public record MyPageOverviewResponseDto(
 	MyPageOrderListResponseDto orders,
 	MyPageAddressResponseDto address
 ) {
+	public static MyPageOverviewResponseDto of(
+		MyPageEntryListResponseDto entries,
+		MyPageEntryListResponseDto waitingEntries,
+		MyPageOrderListResponseDto orders,
+		MyPageAddressResponseDto address
+	) {
+		return new MyPageOverviewResponseDto(entries, waitingEntries, orders, address);
+	}
+
 	public static MyPageOverviewResponseDto empty() {
 		return new MyPageOverviewResponseDto(
 			MyPageEntryListResponseDto.empty(0, 0),

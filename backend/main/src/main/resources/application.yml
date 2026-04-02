@@ -52,16 +52,26 @@ entry:
   reservation:
     ttl-seconds: ${MAIN_ENTRY_RESERVATION_TTL_SECONDS:600}
 
-event:
-  queue-start-minutes: ${MAIN_EVENT_QUEUE_START_MINUTES:60}
-  queue-end-minutes: ${MAIN_EVENT_QUEUE_END_MINUTES:60}
-
 aws:
   region: ${AWS_REGION:ap-northeast-2}
   s3:
     bucket: ${AWS_S3_BUCKET}
     presign-expire-seconds: ${AWS_S3_PRESIGN_EXPIRE_SECONDS}
 
+api:
+  url:
+    auth: ${AUTH_SERVICE_URI:http://localhost:8081}
+
 gateway:
   internal:
     secret: ${GATEWAY_INTERNAL_SECRET:onrace-super-secret-key}
+
+order:
+  prepare-token:
+    # checkout prepare token TTL이다. queue pass token TTL, reservation TTL과는 별개다.
+    ttl-seconds: ${MAIN_ORDER_PREPARE_TOKEN_TTL_SECONDS:300}
+
+toss:
+  payment:
+    secret-key: ${TOSS_SECRET_KEY:test_sk_zXLkKEypNArWmo50nX3lmeaxYG5R}
+    url: https://api.tosspayments.com/v1/payments/confirm

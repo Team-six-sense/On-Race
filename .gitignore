@@ -4,3 +4,10 @@ skills/
 rules/
 .vscode
 .env
+
+# Security Scanner Reports
+*_scan.json
+*_scan.txt
+*_deps.txt
+*_dependencies.txt
+*_high_critical.txt

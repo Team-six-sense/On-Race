@@ -130,7 +130,7 @@ export function EventEntryInfo({
       <div className="flex gap-2">
         <div
           className={cn(
-            'text-sm font-semibold bg-gray-100 text-gray-600 px-2 py-0.5 rounded-sm',
+            'text-sm font-semibold px-3 py-1 rounded-sm',
             getStatusConfig(event.status),
           )}
         >
@@ -138,7 +138,7 @@ export function EventEntryInfo({
         </div>
       </div>
       <div className="flex flex-row items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold ">{event.title}</h1>
+        <h1 className="text-4xl font-bold ">{event.title}</h1>
         <Button variant="ghost" size="icon">
           <LuShare />
         </Button>
@@ -159,7 +159,7 @@ export function EventEntryInfo({
               >
                 <LuChevronLeft size={20} />
               </Button>
-              <h2 className="text-lg font-bold text-gray-900">
+              <h2 className="text-lg font-bold text-black">
                 {getHeaderText()}
               </h2>
             </div>
@@ -173,12 +173,12 @@ export function EventEntryInfo({
 
             {event.status !== 'READY' && (
               <div className="flex">
-                <span className="w-28 text-sm font-semibold text-gray-700">
+                <span className="w-28 text-base font-semibold text-black">
                   예상 경쟁률
                 </span>
                 <div>
                   <p className="flex-1 font-bold text-2xl">nn.n%</p>
-                  <p className="flex-1 text-sm text-gray-600">
+                  <p className="flex-1 text-sm text-gray-500">
                     추첨 인원 N명 / 응모자 N명
                   </p>
                 </div>
@@ -389,8 +389,10 @@ export function EventEntryInfo({
           {/* cva를 통해 정의한 size="lg" 적용 */}
           <ModalContent size="md" className="">
             <ModalHeader className="py-2">
-              <ModalTitle>로그인이 필요합니다</ModalTitle>
-              <ModalDescription>
+              <ModalTitle className="text-3xl font-bold">
+                로그인이 필요합니다
+              </ModalTitle>
+              <ModalDescription className="text-font-medium">
                 이벤트 참가 신청은 로그인 회원만 가능합니다.
                 <br />
                 로그인 후 다시 진행해 주세요.

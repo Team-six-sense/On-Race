@@ -1,6 +1,7 @@
 package com.kt.onrace.domain.mypage.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.BDDMockito.given;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -12,26 +13,33 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
+import org.redisson.api.RedissonClient;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kt.onrace.domain.address.entity.Address;
 import com.kt.onrace.domain.address.repository.AddressRepository;
+import com.kt.onrace.domain.mypage.client.AuthAccountClient;
+import com.kt.onrace.domain.entry.listener.EntryExpListener;
 import com.kt.onrace.domain.entry.entity.Entry;
 import com.kt.onrace.domain.entry.entity.EntryStatus;
 import com.kt.onrace.domain.entry.repository.EntryRepository;
 import com.kt.onrace.domain.event.entity.Event;
 import com.kt.onrace.domain.event.entity.EventAppType;
 import com.kt.onrace.domain.event.entity.EventCourse;
+import com.kt.onrace.domain.event.entity.EventImage;
+import com.kt.onrace.domain.event.entity.EventImageType;
 import com.kt.onrace.domain.event.entity.EventPace;
 import com.kt.onrace.domain.event.entity.EventRegion;
 import com.kt.onrace.domain.event.entity.EventType;
 import com.kt.onrace.domain.event.repository.EventCourseRepository;
+import com.kt.onrace.domain.event.repository.EventImageRepository;
 import com.kt.onrace.domain.event.repository.EventPaceRepository;
 import com.kt.onrace.domain.event.repository.EventRepository;
 import com.kt.onrace.domain.member.entity.Member;
@@ -58,6 +66,7 @@ class MyPageApiContractTest {
 	private static final long ENTRY_ONLY_USER_ID = 11L;
 	private static final long ORDER_ONLY_USER_ID = 12L;
 	private static final long ADDRESS_ONLY_USER_ID = 13L;
+	private static final long ACTION_CASE_USER_ID = 14L;
 	private static final String GATEWAY_TOKEN = "onrace-super-secret-key";
 
 	@LocalServerPort
@@ -88,7 +97,19 @@ class MyPageApiContractTest {
 	private EventCourseRepository eventCourseRepository;
 
 	@Autowired
+	private EventImageRepository eventImageRepository;
+
+	@Autowired
 	private EventRepository eventRepository;
+
+	@MockBean
+	private AuthAccountClient authAccountClient;
+
+	@MockBean
+	private RedissonClient redissonClient;
+
+	@MockBean
+	private EntryExpListener entryExpListener;
 
 	@BeforeEach
 	void setUp() {
@@ -97,6 +118,7 @@ class MyPageApiContractTest {
 		addressRepository.deleteAll();
 		eventPaceRepository.deleteAll();
 		eventCourseRepository.deleteAll();
+		eventImageRepository.deleteAll();
 		eventRepository.deleteAll();
 		memberRepository.deleteAll();
 
@@ -105,6 +127,13 @@ class MyPageApiContractTest {
 		createMember(ENTRY_ONLY_USER_ID);
 		createMember(ORDER_ONLY_USER_ID);
 		createMember(ADDRESS_ONLY_USER_ID);
+		createMember(ACTION_CASE_USER_ID);
+		stubAuthAccount(MIXED_USER_ID, "runner@example.com", "홍길동", "01012345678", "LOCAL", true, "VERIFIED", true);
+		stubAuthAccount(EMPTY_USER_ID, "empty@example.com", "빈사용자", "01000000000", "LOCAL", true, "UNVERIFIED", false);
+		stubAuthAccount(ENTRY_ONLY_USER_ID, "kakao@example.com", "신청사용자", "01011112222", "KAKAO", false, "UNVERIFIED", false);
+		stubAuthAccount(ORDER_ONLY_USER_ID, "naver@example.com", "주문사용자", "01033334444", "NAVER", false, "VERIFIED", true);
+		stubAuthAccount(ADDRESS_ONLY_USER_ID, "address@example.com", "주소사용자", "01022223333", "LOCAL", true, "UNVERIFIED", false);
+		stubAuthAccount(ACTION_CASE_USER_ID, "action@example.com", "상태검증사용자", "01044445555", "LOCAL", true, "VERIFIED", true);
 
 		LocalDateTime now = LocalDateTime.now();
 
@@ -112,35 +141,68 @@ class MyPageApiContractTest {
 		seedEntryOnlyUser(now);
 		seedOrderOnlyUser(now);
 		seedAddressOnlyUser();
+		seedActionCaseUser(now);
 	}
 
 	@Test
 	void callMyPageEndpointsAndVerifyActualResponseShape() throws Exception {
+		JsonNode account = get(MIXED_USER_ID, "/mypage/account");
 		JsonNode overview = get(MIXED_USER_ID, "/mypage");
 		JsonNode entries = get(MIXED_USER_ID, "/mypage/entries");
+		JsonNode lotteryEntries = get(MIXED_USER_ID, "/mypage/entries?filter=LOTTERY");
+		JsonNode firstComeEntries = get(MIXED_USER_ID, "/mypage/entries?filter=FIRST_COME");
 		JsonNode waitingEntries = get(MIXED_USER_ID, "/mypage/waiting-entries");
 		JsonNode orders = get(MIXED_USER_ID, "/mypage/orders");
 		JsonNode orderDetail = get(MIXED_USER_ID, "/mypage/orders/ORD-TEST-0001");
 		JsonNode address = get(MIXED_USER_ID, "/mypage/address");
 
+		JsonNode emptyAccount = get(EMPTY_USER_ID, "/mypage/account");
 		JsonNode emptyOverview = get(EMPTY_USER_ID, "/mypage");
 		JsonNode emptyEntries = get(EMPTY_USER_ID, "/mypage/entries");
+		JsonNode emptyLotteryEntries = get(EMPTY_USER_ID, "/mypage/entries?filter=LOTTERY");
 		JsonNode emptyWaitingEntries = get(EMPTY_USER_ID, "/mypage/waiting-entries");
 		JsonNode emptyOrders = get(EMPTY_USER_ID, "/mypage/orders");
 		JsonNode emptyAddress = get(EMPTY_USER_ID, "/mypage/address");
 
-		assertThat(overview.path("data").path("entries").path("totalCount").asInt()).isEqualTo(1);
+		assertThat(account.path("data").path("id").asLong()).isEqualTo(MIXED_USER_ID);
+		assertThat(account.path("data").path("name").asText()).isEqualTo("홍길동");
+		assertThat(account.path("data").path("phoneNumber").asText()).isEqualTo("01012345678");
+		assertThat(account.path("data").path("email").asText()).isEqualTo("runner@example.com");
+		assertThat(account.path("data").path("isPassAuth").asBoolean()).isTrue();
+		assertThat(account.path("data").path("addressList")).hasSize(1);
+		assertThat(account.path("data").path("addressList").get(0).path("label").asText()).isEqualTo("집");
+		assertThat(account.path("data").path("addressList").get(0).path("receiverName").asText()).isEqualTo("홍길동");
+		assertThat(account.path("data").path("addressList").get(0).path("phoneNumber").asText()).isEqualTo("01012345678");
+		assertThat(account.path("data").path("addressList").get(0).path("zipcode").asText()).isEqualTo("12345");
+		assertThat(account.path("data").path("addressList").get(0).path("address1").asText()).isEqualTo("서울시 강남구");
+		assertThat(account.path("data").path("addressList").get(0).path("address2").asText()).isEqualTo("101동");
+		assertThat(account.path("data").path("addressList").get(0).path("memo").asText()).isEqualTo("문앞");
+		assertThat(account.path("data").path("addressList").get(0).path("isDefault").asBoolean()).isTrue();
+
+		assertThat(overview.path("data").path("entries").path("totalCount").asInt()).isZero();
 		assertThat(overview.path("data").path("waitingEntries").path("totalCount").asInt()).isEqualTo(1);
 		assertThat(overview.path("data").path("orders").path("totalCount").asInt()).isEqualTo(1);
 		assertThat(overview.path("data").path("address").path("hasAddress").asBoolean()).isTrue();
+		assertThat(overview.path("data").path("waitingEntries").path("items").get(0).path("courseName").asText()).isNotBlank();
+		assertThat(overview.path("data").path("waitingEntries").path("items").get(0).path("paceName").asText()).isNotBlank();
 
-		assertThat(entries.path("data").path("items").get(0).path("status").asText()).isEqualTo("응모 완료");
-		assertThat(entries.path("data").path("page").asInt()).isZero();
-		assertThat(entries.path("data").path("size").asInt()).isEqualTo(20);
-		assertThat(entries.path("data").path("hasNext").asBoolean()).isFalse();
-		assertThat(entries.path("data").path("items").get(0).path("actionType").asText()).isEqualTo("NONE");
-		assertThat(entries.path("data").path("items").get(0).path("actionLabel").isNull()).isTrue();
-		assertThat(entries.path("data").path("items").get(0).path("thumbnailUrl").isNull()).isTrue();
+		assertThat(entries.path("data")).hasSize(1);
+		assertThat(textValues(entries.path("data"), "entryStatus"))
+			.containsExactly("신청 대기");
+		assertThat(entries.path("data").get(0).path("title").asText()).isNotBlank();
+		assertThat(entries.path("data").get(0).path("appType").asText())
+			.isIn("LOTTERY", "FIRST_COME");
+		assertThat(entries.path("data").get(0).path("status").asText())
+			.isIn("IN_PROGRESS", "CLOSING_SOON", "READY", "END", "DRAW_COMPLETED");
+		assertThat(entries.path("data").get(0).path("course").asText()).isNotBlank();
+		assertThat(entries.path("data").get(0).path("pace").asText()).isNotBlank();
+		assertThat(entries.path("data").get(0).path("venue").asText()).isNotBlank();
+		assertThat(entries.path("data").get(0).path("resultAt").isNull()).isTrue();
+
+		assertThat(lotteryEntries.path("data")).isEmpty();
+		assertThat(firstComeEntries.path("data")).hasSize(1);
+		assertThat(textValues(firstComeEntries.path("data"), "entryStatus"))
+			.containsExactly("신청 대기");
 
 		assertThat(waitingEntries.path("data").path("items").get(0).path("status").asText()).isEqualTo("신청 대기");
 		assertThat(waitingEntries.path("data").path("page").asInt()).isZero();
@@ -148,13 +210,18 @@ class MyPageApiContractTest {
 		assertThat(waitingEntries.path("data").path("hasNext").asBoolean()).isFalse();
 		assertThat(waitingEntries.path("data").path("items").get(0).path("actionType").asText()).isEqualTo("EDIT");
 		assertThat(waitingEntries.path("data").path("items").get(0).path("actionLabel").asText()).isEqualTo("사전정보 수정");
+		assertThat(waitingEntries.path("data").path("items").get(0).path("courseName").asText()).isNotBlank();
+		assertThat(waitingEntries.path("data").path("items").get(0).path("paceName").asText()).isNotBlank();
 
-		assertThat(orders.path("data").path("items").get(0).path("status").asText()).isEqualTo("결제 대기");
-		assertThat(orders.path("data").path("page").asInt()).isZero();
-		assertThat(orders.path("data").path("size").asInt()).isEqualTo(20);
-		assertThat(orders.path("data").path("hasNext").asBoolean()).isFalse();
-		assertThat(orders.path("data").path("items").get(0).path("actionType").asText()).isEqualTo("DETAIL");
-		assertThat(orders.path("data").path("items").get(0).path("paymentDeadlineAt").isNull()).isTrue();
+		assertThat(orders.path("data")).hasSize(1);
+		assertThat(orders.path("data").get(0).path("id").asText()).isEqualTo("ORD-TEST-0001");
+		assertThat(orders.path("data").get(0).path("appType").asText()).isEqualTo("LOTTERY");
+		assertThat(orders.path("data").get(0).path("status").asText()).isEqualTo("IN_PROGRESS");
+		assertThat(orders.path("data").get(0).path("orderStatus").asText()).isEqualTo("입금대기");
+		assertThat(orders.path("data").get(0).path("title").asText()).isEqualTo("서울 마라톤 대회 2026");
+		assertThat(orders.path("data").get(0).path("course").asText()).isEqualTo("풀코스");
+		assertThat(orders.path("data").get(0).path("pace").asText()).isEqualTo("6:00/km");
+		assertThat(orders.path("data").get(0).path("price").asLong()).isEqualTo(38000L);
 		assertThat(orderDetail.path("data").path("orderNumber").asText()).isEqualTo("ORD-TEST-0001");
 		assertThat(orderDetail.path("data").path("status").asText()).isEqualTo("결제 대기");
 		assertThat(orderDetail.path("data").path("canCancel").asBoolean()).isTrue();
@@ -162,25 +229,31 @@ class MyPageApiContractTest {
 
 		assertThat(address.path("data").path("hasAddress").asBoolean()).isTrue();
 		assertThat(address.path("data").path("defaultAddress").path("label").asText()).isEqualTo("집");
+		assertThat(address.path("data").path("defaultAddress").path("address").asText()).isEqualTo("서울시 강남구 101동");
 
+		assertThat(emptyAccount.path("data").path("id").asLong()).isEqualTo(EMPTY_USER_ID);
+		assertThat(emptyAccount.path("data").path("name").asText()).isEqualTo("빈사용자");
+		assertThat(emptyAccount.path("data").path("phoneNumber").asText()).isEqualTo("01000000000");
+		assertThat(emptyAccount.path("data").path("email").asText()).isEqualTo("empty@example.com");
+		assertThat(emptyAccount.path("data").path("isPassAuth").asBoolean()).isFalse();
+		assertThat(emptyAccount.path("data").path("addressList")).isEmpty();
 		assertThat(emptyOverview.path("data").path("entries").path("items").isArray()).isTrue();
 		assertThat(emptyOverview.path("data").path("entries").path("page").asInt()).isZero();
 		assertThat(emptyOverview.path("data").path("entries").path("size").asInt()).isEqualTo(3);
 		assertThat(emptyOverview.path("data").path("entries").path("items")).isEmpty();
 		assertThat(emptyOverview.path("data").path("address").path("hasAddress").asBoolean()).isFalse();
 		assertThat(emptyOverview.path("data").path("address").path("defaultAddress").isNull()).isTrue();
-		assertThat(emptyEntries.path("data").path("page").asInt()).isZero();
-		assertThat(emptyEntries.path("data").path("size").asInt()).isEqualTo(20);
-		assertThat(emptyEntries.path("data").path("items")).isEmpty();
+		assertThat(emptyEntries.path("data")).isEmpty();
+		assertThat(emptyLotteryEntries.path("data")).isEmpty();
 		assertThat(emptyWaitingEntries.path("data").path("page").asInt()).isZero();
 		assertThat(emptyWaitingEntries.path("data").path("size").asInt()).isEqualTo(20);
 		assertThat(emptyWaitingEntries.path("data").path("items")).isEmpty();
-		assertThat(emptyOrders.path("data").path("page").asInt()).isZero();
-		assertThat(emptyOrders.path("data").path("size").asInt()).isEqualTo(20);
-		assertThat(emptyOrders.path("data").path("items")).isEmpty();
+		assertThat(emptyOrders.path("data")).isEmpty();
 		assertThat(emptyAddress.path("data").path("hasAddress").asBoolean()).isFalse();
 		assertThat(emptyAddress.path("data").path("defaultAddress").isNull()).isTrue();
 
+		System.out.println("--- populated GET /mypage/account ---");
+		System.out.println(pretty(account));
 		System.out.println("--- populated GET /mypage ---");
 		System.out.println(pretty(overview));
 		System.out.println("--- populated GET /mypage/entries ---");
@@ -193,6 +266,8 @@ class MyPageApiContractTest {
 		System.out.println(pretty(orderDetail));
 		System.out.println("--- populated GET /mypage/address ---");
 		System.out.println(pretty(address));
+		System.out.println("--- empty GET /mypage/account ---");
+		System.out.println(pretty(emptyAccount));
 		System.out.println("--- empty GET /mypage ---");
 		System.out.println(pretty(emptyOverview));
 		System.out.println("--- empty GET /mypage/entries ---");
@@ -207,60 +282,197 @@ class MyPageApiContractTest {
 
 	@Test
 	void prepareRequestedSeedSetsAndVerifyApiResponses() throws Exception {
+		JsonNode entryAccount = get(ENTRY_ONLY_USER_ID, "/mypage/account");
 		JsonNode entryOverview = get(ENTRY_ONLY_USER_ID, "/mypage");
 		JsonNode entryItems = get(ENTRY_ONLY_USER_ID, "/mypage/entries");
+		JsonNode lotteryEntryItems = get(ENTRY_ONLY_USER_ID, "/mypage/entries?filter=LOTTERY");
+		JsonNode firstComeEntryItems = get(ENTRY_ONLY_USER_ID, "/mypage/entries?filter=FIRST_COME");
 		JsonNode waitingItems = get(ENTRY_ONLY_USER_ID, "/mypage/waiting-entries");
 		JsonNode entryOrders = get(ENTRY_ONLY_USER_ID, "/mypage/orders");
 		JsonNode entryAddress = get(ENTRY_ONLY_USER_ID, "/mypage/address");
 
+		assertThat(entryAccount.path("data").path("id").asLong()).isEqualTo(ENTRY_ONLY_USER_ID);
+		assertThat(entryAccount.path("data").path("name").asText()).isEqualTo("신청사용자");
+		assertThat(entryAccount.path("data").path("phoneNumber").asText()).isEqualTo("01011112222");
+		assertThat(entryAccount.path("data").path("email").asText()).isEqualTo("kakao@example.com");
+		assertThat(entryAccount.path("data").path("isPassAuth").asBoolean()).isFalse();
+		assertThat(entryAccount.path("data").path("addressList")).isEmpty();
 		assertThat(entryOverview.path("data").path("entries").path("totalCount").asInt()).isEqualTo(3);
 		assertThat(entryOverview.path("data").path("waitingEntries").path("totalCount").asInt()).isEqualTo(1);
 		assertThat(entryOverview.path("data").path("orders").path("totalCount").asInt()).isZero();
 		assertThat(entryOverview.path("data").path("address").path("hasAddress").asBoolean()).isFalse();
-		assertThat(entryItems.path("data").path("page").asInt()).isZero();
-		assertThat(entryItems.path("data").path("size").asInt()).isEqualTo(20);
-		assertThat(textValues(entryItems.path("data").path("items"), "status"))
+		assertThat(textValues(entryItems.path("data"), "entryStatus"))
+			.containsExactlyInAnyOrder("신청 대기", "응모 완료", "당첨", "미당첨");
+		assertThat(textValues(entryItems.path("data"), "title"))
+			.hasSize(4);
+		assertThat(findItemByTitle(entryItems.path("data"), "세트1 신청 대기 이벤트").path("resultAt").isNull()).isTrue();
+		assertThat(findItemByTitle(entryItems.path("data"), "세트1 응모 완료 이벤트").path("resultAt").asText()).isNotBlank();
+		assertThat(findItemByTitle(entryItems.path("data"), "세트1 당첨 이벤트").path("resultAt").asText()).isNotBlank();
+		assertThat(findItemByTitle(entryItems.path("data"), "세트1 미당첨 이벤트").path("resultAt").asText()).isNotBlank();
+		assertThat(textValues(lotteryEntryItems.path("data"), "entryStatus"))
 			.containsExactlyInAnyOrder("응모 완료", "당첨", "미당첨");
-		assertThat(textValues(entryItems.path("data").path("items"), "actionType"))
-			.containsExactlyInAnyOrder("NONE", "CHECKOUT", "NONE");
+		assertThat(textValues(firstComeEntryItems.path("data"), "entryStatus"))
+			.containsExactly("신청 대기");
 		assertThat(textValues(waitingItems.path("data").path("items"), "status"))
 			.containsExactly("신청 대기");
-		assertThat(entryOrders.path("data").path("items")).isEmpty();
+		assertThat(entryOrders.path("data")).isEmpty();
 		assertThat(entryAddress.path("data").path("hasAddress").asBoolean()).isFalse();
 
+		JsonNode orderAccount = get(ORDER_ONLY_USER_ID, "/mypage/account");
 		JsonNode orderOverview = get(ORDER_ONLY_USER_ID, "/mypage");
 		JsonNode orderItems = get(ORDER_ONLY_USER_ID, "/mypage/orders");
 		JsonNode orderEntries = get(ORDER_ONLY_USER_ID, "/mypage/entries");
 		JsonNode orderWaitingEntries = get(ORDER_ONLY_USER_ID, "/mypage/waiting-entries");
 		JsonNode orderAddress = get(ORDER_ONLY_USER_ID, "/mypage/address");
 
+		assertThat(orderAccount.path("data").path("id").asLong()).isEqualTo(ORDER_ONLY_USER_ID);
+		assertThat(orderAccount.path("data").path("name").asText()).isEqualTo("주문사용자");
+		assertThat(orderAccount.path("data").path("phoneNumber").asText()).isEqualTo("01033334444");
+		assertThat(orderAccount.path("data").path("email").asText()).isEqualTo("naver@example.com");
+		assertThat(orderAccount.path("data").path("isPassAuth").asBoolean()).isTrue();
+		assertThat(orderAccount.path("data").path("addressList")).isEmpty();
 		assertThat(orderOverview.path("data").path("entries").path("totalCount").asInt()).isZero();
 		assertThat(orderOverview.path("data").path("waitingEntries").path("totalCount").asInt()).isZero();
 		assertThat(orderOverview.path("data").path("orders").path("totalCount").asInt()).isEqualTo(3);
-		assertThat(orderItems.path("data").path("page").asInt()).isZero();
-		assertThat(orderItems.path("data").path("size").asInt()).isEqualTo(20);
-		assertThat(textValues(orderItems.path("data").path("items"), "status"))
-			.containsExactlyInAnyOrder("결제 대기", "결제 완료", "주문 취소");
-		assertThat(textValues(orderItems.path("data").path("items"), "actionType"))
-			.containsExactlyInAnyOrder("DETAIL", "DETAIL", "DETAIL");
-		assertThat(orderEntries.path("data").path("items")).isEmpty();
+		assertThat(orderItems.path("data")).hasSize(3);
+		assertThat(textValues(orderItems.path("data"), "orderStatus"))
+			.containsExactlyInAnyOrder("입금대기", "결제완료", "결제취소");
+		assertThat(textValues(orderItems.path("data"), "appType"))
+			.containsExactlyInAnyOrder("FIRST_COME", "FIRST_COME", "FIRST_COME");
+		assertThat(orderEntries.path("data")).isEmpty();
 		assertThat(orderWaitingEntries.path("data").path("items")).isEmpty();
 		assertThat(orderAddress.path("data").path("hasAddress").asBoolean()).isFalse();
 
+		JsonNode addressAccount = get(ADDRESS_ONLY_USER_ID, "/mypage/account");
 		JsonNode addressOverview = get(ADDRESS_ONLY_USER_ID, "/mypage");
 		JsonNode addressOnly = get(ADDRESS_ONLY_USER_ID, "/mypage/address");
 		JsonNode addressEntries = get(ADDRESS_ONLY_USER_ID, "/mypage/entries");
 		JsonNode addressOrders = get(ADDRESS_ONLY_USER_ID, "/mypage/orders");
 
+		assertThat(addressAccount.path("data").path("id").asLong()).isEqualTo(ADDRESS_ONLY_USER_ID);
+		assertThat(addressAccount.path("data").path("name").asText()).isEqualTo("주소사용자");
+		assertThat(addressAccount.path("data").path("phoneNumber").asText()).isEqualTo("01022223333");
+		assertThat(addressAccount.path("data").path("email").asText()).isEqualTo("address@example.com");
+		assertThat(addressAccount.path("data").path("isPassAuth").asBoolean()).isFalse();
+		assertThat(addressAccount.path("data").path("addressList")).hasSize(2);
+		assertThat(addressAccount.path("data").path("addressList").get(0).path("label").asText()).isEqualTo("집");
+		assertThat(addressAccount.path("data").path("addressList").get(0).path("isDefault").asBoolean()).isTrue();
+		assertThat(addressAccount.path("data").path("addressList").get(1).path("label").asText()).isEqualTo("회사");
+		assertThat(addressAccount.path("data").path("addressList").get(1).path("isDefault").asBoolean()).isFalse();
 		assertThat(addressOverview.path("data").path("entries").path("totalCount").asInt()).isZero();
 		assertThat(addressOverview.path("data").path("waitingEntries").path("totalCount").asInt()).isZero();
 		assertThat(addressOverview.path("data").path("orders").path("totalCount").asInt()).isZero();
 		assertThat(addressOverview.path("data").path("address").path("hasAddress").asBoolean()).isTrue();
 		assertThat(addressOnly.path("data").path("defaultAddress").path("label").asText()).isEqualTo("집");
-		assertThat(addressOnly.path("data").path("defaultAddress").path("isDefault").asBoolean()).isTrue();
+		assertThat(addressOnly.path("data").path("defaultAddress").path("receiverName").asText()).isEqualTo("주소사용자");
+		assertThat(addressOnly.path("data").path("defaultAddress").path("address").asText()).isEqualTo("서울시 강남구 201동");
+		assertThat(addressOnly.path("data").path("defaultAddress").path("phone").asText()).isEqualTo("01022223333");
 		assertThat(addressRepository.countByUserId(ADDRESS_ONLY_USER_ID)).isEqualTo(2L);
-		assertThat(addressEntries.path("data").path("items")).isEmpty();
-		assertThat(addressOrders.path("data").path("items")).isEmpty();
+		assertThat(addressEntries.path("data")).isEmpty();
+		assertThat(addressOrders.path("data")).isEmpty();
+	}
+
+	@Test
+	void applicationHistoryCountsAndActionsFollowDisplayPolicy() throws Exception {
+		JsonNode allEntries = get(ACTION_CASE_USER_ID, "/mypage/entries");
+		JsonNode lotteryEntries = get(ACTION_CASE_USER_ID, "/mypage/entries?filter=LOTTERY");
+		JsonNode firstComeEntries = get(ACTION_CASE_USER_ID, "/mypage/entries?filter=FIRST_COME");
+
+		assertThat(allEntries.path("data")).hasSize(4);
+		assertThat(textValues(allEntries.path("data"), "entryStatus"))
+			.containsExactlyInAnyOrder("발표 대기", "신청 가능", "신청 완료", "신청 불가");
+		assertThat(textValues(allEntries.path("data"), "title")).hasSize(4);
+		assertThat(textValues(allEntries.path("data"), "appType"))
+			.containsExactlyInAnyOrder("LOTTERY", "FIRST_COME", "FIRST_COME", "FIRST_COME");
+
+		assertThat(lotteryEntries.path("data")).hasSize(1);
+		assertThat(textValues(lotteryEntries.path("data"), "entryStatus"))
+			.containsExactly("발표 대기");
+
+		assertThat(firstComeEntries.path("data")).hasSize(3);
+		assertThat(textValues(firstComeEntries.path("data"), "entryStatus"))
+			.containsExactlyInAnyOrder("신청 가능", "신청 완료", "신청 불가");
+	}
+
+	@Test
+	void firstComeEntriesAlwaysReturnNullResultAtEvenWhenLotteryAnnouncementDateExists() throws Exception {
+		LocalDateTime now = LocalDateTime.now();
+		EventBundle firstComeWithAnnouncementBundle = createEventBundle(
+			"비정상 발표일 포함 선착순 이벤트",
+			EventType.RUNNING,
+			EventAppType.FIRST_COME,
+			now.plusDays(16),
+			now.minusDays(1),
+			now.plusDays(4),
+			now.plusDays(2),
+			EventRegion.SEOUL,
+			"월드컵공원",
+			"7K",
+			7000,
+			17000L,
+			"5:45/km",
+			5,
+			45,
+			90
+		);
+		createEntry(ACTION_CASE_USER_ID, firstComeWithAnnouncementBundle, EntryStatus.PRE_SAVED);
+
+		JsonNode firstComeEntries = get(ACTION_CASE_USER_ID, "/mypage/entries?filter=FIRST_COME");
+		JsonNode target = findItemByTitle(firstComeEntries.path("data"), "비정상 발표일 포함 선착순 이벤트");
+
+		assertThat(target.isMissingNode()).isFalse();
+		assertThat(target.path("appType").asText()).isEqualTo("FIRST_COME");
+		assertThat(target.path("resultAt").isNull()).isTrue();
+	}
+
+	@Test
+	void pendingOrdersAreOwnedByOrdersNotApplications() throws Exception {
+		JsonNode overview = get(MIXED_USER_ID, "/mypage");
+		JsonNode entries = get(MIXED_USER_ID, "/mypage/entries");
+		JsonNode orders = get(MIXED_USER_ID, "/mypage/orders?tab=PENDING");
+
+		assertThat(overview.path("data").path("entries").path("totalCount").asInt()).isZero();
+		assertThat(overview.path("data").path("waitingEntries").path("totalCount").asInt()).isEqualTo(1);
+		assertThat(entries.path("data")).hasSize(1);
+		assertThat(textValues(entries.path("data"), "entryStatus"))
+			.containsExactly("신청 대기");
+		assertThat(textValues(orders.path("data"), "orderStatus"))
+			.containsExactly("입금대기");
+	}
+
+	@Test
+	void waitingEntriesExcludePendingOrdersOwnedByOrderHistory() throws Exception {
+		LocalDateTime now = LocalDateTime.now();
+		EventBundle reservedBundle = createEventBundle(
+			"결제대기 예약 이벤트",
+			EventType.RUNNING,
+			EventAppType.FIRST_COME,
+			now.plusDays(20),
+			now.minusDays(1),
+			now.plusDays(3),
+			null,
+			EventRegion.SEOUL,
+			"광화문광장",
+			"10K",
+			10000,
+			22000L,
+			"5:40/km",
+			5,
+			40,
+			120
+		);
+		Entry reservedEntry = createEntry(ENTRY_ONLY_USER_ID, reservedBundle, EntryStatus.RESERVED);
+		createOrder(ENTRY_ONLY_USER_ID, reservedBundle, reservedEntry.getId(), OrderStatus.PENDING, "ORD-WAITING-PENDING");
+
+		JsonNode overview = get(ENTRY_ONLY_USER_ID, "/mypage");
+		JsonNode waitingEntries = get(ENTRY_ONLY_USER_ID, "/mypage/waiting-entries");
+		JsonNode pendingOrders = get(ENTRY_ONLY_USER_ID, "/mypage/orders?tab=PENDING");
+
+		assertThat(overview.path("data").path("waitingEntries").path("totalCount").asInt()).isEqualTo(1);
+		assertThat(textValues(waitingEntries.path("data").path("items"), "status"))
+			.containsExactly("신청 대기");
+		assertThat(textValues(pendingOrders.path("data"), "orderStatus"))
+			.containsExactly("입금대기");
 	}
 
 	private JsonNode get(Long userId, String path) throws Exception {
@@ -291,6 +503,38 @@ class MyPageApiContractTest {
 		return values;
 	}
 
+	private JsonNode findItemByTitle(JsonNode items, String title) {
+		for (JsonNode item : items) {
+			if (title.equals(item.path("title").asText())) {
+				return item;
+			}
+		}
+		return objectMapper.createObjectNode().path("missing");
+	}
+
+	private void stubAuthAccount(
+		Long userId,
+		String email,
+		String name,
+		String phone,
+		String authProvider,
+		boolean canChangePassword,
+		String verificationStatus,
+		boolean marketingConsent
+	) {
+		given(authAccountClient.getMyInfo(userId)).willReturn(
+			new AuthAccountClient.AccountSummary(
+				email,
+				name,
+				phone,
+				authProvider,
+				canChangePassword,
+				verificationStatus,
+				marketingConsent
+			)
+		);
+	}
+
 	private void createMember(Long userId) {
 		memberRepository.saveAndFlush(Member.createMember(userId));
 	}
@@ -316,7 +560,7 @@ class MyPageApiContractTest {
 			0,
 			300
 		);
-		createEntry(MIXED_USER_ID, appliedBundle, EntryStatus.APPLIED);
+		Entry appliedEntry = createEntry(MIXED_USER_ID, appliedBundle, EntryStatus.APPLIED);
 
 		EventBundle waitingBundle = createEventBundle(
 			"부산 러닝 페스티벌",
@@ -338,7 +582,7 @@ class MyPageApiContractTest {
 		);
 		createEntry(MIXED_USER_ID, waitingBundle, EntryStatus.PRE_SAVED);
 
-		createOrder(MIXED_USER_ID, appliedBundle, OrderStatus.PENDING, "ORD-TEST-0001");
+		createOrder(MIXED_USER_ID, appliedBundle, appliedEntry.getId(), OrderStatus.PENDING, "ORD-TEST-0001");
 	}
 
 	private void seedEntryOnlyUser(LocalDateTime now) {
@@ -442,14 +686,96 @@ class MyPageApiContractTest {
 			50,
 			120
 		);
-		createOrder(ORDER_ONLY_USER_ID, orderBundle, OrderStatus.PENDING, "ORD-SET2-PENDING");
-		createOrder(ORDER_ONLY_USER_ID, orderBundle, OrderStatus.PAID, "ORD-SET2-PAID");
-		createOrder(ORDER_ONLY_USER_ID, orderBundle, OrderStatus.CANCELLED, "ORD-SET2-CANCELLED");
+		createOrder(ORDER_ONLY_USER_ID, orderBundle, null, OrderStatus.PENDING, "ORD-SET2-PENDING");
+		createOrder(ORDER_ONLY_USER_ID, orderBundle, null, OrderStatus.PAID, "ORD-SET2-PAID");
+		createOrder(ORDER_ONLY_USER_ID, orderBundle, null, OrderStatus.CANCELLED, "ORD-SET2-CANCELLED");
 	}
 
 	private void seedAddressOnlyUser() {
 		createAddress(ADDRESS_ONLY_USER_ID, "집", true, "주소사용자", "01022223333", "06236", "서울시 강남구", "201동", "경비실");
 		createAddress(ADDRESS_ONLY_USER_ID, "회사", false, "주소사용자", "01022223333", "04799", "서울시 성동구", "8층", "리셉션");
+	}
+
+	private void seedActionCaseUser(LocalDateTime now) {
+		EventBundle lotteryPendingBundle = createEventBundle(
+			"상태표 결과 발표 대기 이벤트",
+			EventType.MARATHON,
+			EventAppType.LOTTERY,
+			now.plusDays(20),
+			now.minusDays(10),
+			now.minusDays(1),
+			now.plusDays(2),
+			EventRegion.SEOUL,
+			"잠실주경기장",
+			"하프",
+			21097,
+			25000L,
+			"6:00/km",
+			6,
+			0,
+			120
+		);
+		createEntry(ACTION_CASE_USER_ID, lotteryPendingBundle, EntryStatus.APPLIED);
+
+		EventBundle firstComeAvailableBundle = createEventBundle(
+			"상태표 신청 가능 이벤트",
+			EventType.RUNNING,
+			EventAppType.FIRST_COME,
+			now.plusDays(10),
+			now.minusDays(1),
+			now.plusDays(5),
+			null,
+			EventRegion.SEOUL,
+			"한강공원",
+			"10K",
+			10000,
+			18000L,
+			"5:30/km",
+			5,
+			30,
+			100
+		);
+		createEntry(ACTION_CASE_USER_ID, firstComeAvailableBundle, EntryStatus.PRE_SAVED);
+
+		EventBundle firstComeReservedBundle = createEventBundle(
+			"상태표 예약 중 이벤트",
+			EventType.RUNNING,
+			EventAppType.FIRST_COME,
+			now.plusDays(12),
+			now.minusDays(1),
+			now.plusDays(4),
+			null,
+			EventRegion.BUSAN,
+			"시민공원",
+			"15K",
+			15000,
+			22000L,
+			"5:50/km",
+			5,
+			50,
+			90
+		);
+		createEntry(ACTION_CASE_USER_ID, firstComeReservedBundle, EntryStatus.RESERVED);
+
+		EventBundle firstComeClosedBundle = createEventBundle(
+			"상태표 신청 마감 이벤트",
+			EventType.RUNNING,
+			EventAppType.FIRST_COME,
+			now.plusDays(14),
+			now.minusDays(5),
+			now.minusHours(1),
+			null,
+			EventRegion.DAEGU,
+			"두류공원",
+			"5K",
+			5000,
+			12000L,
+			"6:30/km",
+			6,
+			30,
+			80
+		);
+		createEntry(ACTION_CASE_USER_ID, firstComeClosedBundle, EntryStatus.PRE_SAVED);
 	}
 
 	private Address createAddress(Long userId, String label, boolean isDefault, String receiverName, String phone,
@@ -479,7 +805,7 @@ class MyPageApiContractTest {
 			.build());
 	}
 
-	private Order createOrder(Long userId, EventBundle bundle, OrderStatus orderStatus, String orderNumber) {
+	private Order createOrder(Long userId, EventBundle bundle, Long entryId, OrderStatus orderStatus, String orderNumber) {
 		long price = bundle.course().getPrice();
 		long shippingFee = 3000L;
 
@@ -488,6 +814,15 @@ class MyPageApiContractTest {
 			.userId(userId)
 			.eventCourseId(bundle.course().getId())
 			.eventPaceId(bundle.pace().getId())
+			.entryId(entryId)
+			.eventId(bundle.event().getId())
+			.eventTitle(bundle.event().getTitle())
+			.eventAppType(bundle.event().getAppType())
+			.eventStatus(bundle.event().getStatus())
+			.eventAt(bundle.event().getEventAt())
+			.eventVenue(bundle.event().getVenue())
+			.courseName(bundle.course().getName())
+			.paceName(bundle.pace().getName())
 			.orderStatus(orderStatus)
 			.itemTotalAmount(price)
 			.shippingFee(shippingFee)
@@ -536,11 +871,22 @@ class MyPageApiContractTest {
 			.soldOut(false)
 			.build());
 
+		eventImageRepository.saveAndFlush(EventImage.builder()
+			.event(savedEvent)
+			.type(EventImageType.THUMBNAIL)
+			.url("https://example.com/thumb/" + savedEvent.getId() + ".png")
+			.sort(1)
+			.build());
+
 		EventCourse savedCourse = eventCourseRepository.saveAndFlush(EventCourse.builder()
 			.event(savedEvent)
 			.name(courseName)
 			.mapUrl(null)
 			.distanceMeter(distanceMeter)
+			.timeLimit(180)
+			.waterSource(10)
+			.altitude(100)
+			.courseRoute(courseName + " 코스")
 			.price(price)
 			.build());
 

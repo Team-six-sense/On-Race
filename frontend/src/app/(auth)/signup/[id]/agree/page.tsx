@@ -67,8 +67,8 @@ export default function SignupForm() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center bg-primary">
       <div className="flex flex-col w-full max-w-xl p-8 ">
-        <div className="text-2xl font-bold py-4">{type} 회원가입</div>
-        <div className="text-lg font-bold py-4">약관 동의</div>
+        <div className="text-4xl font-bold py-4">{type} 회원가입</div>
+        <div className="text-2xl font-bold py-4">약관 동의</div>
 
         <div className="rounded-xl space-y-4 ">
           {/* 전체 동의 */}
@@ -89,7 +89,7 @@ export default function SignupForm() {
           </div>
           <div className="space-y-2">
             {/* 필수 약관들 */}
-            <div className="text-sm font-bold text-gray-700">필수 약관</div>
+            <div className="text-base font-bold text-black">필수 약관</div>
             <div className="space-y-3 px-1 pb-2">
               <div className="flex items-center justify-between group">
                 <div className="flex items-center space-x-3">
@@ -134,7 +134,7 @@ export default function SignupForm() {
 
             {/* 선택 약관 (마케팅 수신) */}
             <div className="space-y-3 px-1 pt-1">
-              <div className="text-sm font-bold text-gray-700">선택 약관</div>
+              <div className="text-base font-bold text-black">선택 약관</div>
               <div className="flex items-center space-x-3">
                 <Checkbox
                   id="marketing"
@@ -176,14 +176,14 @@ export default function SignupForm() {
                 <Modal open={open} onOpenChange={setOpen}>
                   <ModalContent size="md">
                     <ModalHeader>
-                      <ModalTitle className="text-full">
+                      <ModalTitle className="text-3xl font-bold">
                         본인 인증 절차
                       </ModalTitle>
-                      <ModalDescription>
+                      <ModalDescription className="text-sm text-font-medium my-0">
                         1인 1계정 가입을 위한 필수 절차입니다. (마이페이지에서
                         수정 가능)
                       </ModalDescription>
-                      <p className="text-sm">
+                      <p className="text-sm text-black mb-4">
                         *본인인증을 하지 않으면 예매를 할 수 없습니다.
                       </p>
                     </ModalHeader>
@@ -220,13 +220,13 @@ export default function SignupForm() {
               <Modal open={agreeModal} onOpenChange={setAgreeModal}>
                 <ModalContent size="md">
                   <ModalHeader>
-                    <ModalTitle className="text-full">
+                    <ModalTitle className="text-3xl font-bold">
                       필수 약관 동의 안내
                     </ModalTitle>
-                    <ModalDescription>
+                    <ModalDescription className="text-sm text-font-medium my-0">
                       필수 약관 미동의시 서비스 이용이 불가합니다.
                     </ModalDescription>
-                    <p className="text-sm">
+                    <p className="text-sm text-font-medium mb-4">
                       *본인인증을 하지 않으면 예매를 할 수 없습니다.
                     </p>
                   </ModalHeader>

@@ -4,6 +4,8 @@ import com.kt.onrace.common.entity.BaseEntity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -23,20 +25,19 @@ public class EventPackage extends BaseEntity {
 	@JoinColumn(name = "event_id", nullable = false)
 	private Event event;
 
-	@Column(nullable = false, length = 50)
-	private String name;
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "item_id", nullable = false)
+	private EventItem item;
 
-	@Column(nullable = false)
-	private long price;
-
-	@Column(length = 500)
-	private String description;
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false, length = 20)
+	private EventItemType itemType;
 
 	@Builder
-	public EventPackage(Event event, String name, Long price, String description) {
+	public EventPackage(Event event, EventItem item, EventItemType itemType) {
 		this.event = event;
-		this.name = name;
-		this.price = price;
-		this.description = description;
+		this.item = item;
+		this.itemType = itemType;
 	}
+	
 }

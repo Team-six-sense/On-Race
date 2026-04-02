@@ -36,47 +36,47 @@ export default function EmailLoginPage() {
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center bg-primary">
-      <div className="flex flex-col w-full max-w-md p-8 ">
-        <h1 className="my-2 text-xl font-bold">이메일 로그인</h1>
+      <div className="flex flex-col w-full max-w-md p-8">
+        <h1 className="text-2xl font-bold pb-6">이메일 로그인</h1>
 
-        <Input
-          className="my-2"
-          variant="primary"
-          placeholder="example@gmail.com"
-          label="이메일 *"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <Input
-          className="my-2"
-          variant="primary"
-          placeholder="비밀번호를 입력해주세요"
-          label="비밀번호 *"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          rightElement={
-            <Button
-              variant="text"
-              size="iconSm"
-              className="text-gray-400"
-              onClick={() => setShowPassword((prev) => !prev)}
-            >
-              {showPassword ? <LuEyeOff /> : <LuEye />}
-            </Button>
-          }
-        />
-        <Button
-          className="my-2"
-          rounded="full"
-          onClick={handleCredentialsLogin}
-        >
-          로그인 하기
+        <div className="pb-4">
+          <Input
+            variant="primary"
+            placeholder="example@gmail.com"
+            label="이메일"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+
+        <div className="pb-4">
+          <Input
+            variant="primary"
+            placeholder="비밀번호를 입력해주세요"
+            label="비밀번호"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            rightElement={
+              <Button
+                variant="text"
+                size="iconSm"
+                className="text-font-low"
+                onClick={() => setShowPassword((prev) => !prev)}
+              >
+                {showPassword ? <LuEyeOff /> : <LuEye />}
+              </Button>
+            }
+          />
+        </div>
+
+        <Button rounded="full" onClick={handleCredentialsLogin}>
+          로그인하기
         </Button>
 
         <div className="flex justify-end items-center w-full">
           <Button
-            className="px-1 text-gray-400"
+            className="px-1 text-gray-500"
             variant="text"
             size="fit"
             onClick={() => router.push('/find/account')}
@@ -84,10 +84,10 @@ export default function EmailLoginPage() {
             아이디 찾기
           </Button>
 
-          <span className="text-sm text-gray-400">|</span>
+          <span className="text-sm text-gray-500">|</span>
 
           <Button
-            className="px-1 text-gray-400"
+            className="px-1 text-gray-500"
             variant="text"
             size="fit"
             onClick={() => router.push('/find/password')}
@@ -95,10 +95,10 @@ export default function EmailLoginPage() {
             비밀번호 재설정
           </Button>
 
-          <span className="text-sm text-gray-400">|</span>
+          <span className="text-sm text-gray-500">|</span>
 
           <Button
-            className="px-1 text-gray-400"
+            className="px-1 text-gray-500"
             variant="text"
             size="fit"
             onClick={() => router.push('/signup/email/agree')}

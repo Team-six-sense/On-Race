@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { UserConfirmModal } from './UserConfirmModal';
 import { AgreeConfirmModal } from './AgreeConfirmModal';
+import { VqaModal } from './VqaModal';
 
 export function EntryConfirmModal({
   isUserModalOpen,
@@ -18,6 +19,7 @@ export function EntryConfirmModal({
   const [mounted, setMounted] = useState(false);
 
   const [isAgreeModalOpen, setIsAgreeModalOpen] = useState(false);
+  const [isVqaModalOpen, setIsVqaModalOpen] = useState(false);
 
   const userData = {
     name: '홍길동',
@@ -38,7 +40,7 @@ export function EntryConfirmModal({
   }
 
   const handleApply = () => {
-    router.push(`/ticketing/${params.id}/vqa`);
+    router.push(`/ticketing/${params.id}/waitQueue`);
   };
 
   return (
@@ -57,6 +59,14 @@ export function EntryConfirmModal({
         onClose={() => setIsAgreeModalOpen(false)}
         onConfirm={() => {
           setIsAgreeModalOpen(false);
+          setIsVqaModalOpen(true);
+        }}
+      />
+      <VqaModal
+        isOpen={isVqaModalOpen}
+        onClose={() => setIsVqaModalOpen(false)}
+        onConfirm={() => {
+          setIsVqaModalOpen(false);
           handleApply();
         }}
       />

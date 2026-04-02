@@ -26,22 +26,19 @@ public class EventStockService {
 			"redis.call('SET', KEYS[1], '1', 'EX', ARGV[1]) " +
 			"return stock"; // 스크립트가 한개이고 짧아서 외부 파일로 관리하지 않고 코드 내에 직접 작성(분리해도 됩니다)
 
-	public void initializeStock(Long paceId, int availableStock) {
-
+	public void initializeStock(Long paceId, int totalStock, int confirmedStock) {
 		// 재고 카운터 셋팅(이 부분은 추후에 어떻게 할지 고민해봐야할듯)
-		String stockKey = RedisKeyGenerator.stockKey(paceId);
-		RAtomicLong stock = redissonClient.getAtomicLong(stockKey);
-		stock.set(availableStock);
+		RAtomicLong total = redissonClient.getAtomicLong(RedisKeyGenerator.totalStockKey(paceId));
+		total.set(totalStock);
 
-		String initKey = RedisKeyGenerator.stockInitializedKey(paceId);
-		RBucket<String> flag = redissonClient.getBucket(initKey, StringCodec.INSTANCE);
-		flag.set("1");
+		RAtomicLong temp = redissonClient.getAtomicLong(RedisKeyGenerator.tempStockKey(paceId));
+		temp.set(totalStock - confirmedStock);
+
+		RAtomicLong confirm = redissonClient.getAtomicLong(RedisKeyGenerator.confirmStockKey(paceId));
+		confirm.set(confirmedStock);
 	}
 
 	public long tryReserveStock(Long paceId, Long userId) {
-		String reservationKey = RedisKeyGenerator.reservationKey(paceId, userId);
-		String stockKey = RedisKeyGenerator.stockKey(paceId);
-
 		RScript script = redissonClient.getScript(StringCodec.INSTANCE);
 
 		// -2: 이미 선점된 경우, -1: 재고 부족, 0 이상: 선점 성공 (남은 재고 수)
@@ -50,36 +47,52 @@ public class EventStockService {
 			RScript.Mode.READ_WRITE,
 			RESERVE_SCRIPT,
 			RScript.ReturnType.INTEGER,
-			List.of(reservationKey, stockKey),
-			entryProperties.getTtlSeconds()
+			List.of(RedisKeyGenerator.reservationKey(paceId, userId), RedisKeyGenerator.tempStockKey(paceId)),
+			String.valueOf(entryProperties.getTtlSeconds())
 		);
 	}
 
-	/**
-	 * (결제 확정 테스트용 임시 코드입니다 추후에 제가 삭제하겠습니다)
-	 */
+	public long getTotalStock(Long paceId) {
+		RAtomicLong stock = redissonClient.getAtomicLong(RedisKeyGenerator.totalStockKey(paceId));
+		return stock.get();
+	}
+
+	public long getTempStock(Long paceId) {
+		RAtomicLong stock = redissonClient.getAtomicLong(RedisKeyGenerator.tempStockKey(paceId));
+		return stock.get();
+	}
+
+	public long getConfirmStock(Long paceId) {
+		RAtomicLong stock = redissonClient.getAtomicLong(RedisKeyGenerator.confirmStockKey(paceId));
+		return stock.get();
+	}
+
+	public long getReservationTtl(Long paceId, Long userId) {
+		RBucket<String> bucket = redissonClient.getBucket(RedisKeyGenerator.reservationKey(paceId, userId),
+			StringCodec.INSTANCE);
+		return bucket.remainTimeToLive();
+	}
+
 	public void restoreStock(Long paceId) {
-		String stockKey = RedisKeyGenerator.stockKey(paceId);
-		RAtomicLong stock = redissonClient.getAtomicLong(stockKey);
+		RAtomicLong stock = redissonClient.getAtomicLong(RedisKeyGenerator.tempStockKey(paceId));
 		stock.incrementAndGet();
 	}
 
-	/**
-	 * (결제 확정 테스트용 임시 코드입니다 추후에 제가 삭제하겠습니다)
-	 */
 	public boolean hasReservation(Long paceId, Long userId) {
-		String reservationKey = RedisKeyGenerator.reservationKey(paceId, userId);
-		RBucket<String> bucket = redissonClient.getBucket(reservationKey, StringCodec.INSTANCE);
+		RBucket<String> bucket = redissonClient.getBucket(RedisKeyGenerator.reservationKey(paceId, userId),
+			StringCodec.INSTANCE);
 		return bucket.isExists();
 	}
 
-	/**
-	 * (결제 확정 테스트용 임시 코드입니다 추후에 제가 삭제하겠습니다)
-	 */
 	public boolean deleteReservation(Long paceId, Long userId) {
-		String reservationKey = RedisKeyGenerator.reservationKey(paceId, userId);
-		RBucket<String> bucket = redissonClient.getBucket(reservationKey, StringCodec.INSTANCE);
+		RBucket<String> bucket = redissonClient.getBucket(RedisKeyGenerator.reservationKey(paceId, userId),
+			StringCodec.INSTANCE);
 		return bucket.delete();
+	}
+
+	public void confirmStock(Long paceId) {
+		RAtomicLong stock = redissonClient.getAtomicLong(RedisKeyGenerator.confirmStockKey(paceId));
+		stock.incrementAndGet();
 	}
 
 }

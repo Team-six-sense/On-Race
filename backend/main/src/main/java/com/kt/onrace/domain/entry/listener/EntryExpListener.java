@@ -28,7 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class EntryExpListener {
 
-	private static final String RESERVATION_PREFIX = "reservation:";
+	private static final String RESERVATION_PREFIX = "stock:reservation:";
 	private static final String EXPIRATION_PATTERN = "__keyevent@*__:expired";
 
 	private final RedissonClient redissonClient;

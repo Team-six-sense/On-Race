@@ -86,6 +86,7 @@ public class AddressService {
 		}
 
 		validateRequest(request);
+		String normalizedPhone = normalizePhone(request.phone());
 
 		boolean hasAny = addressCount > 0;
 		boolean hasDefault = findCurrentDefault(activeAddresses).isPresent();
@@ -103,7 +104,7 @@ public class AddressService {
 			.label(label)
 			.normalizedLabel(normalizeLabelForComparison(label))
 			.receiverName(request.receiverName())
-			.phone(request.phone())
+			.phone(normalizedPhone)
 			.zipcode(request.zipcode())
 			.address1(request.address1())
 			.address2(request.address2())
@@ -120,6 +121,7 @@ public class AddressService {
 		List<Address> activeAddresses = lockActiveAddresses(userId);
 		Address address = findOwnedAddressOrThrow(activeAddresses, addressId);
 		validateRequest(request);
+		String normalizedPhone = normalizePhone(request.phone());
 		String label = resolveLabelForUpdate(userId, addressId, address.getLabel(), request.label());
 
 		Boolean wantDefault = request.isDefault();
@@ -140,7 +142,7 @@ public class AddressService {
 			label,
 			normalizeLabelForComparison(label),
 			request.receiverName(),
-			request.phone(),
+			normalizedPhone,
 			request.zipcode(),
 			request.address1(),
 			request.address2(),
@@ -267,7 +269,8 @@ public class AddressService {
 	}
 
 	private void validatePhone(String phone) {
-		if (phone == null || !PHONE_PATTERN.matcher(phone).matches()) {
+		String normalizedPhone = normalizePhone(phone);
+		if (normalizedPhone == null || !PHONE_PATTERN.matcher(normalizedPhone).matches()) {
 			throw new BusinessException(BusinessErrorCode.ADDRESS_INVALID_PHONE);
 		}
 	}
@@ -323,6 +326,13 @@ public class AddressService {
 
 	private String normalizeLabelForComparison(String label) {
 		return label.toLowerCase(Locale.ROOT);
+	}
+
+	private String normalizePhone(String phone) {
+		if (phone == null) {
+			return null;
+		}
+		return phone.replaceAll("[^0-9]", "");
 	}
 
 	private Address saveWithConstraintTranslation(Address address) {

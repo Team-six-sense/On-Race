@@ -4,7 +4,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 
-@FeignClient(name = "feign-main-service", url = "${api.url.main}")
+@FeignClient(name = "feign-main-service", url = "${api.url.main}", configuration = FeignGatewayInterceptorConfig.class)
 public interface MainServiceClient {
 
 	@PostMapping("/internal/members/{userId}/sync-create")

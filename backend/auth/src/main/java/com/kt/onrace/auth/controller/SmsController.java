@@ -14,6 +14,7 @@ import com.kt.onrace.common.swagger.SwaggerAssistance;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -35,8 +36,12 @@ public class SmsController extends SwaggerAssistance {
 
 	@Operation(summary = "아이디 찾기용 인증 코드 발송", description = "가입된 휴대폰 번호로 6자리 인증 코드를 SMS로 발송합니다. (유효시간 3분)")
 	@PostMapping("/send-for-find")
-	public ApiResponse<Void> sendCodeForFind(@Valid @RequestBody SmsSendRequest request) {
-		smsVerifyService.sendCodeForFind(request.phoneNumber());
+	public ApiResponse<Void> sendCodeForFind(@Valid @RequestBody SmsSendRequest request, HttpServletRequest httpRequest) {
+		String xForwardedFor = httpRequest.getHeader("X-Forwarded-For");
+		String clientIp = (xForwardedFor != null && !xForwardedFor.isBlank())
+			? xForwardedFor.split(",")[0].trim()
+			: httpRequest.getRemoteAddr();
+		smsVerifyService.sendCodeForFind(request.phoneNumber(), clientIp);
 		return ApiResponse.success();
 	}
 

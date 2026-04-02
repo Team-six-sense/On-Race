@@ -1,10 +1,8 @@
 package com.kt.onrace.domain.order;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.when;
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
@@ -21,23 +19,27 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.kt.onrace.domain.address.entity.Address;
-import com.kt.onrace.domain.address.repository.AddressRepository;
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
+import com.kt.onrace.domain.address.entity.Address;
+import com.kt.onrace.domain.address.repository.AddressRepository;
 import com.kt.onrace.domain.event.entity.Event;
 import com.kt.onrace.domain.event.entity.EventAppType;
 import com.kt.onrace.domain.event.entity.EventCourse;
 import com.kt.onrace.domain.event.entity.EventImage;
 import com.kt.onrace.domain.event.entity.EventImageType;
-import com.kt.onrace.domain.event.entity.EventPackage;
+import com.kt.onrace.domain.event.entity.EventItem;
+import com.kt.onrace.domain.event.entity.EventItemType;
 import com.kt.onrace.domain.event.entity.EventPace;
+import com.kt.onrace.domain.event.entity.EventPackage;
 import com.kt.onrace.domain.event.entity.EventRegion;
 import com.kt.onrace.domain.event.entity.EventType;
 import com.kt.onrace.domain.event.repository.EventCourseRepository;
-import com.kt.onrace.domain.event.repository.EventPackageRepository;
 import com.kt.onrace.domain.event.repository.EventPaceRepository;
+import com.kt.onrace.domain.event.repository.EventPackageRepository;
 import com.kt.onrace.domain.event.repository.EventRepository;
+import com.kt.onrace.domain.order.contract.OrderCheckoutEligibility;
+import com.kt.onrace.domain.order.contract.OrderEntryContract;
 import com.kt.onrace.domain.order.dto.CheckoutPrepareRequestDto;
 import com.kt.onrace.domain.order.dto.CheckoutPrepareResponseDto;
 import com.kt.onrace.domain.order.dto.CheckoutRequestDto;
@@ -48,6 +50,7 @@ import com.kt.onrace.domain.order.entity.OrderPackage;
 import com.kt.onrace.domain.order.entity.OrderStatus;
 import com.kt.onrace.domain.order.repository.OrderPackageRepository;
 import com.kt.onrace.domain.order.repository.OrderRepository;
+import com.kt.onrace.domain.order.service.OrderPrepareTokenService;
 import com.kt.onrace.domain.order.service.OrderService;
 
 @ExtendWith(MockitoExtension.class)
@@ -74,6 +77,12 @@ class OrderServiceTest {
 	@Mock
 	private OrderPackageRepository orderPackageRepository;
 
+	@Mock
+	private OrderEntryContract orderEntryContract;
+
+	@Mock
+	private OrderPrepareTokenService orderPrepareTokenService;
+
 	@InjectMocks
 	private OrderService orderService;
 
@@ -85,19 +94,23 @@ class OrderServiceTest {
 	void checkoutPrepareReturnsDefaultAddress() {
 		TestFixture fixture = createFixture();
 
-		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(fixture.event());
+		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(
+			fixture.event());
 		when(eventCourseRepository.findByIdAndEventIdOrThrow(
 			eq(10L), eq(1L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.course());
 		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
 			eq(20L), eq(10L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.pace());
 		when(eventPackageRepository.findByEventId(eq(1L))).thenReturn(List.of(fixture.eventPackage()));
-		when(addressRepository.findFirstByUserIdAndIsDefaultTrue(eq(7L))).thenReturn(Optional.of(fixture.defaultAddress()));
+		when(addressRepository.findFirstByUserIdAndIsDefaultTrue(eq(7L))).thenReturn(
+			Optional.of(fixture.defaultAddress()));
+		when(orderPrepareTokenService.issueToken(eq(7L), eq(1L), eq(10L), eq(20L))).thenReturn("signed-prepare-token");
 
 		CheckoutPrepareResponseDto response = orderService.getCheckoutPrepareInfo(
-			new CheckoutPrepareRequestDto(1L, 10L, 20L, null),
+			new CheckoutPrepareRequestDto(1L, 10L, 20L),
 			7L
 		);
 
+		assertThat(response.prepareToken()).isEqualTo("signed-prepare-token");
 		assertThat(response.orderRequestInfo().eventName()).isEqualTo("서울 마라톤");
 		assertThat(response.orderRequestInfo().courseName()).isEqualTo("하프코스");
 		assertThat(response.packages()).hasSize(1);
@@ -108,20 +121,22 @@ class OrderServiceTest {
 	}
 
 	@Test
-	@DisplayName("checkout-info는 선택한 배송지 id가 있으면 해당 배송지를 내려준다")
-	void checkoutPrepareReturnsSelectedAddress() {
+	@DisplayName("checkout-info는 기본 배송지가 없으면 최근 배송지를 내려준다")
+	void checkoutPrepareReturnsLatestAddressWhenDefaultMissing() {
 		TestFixture fixture = createFixture();
 
-		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(fixture.event());
+		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(
+			fixture.event());
 		when(eventCourseRepository.findByIdAndEventIdOrThrow(
 			eq(10L), eq(1L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.course());
 		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
 			eq(20L), eq(10L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.pace());
 		when(eventPackageRepository.findByEventId(eq(1L))).thenReturn(List.of(fixture.eventPackage()));
-		when(addressRepository.findByIdAndUserId(eq(101L), eq(7L))).thenReturn(Optional.of(fixture.selectedAddress()));
+		when(addressRepository.findFirstByUserIdAndIsDefaultTrue(eq(7L))).thenReturn(Optional.empty());
+		when(addressRepository.findByUserIdOrderByCreatedAtDesc(eq(7L))).thenReturn(List.of(fixture.selectedAddress()));
 
 		CheckoutPrepareResponseDto response = orderService.getCheckoutPrepareInfo(
-			new CheckoutPrepareRequestDto(1L, 10L, 20L, 101L),
+			new CheckoutPrepareRequestDto(1L, 10L, 20L),
 			7L
 		);
 
@@ -131,61 +146,69 @@ class OrderServiceTest {
 	}
 
 	@Test
-	@DisplayName("checkout-info는 잘못된 배송지 id면 ADDRESS_NOT_FOUND 예외가 발생한다")
-	void checkoutPrepareThrowsWhenSelectedAddressDoesNotExist() {
+	@DisplayName("checkout-info는 저장된 배송지가 없으면 빈 배송지 정보를 내려준다")
+	void checkoutPrepareReturnsEmptyWhenAddressDoesNotExist() {
 		TestFixture fixture = createFixture();
 
-		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(fixture.event());
+		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(
+			fixture.event());
 		when(eventCourseRepository.findByIdAndEventIdOrThrow(
 			eq(10L), eq(1L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.course());
 		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
 			eq(20L), eq(10L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.pace());
 		when(eventPackageRepository.findByEventId(eq(1L))).thenReturn(List.of(fixture.eventPackage()));
-		when(addressRepository.findByIdAndUserId(eq(999L), eq(7L))).thenReturn(Optional.empty());
+		when(addressRepository.findFirstByUserIdAndIsDefaultTrue(eq(7L))).thenReturn(Optional.empty());
+		when(addressRepository.findByUserIdOrderByCreatedAtDesc(eq(7L))).thenReturn(List.of());
 
-		assertThatThrownBy(() -> orderService.getCheckoutPrepareInfo(
-			new CheckoutPrepareRequestDto(1L, 10L, 20L, 999L),
+		CheckoutPrepareResponseDto response = orderService.getCheckoutPrepareInfo(
+			new CheckoutPrepareRequestDto(1L, 10L, 20L),
 			7L
-		))
-			.isInstanceOf(BusinessException.class)
-			.extracting(exception -> ((BusinessException)exception).getErrorCode())
-			.isEqualTo(BusinessErrorCode.ADDRESS_NOT_FOUND);
+		);
+
+		assertThat(response.shippingAddress().hasAddress()).isFalse();
+		assertThat(response.shippingAddress().addressId()).isNull();
 	}
 
 	@Test
-	@DisplayName("checkout-info는 다른 유저 배송지 id면 ADDRESS_NOT_FOUND 예외가 발생한다")
-	void checkoutPrepareThrowsWhenAddressBelongsToAnotherUser() {
+	@DisplayName("checkout-info는 사용자별 주소를 조회하고 없으면 빈 배송지 정보를 내려준다")
+	void checkoutPrepareReturnsEmptyWhenUserHasNoAddress() {
 		TestFixture fixture = createFixture();
 
-		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(fixture.event());
+		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(
+			fixture.event());
 		when(eventCourseRepository.findByIdAndEventIdOrThrow(
 			eq(10L), eq(1L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.course());
 		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
 			eq(20L), eq(10L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.pace());
 		when(eventPackageRepository.findByEventId(eq(1L))).thenReturn(List.of(fixture.eventPackage()));
-		when(addressRepository.findByIdAndUserId(eq(101L), eq(8L))).thenReturn(Optional.empty());
+		when(addressRepository.findFirstByUserIdAndIsDefaultTrue(eq(8L))).thenReturn(Optional.empty());
+		when(addressRepository.findByUserIdOrderByCreatedAtDesc(eq(8L))).thenReturn(List.of());
 
-		assertThatThrownBy(() -> orderService.getCheckoutPrepareInfo(
-			new CheckoutPrepareRequestDto(1L, 10L, 20L, 101L),
+		CheckoutPrepareResponseDto response = orderService.getCheckoutPrepareInfo(
+			new CheckoutPrepareRequestDto(1L, 10L, 20L),
 			8L
-		))
-			.isInstanceOf(BusinessException.class)
-			.extracting(exception -> ((BusinessException)exception).getErrorCode())
-			.isEqualTo(BusinessErrorCode.ADDRESS_NOT_FOUND);
+		);
+
+		assertThat(response.shippingAddress().hasAddress()).isFalse();
+		assertThat(response.shippingAddress().addressId()).isNull();
 	}
 
 	@Test
 	@DisplayName("checkout은 선택한 배송지 정보를 주문 payload에 반영한다")
 	void checkoutUsesSelectedAddressSnapshot() {
 		TestFixture fixture = createFixture();
+		OrderPrepareTokenService.ValidatedPrepareToken validatedPrepareToken = validatedPrepareToken();
 
-		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(fixture.event());
+		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(
+			fixture.event());
 		when(eventCourseRepository.findByIdAndEventIdOrThrow(
 			eq(10L), eq(1L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.course());
 		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
 			eq(20L), eq(10L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.pace());
+		mockCheckoutEligibility(7L, true, null);
 		when(eventPackageRepository.findAllById(eq(List.of(30L)))).thenReturn(List.of(fixture.eventPackage()));
 		when(addressRepository.findByIdAndUserId(eq(101L), eq(7L))).thenReturn(Optional.of(fixture.selectedAddress()));
+		when(orderPrepareTokenService.validatePrepareToken(any(), eq(7L), any())).thenReturn(validatedPrepareToken);
 		when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
 		orderService.checkout(
@@ -197,11 +220,6 @@ class OrderServiceTest {
 				List.of(30L),
 				63000L,
 				101L,
-				null,
-				null,
-				null,
-				null,
-				null,
 				"직접 입력 메모"
 			),
 			7L
@@ -218,20 +236,36 @@ class OrderServiceTest {
 		assertThat(savedOrder.getDetailAddress()).isEqualTo("202동");
 		assertThat(savedOrder.getDeliveryMemo()).isEqualTo("직접 입력 메모");
 		assertThat(savedOrder.getFinalAmount()).isEqualTo(63000L);
+		assertThat(savedOrder.getEntryId()).isEqualTo(1000L);
+		assertThat(savedOrder.getOrderStatus()).isEqualTo(OrderStatus.PENDING);
+		assertThat(savedOrder.getEventId()).isEqualTo(fixture.event().getId());
+		assertThat(savedOrder.getEventTitle()).isEqualTo(fixture.event().getTitle());
+		assertThat(savedOrder.getEventAppType()).isEqualTo(fixture.event().getAppType());
+		assertThat(savedOrder.getEventStatus()).isEqualTo(fixture.event().getStatus());
+		assertThat(savedOrder.getEventAt()).isEqualTo(fixture.event().getEventAt());
+		assertThat(savedOrder.getEventVenue()).isEqualTo(fixture.event().getVenue());
+		assertThat(savedOrder.getCourseName()).isEqualTo(fixture.course().getName());
+		assertThat(savedOrder.getPaceName()).isEqualTo(fixture.pace().getName());
+		verify(orderPrepareTokenService).consumePrepareToken(eq(validatedPrepareToken));
 	}
 
 	@Test
 	@DisplayName("checkout은 addressId가 없으면 기본 배송지 스냅샷을 사용한다")
 	void checkoutUsesDefaultAddressSnapshotWhenAddressIdMissing() {
 		TestFixture fixture = createFixture();
+		OrderPrepareTokenService.ValidatedPrepareToken validatedPrepareToken = validatedPrepareToken();
 
-		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(fixture.event());
+		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(
+			fixture.event());
 		when(eventCourseRepository.findByIdAndEventIdOrThrow(
 			eq(10L), eq(1L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.course());
 		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
 			eq(20L), eq(10L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.pace());
+		mockCheckoutEligibility(7L, true, null);
 		when(eventPackageRepository.findAllById(eq(List.of(30L)))).thenReturn(List.of(fixture.eventPackage()));
-		when(addressRepository.findFirstByUserIdAndIsDefaultTrue(eq(7L))).thenReturn(Optional.of(fixture.defaultAddress()));
+		when(addressRepository.findFirstByUserIdAndIsDefaultTrue(eq(7L))).thenReturn(
+			Optional.of(fixture.defaultAddress()));
+		when(orderPrepareTokenService.validatePrepareToken(any(), eq(7L), any())).thenReturn(validatedPrepareToken);
 		when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
 		orderService.checkout(
@@ -242,11 +276,6 @@ class OrderServiceTest {
 				20L,
 				List.of(30L),
 				63000L,
-				null,
-				null,
-				null,
-				null,
-				null,
 				null,
 				"직접 입력 메모"
 			),
@@ -263,6 +292,13 @@ class OrderServiceTest {
 		assertThat(savedOrder.getAddress()).isEqualTo("서울시 강남구");
 		assertThat(savedOrder.getDetailAddress()).isEqualTo("101동");
 		assertThat(savedOrder.getDeliveryMemo()).isEqualTo("직접 입력 메모");
+		assertThat(savedOrder.getEntryId()).isEqualTo(1000L);
+		assertThat(savedOrder.getEventId()).isEqualTo(fixture.event().getId());
+		assertThat(savedOrder.getEventTitle()).isEqualTo(fixture.event().getTitle());
+		assertThat(savedOrder.getEventVenue()).isEqualTo(fixture.event().getVenue());
+		assertThat(savedOrder.getCourseName()).isEqualTo(fixture.course().getName());
+		assertThat(savedOrder.getPaceName()).isEqualTo(fixture.pace().getName());
+		verify(orderPrepareTokenService).consumePrepareToken(eq(validatedPrepareToken));
 	}
 
 	@Test
@@ -270,11 +306,13 @@ class OrderServiceTest {
 	void checkoutThrowsWhenNoSavedAddressExists() {
 		TestFixture fixture = createFixture();
 
-		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(fixture.event());
+		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(
+			fixture.event());
 		when(eventCourseRepository.findByIdAndEventIdOrThrow(
 			eq(10L), eq(1L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.course());
 		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
 			eq(20L), eq(10L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.pace());
+		mockCheckoutEligibility(7L, true, null);
 		when(eventPackageRepository.findAllById(eq(List.of(30L)))).thenReturn(List.of(fixture.eventPackage()));
 		when(addressRepository.findFirstByUserIdAndIsDefaultTrue(eq(7L))).thenReturn(Optional.empty());
 		when(addressRepository.findByUserIdOrderByCreatedAtDesc(eq(7L))).thenReturn(List.of());
@@ -288,11 +326,6 @@ class OrderServiceTest {
 				List.of(30L),
 				63000L,
 				null,
-				"직접입력",
-				"01012345678",
-				"12345",
-				"서울 어딘가",
-				"101동",
 				"직접 입력 메모"
 			),
 			7L
@@ -307,11 +340,13 @@ class OrderServiceTest {
 	void checkoutThrowsWhenAddressBelongsToAnotherUser() {
 		TestFixture fixture = createFixture();
 
-		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(fixture.event());
+		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(
+			fixture.event());
 		when(eventCourseRepository.findByIdAndEventIdOrThrow(
 			eq(10L), eq(1L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.course());
 		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
 			eq(20L), eq(10L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.pace());
+		mockCheckoutEligibility(8L, true, null);
 		when(eventPackageRepository.findAllById(eq(List.of(30L)))).thenReturn(List.of(fixture.eventPackage()));
 		when(addressRepository.findByIdAndUserId(eq(101L), eq(8L))).thenReturn(Optional.empty());
 
@@ -324,11 +359,6 @@ class OrderServiceTest {
 				List.of(30L),
 				63000L,
 				101L,
-				null,
-				null,
-				null,
-				null,
-				null,
 				"직접 입력 메모"
 			),
 			8L
@@ -336,6 +366,37 @@ class OrderServiceTest {
 			.isInstanceOf(BusinessException.class)
 			.extracting(exception -> ((BusinessException)exception).getErrorCode())
 			.isEqualTo(BusinessErrorCode.ADDRESS_NOT_FOUND);
+	}
+
+	@Test
+	@DisplayName("checkout은 entry eligibility가 false면 failureCode 기반 예외를 반환한다")
+	void checkoutThrowsWhenEntryEligibilityFails() {
+		TestFixture fixture = createFixture();
+
+		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(
+			fixture.event());
+		when(eventCourseRepository.findByIdAndEventIdOrThrow(
+			eq(10L), eq(1L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.course());
+		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
+			eq(20L), eq(10L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.pace());
+		mockCheckoutEligibility(7L, false, BusinessErrorCode.ENTRY_CANNOT_APPLY.getCode());
+
+		assertThatThrownBy(() -> orderService.checkout(
+			new CheckoutRequestDto(
+				"prepare-token",
+				1L,
+				10L,
+				20L,
+				List.of(),
+				53000L,
+				null,
+				"직접 입력 메모"
+			),
+			7L
+		))
+			.isInstanceOf(BusinessException.class)
+			.extracting(exception -> ((BusinessException)exception).getErrorCode())
+			.isEqualTo(BusinessErrorCode.ENTRY_CANNOT_APPLY);
 	}
 
 	@Test
@@ -390,7 +451,7 @@ class OrderServiceTest {
 		setCreatedAt(order, LocalDateTime.of(2026, 2, 15, 14, 30));
 
 		OrderPackage orderPackage = OrderPackage.builder()
-			.eventPackageId(30L)
+			.eventItemId(30L)
 			.name("기념 티셔츠")
 			.price(10000L)
 			.build();
@@ -424,6 +485,99 @@ class OrderServiceTest {
 			.isInstanceOf(BusinessException.class)
 			.extracting(exception -> ((BusinessException)exception).getErrorCode())
 			.isEqualTo(BusinessErrorCode.ORDER_NOT_FOUND);
+	}
+
+	@Test
+	@DisplayName("결제 완료 확정은 pending 주문을 paid로 전이한다")
+	void confirmPaymentMarksPendingOrderAsPaid() {
+		Order order = createOrder("ORD-CONFIRM-001", 7L, 10L, 20L, OrderStatus.PENDING, 53000L);
+
+		when(orderRepository.findByOrderNumberAndUserId(eq("ORD-CONFIRM-001"), eq(7L))).thenReturn(Optional.of(order));
+
+		orderService.confirmPayment("ORD-CONFIRM-001", 7L);
+
+		assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.PAID);
+		verify(orderEntryContract).handlePaymentConfirmed(1000L);
+	}
+
+	@Test
+	@DisplayName("결제 완료 확정은 이미 paid 상태면 중복 호출에도 그대로 성공한다")
+	void confirmPaymentIsIdempotentWhenAlreadyPaid() {
+		Order order = createOrder("ORD-CONFIRM-PAID", 7L, 10L, 20L, OrderStatus.PAID, 53000L);
+
+		when(orderRepository.findByOrderNumberAndUserId(eq("ORD-CONFIRM-PAID"), eq(7L))).thenReturn(Optional.of(order));
+
+		orderService.confirmPayment("ORD-CONFIRM-PAID", 7L);
+
+		assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.PAID);
+		verify(orderEntryContract, never()).handlePaymentConfirmed(any());
+	}
+
+	@Test
+	@DisplayName("결제 완료 확정은 취소된 주문이면 ORDER_CANNOT_CONFIRM 예외가 발생한다")
+	void confirmPaymentThrowsWhenOrderStatusCannotBeConfirmed() {
+		Order order = createOrder("ORD-CONFIRM-CANCELLED", 7L, 10L, 20L, OrderStatus.CANCELLED, 53000L);
+
+		when(orderRepository.findByOrderNumberAndUserId(eq("ORD-CONFIRM-CANCELLED"), eq(7L))).thenReturn(
+			Optional.of(order));
+
+		assertThatThrownBy(() -> orderService.confirmPayment("ORD-CONFIRM-CANCELLED", 7L))
+			.isInstanceOf(BusinessException.class)
+			.extracting(exception -> ((BusinessException)exception).getErrorCode())
+			.isEqualTo(BusinessErrorCode.ORDER_CANNOT_CONFIRM);
+	}
+
+	@Test
+	@DisplayName("결제 실패는 pending 주문을 failed로 전이하고 rollback 훅을 한 번 호출한다")
+	void failPaymentTriggersRollbackHookOnce() {
+		Order order = createOrder("ORD-FAIL-001", 7L, 10L, 20L, OrderStatus.PENDING, 53000L);
+
+		when(orderRepository.findByOrderNumberAndUserId(eq("ORD-FAIL-001"), eq(7L))).thenReturn(Optional.of(order));
+
+		orderService.failPayment("ORD-FAIL-001", 7L);
+
+		assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.FAILED);
+		verify(orderEntryContract).rollbackPendingPayment(1000L);
+	}
+
+	@Test
+	@DisplayName("주문 취소는 pending 주문을 cancelled로 전이하고 rollback 훅을 한 번 호출한다")
+	void cancelPaymentTriggersRollbackHookOnce() {
+		Order order = createOrder("ORD-CANCEL-001", 7L, 10L, 20L, OrderStatus.PENDING, 53000L);
+
+		when(orderRepository.findByOrderNumberAndUserId(eq("ORD-CANCEL-001"), eq(7L))).thenReturn(Optional.of(order));
+
+		orderService.cancelPayment("ORD-CANCEL-001", 7L);
+
+		assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.CANCELLED);
+		verify(orderEntryContract).rollbackPendingPayment(1000L);
+	}
+
+	@Test
+	@DisplayName("주문 만료는 pending 주문을 expired로 전이하고 rollback 훅을 한 번 호출한다")
+	void expirePaymentTriggersRollbackHookOnce() {
+		Order order = createOrder("ORD-EXPIRE-001", 7L, 10L, 20L, OrderStatus.PENDING, 53000L);
+
+		when(orderRepository.findByOrderNumberAndUserId(eq("ORD-EXPIRE-001"), eq(7L))).thenReturn(Optional.of(order));
+
+		orderService.expirePayment("ORD-EXPIRE-001", 7L);
+
+		assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.EXPIRED);
+		verify(orderEntryContract).rollbackPendingPayment(1000L);
+	}
+
+	@Test
+	@DisplayName("이미 같은 terminal 상태면 rollback 훅을 다시 호출하지 않는다")
+	void terminalTransitionsAreIdempotent() {
+		Order order = createOrder("ORD-CANCELLED-001", 7L, 10L, 20L, OrderStatus.CANCELLED, 53000L);
+
+		when(orderRepository.findByOrderNumberAndUserId(eq("ORD-CANCELLED-001"), eq(7L))).thenReturn(
+			Optional.of(order));
+
+		orderService.cancelPayment("ORD-CANCELLED-001", 7L);
+
+		assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.CANCELLED);
+		verify(orderEntryContract, never()).rollbackPendingPayment(any());
 	}
 
 	@Test
@@ -464,9 +618,14 @@ class OrderServiceTest {
 			.name("하프코스")
 			.mapUrl("https://example.com/map")
 			.distanceMeter(21097)
+			.timeLimit(180)
+			.waterSource(5)
+			.altitude(100)
+			.courseRoute("잠실-여의도 하프 코스")
 			.price(50000L)
 			.build();
 		setId(course, 10L);
+		event.getCourses().add(course);
 
 		EventPace pace = EventPace.builder()
 			.eventCourse(course)
@@ -476,14 +635,22 @@ class OrderServiceTest {
 			.capacity(100)
 			.build();
 		setId(pace, 20L);
+		course.getEventPaces().add(pace);
 
-		EventPackage eventPackage = EventPackage.builder()
-			.event(event)
+		EventItem eventItem = EventItem.builder()
 			.name("기념 티셔츠")
 			.price(10000L)
 			.description("기본 옵션")
 			.build();
+		setId(eventItem, 31L);
+
+		EventPackage eventPackage = EventPackage.builder()
+			.event(event)
+			.item(eventItem)
+			.itemType(EventItemType.ADDITIONAL)
+			.build();
 		setId(eventPackage, 30L);
+		event.getPackages().add(eventPackage);
 
 		Address defaultAddress = Address.builder()
 			.userId(7L)
@@ -516,6 +683,26 @@ class OrderServiceTest {
 		return new TestFixture(event, course, pace, eventPackage, defaultAddress, selectedAddress);
 	}
 
+	private void mockCheckoutEligibility(Long userId, boolean canCheckout, String failureCode) {
+		when(orderEntryContract.resolveCheckoutEligibility(eq(userId), eq(1L), eq(20L)))
+			.thenReturn(OrderCheckoutEligibility.builder()
+				.entryId(1000L)
+				.appType(EventAppType.LOTTERY)
+				.currentEntryStatus(com.kt.onrace.domain.entry.entity.EntryStatus.WON)
+				.requiredEntryStatus(com.kt.onrace.domain.entry.entity.EntryStatus.WON)
+				.requiresReservationValidation(false)
+				.canCheckout(canCheckout)
+				.failureCode(failureCode)
+				.build());
+	}
+
+	private OrderPrepareTokenService.ValidatedPrepareToken validatedPrepareToken() {
+		return new OrderPrepareTokenService.ValidatedPrepareToken(
+			"nonce-123",
+			LocalDateTime.now().plusMinutes(5)
+		);
+	}
+
 	private void setId(Object target, Long id) {
 		try {
 			Field field = target.getClass().getSuperclass().getDeclaredField("id");
@@ -543,6 +730,7 @@ class OrderServiceTest {
 			.userId(userId)
 			.eventCourseId(eventCourseId)
 			.eventPaceId(eventPaceId)
+			.entryId(1000L)
 			.orderStatus(orderStatus)
 			.itemTotalAmount(60000L)
 			.shippingFee(3000L)

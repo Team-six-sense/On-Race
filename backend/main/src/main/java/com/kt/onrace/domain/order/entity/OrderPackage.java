@@ -19,27 +19,27 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class OrderPackage extends BaseEntity {
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id", nullable = false)
-    private Order order;
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "order_id", nullable = false)
+	private Order order;
 
-    @Column(nullable = false)
-    private Long eventPackageId;
+	@Column(nullable = false)
+	private Long eventItemId;
 
-    @Column(nullable = false)
-    private Long price;
+	@Column(nullable = false)
+	private Long price;
 
-    @Column(nullable = false)
-    private String name;
+	@Column(nullable = false)
+	private String name;
 
-    @Builder
-    public OrderPackage(Long eventPackageId, Long price, String name) {
-        this.eventPackageId = eventPackageId;
-        this.price = price;
-        this.name = name;
-    }
+	@Builder
+	public OrderPackage(Long eventItemId, Long price, String name) {
+		this.eventItemId = eventItemId;
+		this.price = price;
+		this.name = name;
+	}
 
-    void setOrder(Order order) {
-        this.order = order;
-    }
+	void setOrder(Order order) {
+		this.order = order;
+	}
 }

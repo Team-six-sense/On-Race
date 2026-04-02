@@ -1,0 +1,143 @@
+package com.kt.onrace.domain.mypage.service;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
+
+import java.util.List;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import com.kt.onrace.domain.address.dto.AddressDto;
+import com.kt.onrace.domain.address.service.AddressService;
+import com.kt.onrace.domain.mypage.client.AuthAccountClient;
+import com.kt.onrace.domain.mypage.dto.MyPageAccountResponseDto;
+
+@ExtendWith(MockitoExtension.class)
+class MyPageAccountQueryServiceTest {
+
+	@Mock
+	private AuthAccountClient authAccountClient;
+
+	@Mock
+	private AddressService addressService;
+
+	private MyPageAccountQueryService myPageAccountQueryService;
+
+	@BeforeEach
+	void setUp() {
+		myPageAccountQueryService = new MyPageAccountQueryService(authAccountClient, addressService);
+	}
+
+	@Test
+	@DisplayName("계정 요약은 auth 원천값과 배송지 목록을 함께 조립한다")
+	void getAccountReturnsAccountSummary() {
+		when(authAccountClient.getMyInfo(7L)).thenReturn(
+			new AuthAccountClient.AccountSummary(
+				"runner@example.com",
+				"홍길동",
+				"01012345678",
+				"LOCAL",
+				true,
+				"VERIFIED",
+				true
+			)
+		);
+		when(addressService.list(7L)).thenReturn(List.of(defaultAddress(), officeAddress()));
+
+		MyPageAccountResponseDto response = myPageAccountQueryService.getAccount(7L);
+
+		assertThat(response.id()).isEqualTo(7L);
+		assertThat(response.name()).isEqualTo("홍길동");
+		assertThat(response.phoneNumber()).isEqualTo("01012345678");
+		assertThat(response.email()).isEqualTo("runner@example.com");
+		assertThat(response.isPassAuth()).isTrue();
+		assertThat(response.addressList()).hasSize(2);
+		assertThat(response.addressList().get(0).receiverName()).isEqualTo("홍길동");
+		assertThat(response.addressList().get(0).label()).isEqualTo("집");
+		assertThat(response.addressList().get(0).phoneNumber()).isEqualTo("01012345678");
+		assertThat(response.addressList().get(0).zipcode()).isEqualTo("06236");
+		assertThat(response.addressList().get(0).address1()).isEqualTo("서울시 강남구");
+		assertThat(response.addressList().get(0).address2()).isEqualTo("101동 1203호");
+		assertThat(response.addressList().get(0).memo()).isEqualTo("문앞");
+		assertThat(response.addressList().get(0).isDefault()).isTrue();
+	}
+
+	@Test
+	@DisplayName("배송지가 없으면 빈 배열을 반환한다")
+	void getAccountReturnsEmptyAddressWhenDefaultAddressMissing() {
+		when(authAccountClient.getMyInfo(8L)).thenReturn(
+			new AuthAccountClient.AccountSummary(
+				"empty@example.com",
+				"빈사용자",
+				"01000000000",
+				"LOCAL",
+				true,
+				"UNVERIFIED",
+				false
+			)
+		);
+		when(addressService.list(8L)).thenReturn(List.of());
+
+		MyPageAccountResponseDto response = myPageAccountQueryService.getAccount(8L);
+
+		assertThat(response.id()).isEqualTo(8L);
+		assertThat(response.isPassAuth()).isFalse();
+		assertThat(response.addressList()).isEmpty();
+	}
+
+	@Test
+	@DisplayName("인증 상태가 VERIFIED가 아니면 isPassAuth=false로 매핑한다")
+	void getAccountNormalizesSnsAccountFields() {
+		when(authAccountClient.getMyInfo(9L)).thenReturn(
+			new AuthAccountClient.AccountSummary(
+				"sns@example.com",
+				"카카오사용자",
+				"01011112222",
+				"KAKAO",
+				false,
+				"UNVERIFIED",
+				true
+			)
+		);
+		when(addressService.list(9L)).thenReturn(List.of(defaultAddress()));
+
+		MyPageAccountResponseDto response = myPageAccountQueryService.getAccount(9L);
+
+		assertThat(response.id()).isEqualTo(9L);
+		assertThat(response.isPassAuth()).isFalse();
+		assertThat(response.addressList()).hasSize(1);
+	}
+
+	private AddressDto.Response defaultAddress() {
+		return new AddressDto.Response(
+			1L,
+			"집",
+			"홍길동",
+			"01012345678",
+			"06236",
+			"서울시 강남구",
+			"101동 1203호",
+			"문앞",
+			true
+		);
+	}
+
+	private AddressDto.Response officeAddress() {
+		return new AddressDto.Response(
+			2L,
+			"회사",
+			"홍길동",
+			"01099998888",
+			"04799",
+			"서울시 성동구",
+			"8층",
+			"리셉션",
+			false
+		);
+	}
+}

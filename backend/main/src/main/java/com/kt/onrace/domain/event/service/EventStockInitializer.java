@@ -12,7 +12,9 @@ import com.kt.onrace.domain.event.repository.EventPaceRepository;
 import com.kt.onrace.domain.event.repository.EventStockRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -31,7 +33,9 @@ public class EventStockInitializer {
 
 		for (EventPace pace : paces) {
 			EventStock eventStock = eventStockRepository.findByEventPaceIdOrThrow(pace.getId());
-			eventStockService.initializeStock(pace.getId(), eventStock.getAvailableStock());
+			log.debug("Initializing stock for EventPace ID: {}, Total Stock: {}, Confirmed Stock: {}",
+					pace.getId(), eventStock.getTotalStock(), eventStock.getConfirmedStock());
+			eventStockService.initializeStock(pace.getId(), eventStock.getTotalStock(), eventStock.getConfirmedStock());
 		}
 	}
 }

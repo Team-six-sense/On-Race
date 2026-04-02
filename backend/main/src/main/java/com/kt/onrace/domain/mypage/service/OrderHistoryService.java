@@ -1,30 +1,21 @@
 package com.kt.onrace.domain.mypage.service;
 
-import static com.kt.onrace.domain.order.entity.QOrder.order;
+import static com.kt.onrace.domain.order.entity.QOrder.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
-import com.kt.onrace.domain.event.entity.Event;
-import com.kt.onrace.domain.event.entity.EventCourse;
-import com.kt.onrace.domain.event.entity.EventPace;
-import com.kt.onrace.domain.event.repository.EventCourseRepository;
-import com.kt.onrace.domain.event.repository.EventPaceRepository;
-import com.kt.onrace.domain.event.repository.EventRepository;
+import com.kt.onrace.common.logging.annotation.ServiceLog;
 import com.kt.onrace.domain.mypage.dto.MyPageOrderDetailResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageOrderItemDto;
 import com.kt.onrace.domain.mypage.dto.MyPageOrderListResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageOrderTab;
+import com.kt.onrace.domain.mypage.dto.MyPagePaymentHistoryItemDto;
 import com.kt.onrace.domain.mypage.dto.MyPageStatusDto;
 import com.kt.onrace.domain.order.entity.Order;
 import com.kt.onrace.domain.order.entity.OrderStatus;
@@ -39,6 +30,7 @@ import lombok.RequiredArgsConstructor;
  * 사용자의 주문 목록과 주문 상세 정보를 마이페이지 응답으로 변환하는 서비스이다.
  * 탭별 상태 필터링, 연관 이벤트 정보 조회, 취소·환불 가능 여부 계산을 함께 처리한다.
  */
+@ServiceLog
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -46,11 +38,19 @@ public class OrderHistoryService {
 
 	private final OrderRepository orderRepository;
 	private final OrderPackageRepository orderPackageRepository;
-	private final EventCourseRepository eventCourseRepository;
-	private final EventPaceRepository eventPaceRepository;
-	private final EventRepository eventRepository;
 	private final JPAQueryFactory queryFactory;
 	private final MyPageDisplayStatusResolver displayStatusResolver;
+
+	public List<MyPagePaymentHistoryItemDto> getPaymentHistories(Long userId, MyPageOrderTab tab) {
+		List<Order> orders = queryFactory.selectFrom(order)
+			.where(order.userId.eq(userId), statusCondition(tab))
+			.orderBy(order.createdAt.desc())
+			.fetch();
+
+		return orders.stream()
+			.map(this::toPaymentHistoryItem)
+			.toList();
+	}
 
 	public MyPageOrderListResponseDto getOrders(Long userId, MyPageOrderTab tab, int page, int size) {
 		MyPagePagingPolicy.validate(page, size);
@@ -67,9 +67,8 @@ public class OrderHistoryService {
 			.limit(size)
 			.fetch();
 
-		OrderLookup lookup = buildOrderLookup(orders);
 		List<MyPageOrderItemDto> items = orders.stream()
-			.map(currentOrder -> toOrderItem(currentOrder, lookup))
+			.map(this::toOrderItem)
 			.toList();
 
 		return MyPageOrderListResponseDto.of(page, size, totalCount, items);
@@ -79,23 +78,18 @@ public class OrderHistoryService {
 		Order currentOrder = orderRepository.findByOrderNumberAndUserId(orderNumber, userId)
 			.orElseThrow(() -> new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND));
 
-		OrderLookup lookup = buildOrderLookup(List.of(currentOrder));
-		EventCourse course = lookup.courseById().get(currentOrder.getEventCourseId());
-		EventPace pace = currentOrder.getEventPaceId() != null ? lookup.paceById().get(currentOrder.getEventPaceId()) : null;
-		Event currentEvent = course != null && course.getEvent() != null ? lookup.eventById().get(course.getEvent().getId()) : null;
 		MyPageStatusDto status = displayStatusResolver.resolveOrderStatus(currentOrder);
 
-		List<MyPageOrderDetailResponseDto.PackageInfo> packages = orderPackageRepository.findByOrderIdOrderByIdAsc(currentOrder.getId())
+		List<MyPageOrderDetailResponseDto.PackageInfo> packages = orderPackageRepository.findByOrderIdOrderByIdAsc(
+				currentOrder.getId())
 			.stream()
-			.map(orderPackage -> new MyPageOrderDetailResponseDto.PackageInfo(
-				orderPackage.getEventPackageId(),
+			.map(orderPackage -> MyPageOrderDetailResponseDto.PackageInfo.of(
+				orderPackage.getEventItemId(),
 				orderPackage.getName(),
-				orderPackage.getPrice()
-			))
+				orderPackage.getPrice()))
 			.toList();
-
-		return new MyPageOrderDetailResponseDto(
-			currentEvent != null ? currentEvent.getId() : null,
+		return MyPageOrderDetailResponseDto.of(
+			currentOrder.getEventId(),
 			currentOrder.getOrderNumber(),
 			status.statusText(),
 			status.actionType(),
@@ -103,10 +97,10 @@ public class OrderHistoryService {
 			status.actionEnabled(),
 			currentOrder.getCreatedAt(),
 			resolvePaymentDeadlineAt(currentOrder),
-			currentEvent != null ? currentEvent.getTitle() : null,
+			currentOrder.getEventTitle(),
 			null,
-			course != null ? course.getName() : null,
-			pace != null ? pace.getName() : null,
+			currentOrder.getCourseName(),
+			currentOrder.getPaceName(),
 			currentOrder.getItemTotalAmount(),
 			currentOrder.getShippingFee(),
 			currentOrder.getDiscountAmount(),
@@ -125,8 +119,7 @@ public class OrderHistoryService {
 			displayStatusResolver.canCancel(currentOrder.getOrderStatus()),
 			displayStatusResolver.canRefund(currentOrder.getOrderStatus()),
 			displayStatusResolver.canExchange(currentOrder.getOrderStatus()),
-			packages
-		);
+			packages);
 	}
 
 	private long countOrders(Long userId, MyPageOrderTab tab) {
@@ -151,60 +144,28 @@ public class OrderHistoryService {
 		};
 	}
 
-	private OrderLookup buildOrderLookup(List<Order> orders) {
-		Set<Long> courseIds = orders.stream()
-			.map(Order::getEventCourseId)
-			.filter(Objects::nonNull)
-			.collect(Collectors.toSet());
-		Map<Long, EventCourse> courseById = courseIds.isEmpty()
-			? Map.of()
-			: eventCourseRepository.findAllById(courseIds).stream()
-				.collect(Collectors.toMap(EventCourse::getId, Function.identity()));
-
-		Set<Long> paceIds = orders.stream()
-			.map(Order::getEventPaceId)
-			.filter(Objects::nonNull)
-			.collect(Collectors.toSet());
-		Map<Long, EventPace> paceById = paceIds.isEmpty()
-			? Map.of()
-			: eventPaceRepository.findAllById(paceIds).stream()
-				.collect(Collectors.toMap(EventPace::getId, Function.identity()));
-
-		Set<Long> eventIds = courseById.values().stream()
-			.map(EventCourse::getEvent)
-			.filter(Objects::nonNull)
-			.map(Event::getId)
-			.filter(Objects::nonNull)
-			.collect(Collectors.toSet());
-		Map<Long, Event> eventById = eventIds.isEmpty()
-			? Map.of()
-			: eventRepository.findAllById(eventIds).stream()
-				.collect(Collectors.toMap(Event::getId, Function.identity()));
-
-		return new OrderLookup(courseById, paceById, eventById);
+	private MyPagePaymentHistoryItemDto toPaymentHistoryItem(Order currentOrder) {
+		return MyPagePaymentHistoryItemDto.of(
+			currentOrder.getOrderNumber(),
+			currentOrder.getEventId(),
+			currentOrder.getEventTitle(),
+			currentOrder.getEventAppType(),
+			currentOrder.getEventStatus(),
+			resolveOrderStatusLabel(currentOrder.getOrderStatus()),
+			currentOrder.getCreatedAt(),
+			currentOrder.getEventAt(),
+			currentOrder.getEventVenue(),
+			currentOrder.getCourseName(),
+			currentOrder.getPaceName(),
+			currentOrder.getFinalAmount());
 	}
 
-	private MyPageOrderItemDto toOrderItem(Order currentOrder, OrderLookup lookup) {
-		EventCourse course = lookup.courseById().get(currentOrder.getEventCourseId());
-		EventPace pace = currentOrder.getEventPaceId() != null ? lookup.paceById().get(currentOrder.getEventPaceId()) : null;
-		Event currentEvent = course != null && course.getEvent() != null ? lookup.eventById().get(course.getEvent().getId()) : null;
-		MyPageStatusDto status = displayStatusResolver.resolveOrderStatus(currentOrder);
-
-		return new MyPageOrderItemDto(
-			currentOrder.getOrderNumber(),
-			currentEvent != null ? currentEvent.getId() : null,
-			status.statusText(),
-			status.actionType(),
-			status.actionLabel(),
-			status.actionEnabled(),
-			null,
-			currentEvent != null ? currentEvent.getTitle() : null,
-			course != null ? course.getName() : null,
-			pace != null ? pace.getName() : null,
-			currentOrder.getFinalAmount(),
-			currentOrder.getCreatedAt(),
-			resolvePaymentDeadlineAt(currentOrder)
-		);
+	private String resolveOrderStatusLabel(OrderStatus orderStatus) {
+		return switch (orderStatus) {
+			case PENDING -> "입금대기";
+			case PAID -> "결제완료";
+			case CANCELLED, EXPIRED, FAILED -> "결제취소";
+		};
 	}
 
 	private LocalDateTime resolvePaymentDeadlineAt(Order currentOrder) {
@@ -216,10 +177,24 @@ public class OrderHistoryService {
 		return null;
 	}
 
-	private record OrderLookup(
-		Map<Long, EventCourse> courseById,
-		Map<Long, EventPace> paceById,
-		Map<Long, Event> eventById
-	) {
+	private MyPageOrderItemDto toOrderItem(Order currentOrder) {
+		MyPageStatusDto status = displayStatusResolver.resolveOrderStatus(currentOrder);
+
+		return MyPageOrderItemDto.of(
+			currentOrder.getOrderNumber(),
+			currentOrder.getEventId(),
+			status.statusText(),
+			status.actionType(),
+			status.actionLabel(),
+			status.actionEnabled(),
+			null,
+			currentOrder.getEventTitle(),
+			currentOrder.getCourseName(),
+			currentOrder.getPaceName(),
+			currentOrder.getFinalAmount(),
+			currentOrder.getCreatedAt(),
+			resolvePaymentDeadlineAt(currentOrder)
+		);
 	}
+
 }

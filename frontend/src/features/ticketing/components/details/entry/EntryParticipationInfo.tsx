@@ -19,30 +19,21 @@ export function EntryParticipationInfo() {
   return (
     <section>
       <div className="flex items-center">
-        <label className="text-sm font-semibold text-gray-700">참가 정보</label>
-        {/* <button className="text-xs text-blue-600 font-medium">수정</button> */}
+        <label className="text-base font-semibold text-black">참가 정보</label>
       </div>
       <div className="p-4 space-y-2">
-        <div className="flex text-sm">
-          <span className="w-24 text-gray-500">이름</span>
+        <div className="flex text-base">
+          <span className="w-24 text-font-medium">이름</span>
           <span className="text-gray-900 font-medium">김러닝</span>
         </div>
-        <div className="flex text-sm">
-          <span className="w-24 text-gray-500">생년월일</span>
+        <div className="flex text-base">
+          <span className="w-24 text-font-medium">생년월일</span>
           <span className="text-gray-900 font-medium">1999.01.01</span>
         </div>
-        {/* <div className="flex justify-between text-sm">
-          <span className="text-gray-500">성별</span>
-          <span className="text-gray-900 font-medium">남</span>
-        </div> */}
-        <div className="flex text-sm">
-          <span className="w-24 text-gray-500">휴대폰번호</span>
+        <div className="flex text-base">
+          <span className="w-24 text-font-medium">휴대폰번호</span>
           <span className="text-gray-900 font-medium">010-1234-5678</span>
         </div>
-        {/* <div className="flex justify-between text-sm">
-          <span className="text-gray-500">이메일</span>
-          <span className="text-gray-900 font-medium">user@running.com</span>
-        </div> */}
       </div>
     </section>
   );

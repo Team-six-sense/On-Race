@@ -88,6 +88,7 @@ public enum BusinessErrorCode implements ErrorCode {
 	ENTRY_RESERVATION_EXPIRED(HttpStatus.BAD_REQUEST, "ENT_009", "만료되었습니다. 다시 신청해주세요."),
 	ENTRY_ALREADY_RESERVED(HttpStatus.CONFLICT, "ENT_010", "이미 선점한 이벤트입니다."),
 	ENTRY_EVENT_ALREADY_ENDED(HttpStatus.BAD_REQUEST, "ENT_011", "종료된 이벤트입니다."),
+	ENTRY_QUEUE_PACE_MISMATCH(HttpStatus.BAD_REQUEST, "ENT_012", "대기열 토큰의 페이스와 신청 페이스가 일치하지 않습니다."),
 
 	// STOCK
 	STOCK_NOT_FOUND(HttpStatus.NOT_FOUND, "STK_001", "재고 정보를 찾을 수 없습니다."),
@@ -100,6 +101,7 @@ public enum BusinessErrorCode implements ErrorCode {
 	// ORDER
 	ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "ORD_001", "주문 정보를 찾을 수 없습니다."),
 	ORDER_INVALID_TAB(HttpStatus.BAD_REQUEST, "ORD_002", "유효하지 않은 주문 조회 탭입니다."),
+	ORDER_CANNOT_CONFIRM(HttpStatus.BAD_REQUEST, "ORD_003", "현재 주문 상태에서는 결제 완료 처리할 수 없습니다."),
 
 	// MEMBER
 	MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MBR_001", "회원을 찾을 수 없습니다."),
@@ -107,7 +109,11 @@ public enum BusinessErrorCode implements ErrorCode {
 	// QUEUE
 	QUEUE_NOT_ENABLED(HttpStatus.BAD_REQUEST, "QUE_001", "해당 페이스의 대기열이 활성화되지 않았습니다."),
 	QUEUE_ALREADY_ENTERED(HttpStatus.CONFLICT, "QUE_002", "이미 대기열에 진입한 사용자입니다."),
-	QUEUE_NOT_FOUND(HttpStatus.NOT_FOUND, "QUE_003", "대기열에서 사용자를 찾을 수 없습니다.");
+	QUEUE_NOT_FOUND(HttpStatus.NOT_FOUND, "QUE_003", "대기열에서 사용자를 찾을 수 없습니다."),
+
+	// PAYMENT
+	PAYMENT_CONFIRM_FAILED(HttpStatus.BAD_REQUEST, "PAY_001", "결제 인증에 실패했습니다."),
+	PAYMENT_AMOUNT_MISMATCH(HttpStatus.BAD_REQUEST, "PAY_002", "결제 검증 금액이 일치하지 않습니다.");
 
 	private final HttpStatus status;
 	private final String code;

@@ -4,7 +4,7 @@ import axios from 'axios';
 
 // 서버 측 전용 Axios 인스턴스
 const backendClient = axios.create({
-  baseURL: process.env.AUTH_API_URL,
+  baseURL: process.env.ACCOUNT_API_URL,
   headers: { 'Content-Type': 'application/json' },
 });
 

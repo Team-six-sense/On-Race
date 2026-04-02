@@ -54,7 +54,7 @@ export function EventSalesInfo() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 mb-6">
       {salesInfo && (
         <div>
           {/* 판매자 정보 */}

@@ -10,9 +10,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import DistanceSlider from './filter/DistanceSlider';
-import DualDateRangePicker from './filter/DualDateRangePicker';
 import { IoLocationOutline } from 'react-icons/io5';
 import { Input } from '@/components/ui/input';
+import SingleDateRangePicker from './filter/SingleDateRangePicker';
 
 export function EventFilter({
   setSearchDistance,
@@ -35,7 +35,7 @@ export function EventFilter({
 
   const [keyword, setKeyword] = useState<string>('');
   const [location, setLocation] = useState<string>('ALL');
-  const [range, setRange] = useState({ min: 0, max: 100 });
+  const [range, setRange] = useState({ min: 0, max: 42.195 });
   const [dateRange, setDateRange] = useState<{
     start: Date | null;
     end: Date | null;
@@ -70,6 +70,7 @@ export function EventFilter({
   ];
 
   const applyFilter = () => {
+    console.log(range);
     setSearchDistance(range);
     setSearchDate(dateRange);
     setSearchLocation(location);
@@ -78,7 +79,7 @@ export function EventFilter({
   const initFilter = () => {
     setKeyword('');
     setLocation('ALL');
-    setRange({ min: 0, max: 100 });
+    setRange({ min: 0, max: 42.195 });
     setDateRange({ start: null, end: null });
   };
 
@@ -88,22 +89,17 @@ export function EventFilter({
   }
 
   return (
-    <div className="p-6 mb-6 bg-gray-50 rounded-sm">
+    <div className="p-6 m-10 bg-secondary rounded-sm">
       <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-4 mb-6 items-center">
         {/* 거리 슬라이더 */}
         <div className="flex flex-col gap-2">
-          <DistanceSlider
-            min={0}
-            max={100}
-            step={1}
-            onChange={(val: any) => setRange(val)}
-          />
+          <DistanceSlider onChange={(val: any) => setRange(val)} />
         </div>
 
         {/* 날짜 */}
         <div className="flex flex-col gap-2">
           <label className="text-sm font-bold">개최일</label>
-          <DualDateRangePicker onChange={(val) => setDateRange(val)} />
+          <SingleDateRangePicker onChange={(val) => setDateRange(val)} />
         </div>
 
         {/* 지역 */}

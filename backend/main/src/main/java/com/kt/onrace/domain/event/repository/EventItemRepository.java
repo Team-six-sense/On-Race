@@ -1,0 +1,11 @@
+package com.kt.onrace.domain.event.repository;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import com.kt.onrace.domain.event.entity.EventItem;
+
+@Repository
+public interface EventItemRepository extends JpaRepository<EventItem, Long> {
+
+}

@@ -125,4 +125,8 @@ public class Event extends BaseEntity {
 	public void enableQueue() {
 		this.isQueue = true;
 	}
+
+	public void disableQueue() {
+		this.isQueue = false;
+	}
 }
