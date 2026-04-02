@@ -178,7 +178,7 @@ public class AuthService {
 		RAtomicLong counter = redissonClient.getAtomicLong(key);
 		long count = counter.incrementAndGet();
 
-		if (count == 1) {
+		if (count == 1 || counter.remainTimeToLive() == -1) {
 			counter.expire(Duration.ofMinutes(EMAIL_CHECK_RATE_LIMIT_TTL_MINUTES));
 		}
 
