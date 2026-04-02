@@ -106,7 +106,11 @@ public enum BusinessErrorCode implements ErrorCode {
 	// QUEUE
 	QUEUE_NOT_ENABLED(HttpStatus.BAD_REQUEST, "QUE_001", "해당 페이스의 대기열이 활성화되지 않았습니다."),
 	QUEUE_ALREADY_ENTERED(HttpStatus.CONFLICT, "QUE_002", "이미 대기열에 진입한 사용자입니다."),
-	QUEUE_NOT_FOUND(HttpStatus.NOT_FOUND, "QUE_003", "대기열에서 사용자를 찾을 수 없습니다.");
+	QUEUE_NOT_FOUND(HttpStatus.NOT_FOUND, "QUE_003", "대기열에서 사용자를 찾을 수 없습니다."),
+
+	// PAYMENT
+	PAYMENT_CONFIRM_FAILED(HttpStatus.BAD_REQUEST, "PAY_001", "결제 인증에 실패했습니다."),
+	PAYMENT_AMOUNT_MISMATCH(HttpStatus.BAD_REQUEST, "PAY_002", "결제 검증 금액이 일치하지 않습니다.");
 
 	private final HttpStatus status;
 	private final String code;

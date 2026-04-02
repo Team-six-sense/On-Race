@@ -70,3 +70,8 @@ order:
   prepare-token:
     # checkout prepare token TTL이다. queue pass token TTL, reservation TTL과는 별개다.
     ttl-seconds: ${MAIN_ORDER_PREPARE_TOKEN_TTL_SECONDS:300}
+
+toss:
+  payment:
+    secret-key: ${TOSS_SECRET_KEY:test_sk_zXLkKEypNArWmo50nX3lmeaxYG5R}
+    url: https://api.tosspayments.com/v1/payments/confirm
