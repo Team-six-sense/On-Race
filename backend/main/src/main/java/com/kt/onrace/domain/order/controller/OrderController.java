@@ -18,6 +18,7 @@ import com.kt.onrace.domain.order.dto.OrderDetailResponseDto;
 import com.kt.onrace.domain.order.dto.OrderListResponseDto;
 import com.kt.onrace.domain.order.service.OrderService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -66,7 +67,7 @@ public class OrderController {
 
 	@PostMapping("/checkout")
 	public ApiResponse<CheckoutResponseDto> checkout(
-		@RequestBody CheckoutRequestDto request,
+		@Valid @RequestBody CheckoutRequestDto request,
 		@RequestHeader("X-User-Id") Long userId) {
 
 		CheckoutResponseDto response = orderService.checkout(request, userId);
