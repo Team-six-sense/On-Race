@@ -66,7 +66,12 @@ export default function Footer() {
                 <Button
                   variant="link"
                   size="fit"
-                  className="text-sm text-white"
+                  className={cn(
+                    'text-sm font-bold',
+                    isHome
+                      ? 'text-white hover:text-font-low'
+                      : 'text-black hover:text-gray-500',
+                  )}
                 >
                   사업자 정보 확인
                 </Button>

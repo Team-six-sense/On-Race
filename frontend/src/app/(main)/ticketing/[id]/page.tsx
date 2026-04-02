@@ -73,9 +73,9 @@ export default function MarathonDetailPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 pt-8 pb-0">
+    <div className="max-w-7xl mx-auto px-10 pt-8 pb-0">
       {eventDetails && (
-        <div className="flex flex-col lg:flex-row gap-8">
+        <div className="flex flex-col lg:flex-row gap-8 ">
           {/* 좌측: 대회 상세 정보 영역 */}
           <div className="flex-1">
             <EventThumbnail thumbnailImg={eventDetails.thumbnailImg} />
@@ -137,10 +137,12 @@ export default function MarathonDetailPage() {
 
           {/* 우측: 참여 정보 카드 (Sidebar) */}
           <div className="w-full lg:w-[380px]">
-            <EventEntryInfo
-              event={event}
-              setIsUserModalOpen={setIsUserModalOpen}
-            />
+            <div className="sticky top-5">
+              <EventEntryInfo
+                event={event}
+                setIsUserModalOpen={setIsUserModalOpen}
+              />
+            </div>
           </div>
 
           {/* 사용자 정보 확인 Modal */}

@@ -1,6 +1,7 @@
 'use client';
 
 import { Event } from '@/features/event/types';
+import { formatKoreanDate } from '@/features/ticketing/utils/date';
 import { useEffect, useState } from 'react';
 
 export function EventBaseInfo({ event }: { event: Event }) {
@@ -44,15 +45,15 @@ export function EventBaseInfo({ event }: { event: Event }) {
           모집 기간
         </div>
         <div className="px-4 py-4 text-gray-600 border-b border-gray-200 text-sm col-span-2">
-          {new Date(event.appStartAt).toLocaleDateString('ko-KR')}~
-          {new Date(event.appEndAt).toLocaleDateString('ko-KR')}
+          {formatKoreanDate(event.appStartAt)} ~{' '}
+          {formatKoreanDate(event.appEndAt)}
         </div>
         {/* 행 2-2 */}
         <div className="bg-gray-100 px-4 py-4 text-gray-600 border-b border-gray-200 font-medium">
           개최 날짜
         </div>
         <div className="px-4 py-4 text-gray-600 border-b border-gray-200 text-sm col-span-2">
-          {new Date(event.eventAt).toLocaleDateString('ko-KR')}
+          {formatKoreanDate(event.eventAt)}
         </div>
 
         {/* 행 3-1 */}
@@ -60,7 +61,7 @@ export function EventBaseInfo({ event }: { event: Event }) {
           결과 발표일
         </div>
         <div className="px-4 py-4 text-gray-600 text-sm col-span-2">
-          <p>2026.03.07 (토)</p>
+          <p>{formatKoreanDate(event.resultAt)}</p>
           <p>*주최측 사정에 의해 변경될 수 있습니다.</p>
         </div>
         {/* 행 3-2 */}

@@ -6,9 +6,11 @@ import LocalLottie from './LocalLottie';
 export const QueueStatusCard = ({
   status,
   progress,
+  onCancel,
 }: {
   status: any;
   progress: number;
+  onCancel: () => void;
 }) => {
   if (!status) return null;
 
@@ -56,6 +58,7 @@ export const QueueStatusCard = ({
             size="fit"
             rounded="sm"
             className="text-font-medium"
+            onClick={onCancel}
           >
             대기 취소
           </Button>

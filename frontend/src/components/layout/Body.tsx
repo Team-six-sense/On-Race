@@ -77,7 +77,7 @@ export default function Body() {
     <main className="flex flex-col ">
       {/* --- 이벤트 목록 (Event List) --- */}
       <section className="px-30 py-20 bg-white">
-        <div className="max-w-[1440px] w-full mx-auto px-6">
+        <div className="max-w-7xl w-full mx-auto px-6">
           {/* 섹션 타이틀 */}
           <div className="mb-12 flex justify-between items-end">
             <div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { Delivery } from '@/features/event/types';
+import { formatKoreanDate } from '@/features/ticketing/utils/date';
 import { useEffect, useState } from 'react';
 import { LuChevronDown, LuChevronUp } from 'react-icons/lu';
 
@@ -65,8 +66,8 @@ export function DeliveryInfo({
               배송 일정
             </div>
             <div className="px-4 py-4 text-sm text-gray-900 border-b border-r border-gray-200">
-              {new Date(delivery.deliveryStartAt).toLocaleDateString('ko-KR')} ~
-              {new Date(delivery.deliveryEndAt).toLocaleDateString('ko-KR')}
+              {formatKoreanDate(delivery.deliveryStartAt)} ~{' '}
+              {formatKoreanDate(delivery.deliveryEndAt)}
             </div>
             <div className="bg-gray-100 px-4 py-4 font-medium text-gray-600 border-b border-r border-gray-200">
               배송비
@@ -86,9 +87,7 @@ export function DeliveryInfo({
               배송지 변경 가능 기간
             </div>
             <div className="px-4 py-4 text-sm text-gray-900 border-b border-r border-gray-200">
-              {new Date(delivery.addressChangePeriod).toLocaleDateString(
-                'ko-KR',
-              )}
+              {formatKoreanDate(delivery.addressChangePeriod)}
             </div>
 
             {/* --- 행 4 (마지막 열 병합 유지) --- */}
