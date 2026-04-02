@@ -21,9 +21,8 @@ class OrderTest {
 		Order order = Order.createPending(
 			"ORD-ENTITY-001",
 			7L,
-			10L,
-			20L,
 			1000L,
+			new Order.OrderSelection(10L, 20L),
 			new Order.OrderEventSnapshot(
 				1L,
 				"서울 마라톤",
@@ -34,17 +33,16 @@ class OrderTest {
 				"하프코스",
 				"5시간"
 			),
-			60000L,
-			3000L,
-			0L,
-			63000L,
-			"홍길동",
-			"집",
-			"010-1111-2222",
-			"04100",
-			"서울시 마포구",
-			"301호",
-			"문앞"
+			new Order.PaymentSnapshot(60000L, 3000L, 0L, 63000L),
+			new Order.RecipientSnapshot(
+				"홍길동",
+				"집",
+				"010-1111-2222",
+				"04100",
+				"서울시 마포구",
+				"301호",
+				"문앞"
+			)
 		);
 
 		assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.PENDING);
@@ -121,7 +119,6 @@ class OrderTest {
 		Order paidOrder = createOrder(OrderStatus.PAID);
 		Order cancelledOrder = createOrder(OrderStatus.CANCELLED);
 		Order expiredOrder = createOrder(OrderStatus.EXPIRED);
-		Order failedOrder = createOrder(OrderStatus.FAILED);
 
 		assertThatThrownBy(cancelledOrder::markPaid)
 			.isInstanceOf(BusinessException.class)

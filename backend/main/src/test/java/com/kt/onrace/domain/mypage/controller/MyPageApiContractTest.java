@@ -838,39 +838,6 @@ class MyPageApiContractTest {
 			.build());
 	}
 
-	private EventBundle createSiblingCourseBundle(
-		Event event,
-		String courseName,
-		int distanceMeter,
-		long price,
-		String paceName,
-		int hour,
-		int minutes,
-		int capacity
-	) {
-		EventCourse savedCourse = eventCourseRepository.saveAndFlush(EventCourse.builder()
-			.event(event)
-			.name(courseName)
-			.mapUrl(null)
-			.distanceMeter(distanceMeter)
-			.timeLimit(180)
-			.waterSource(10)
-			.altitude(100)
-			.courseRoute(courseName + " 코스")
-			.price(price)
-			.build());
-
-		EventPace savedPace = eventPaceRepository.saveAndFlush(EventPace.builder()
-			.eventCourse(savedCourse)
-			.name(paceName)
-			.hour(hour)
-			.minutes(minutes)
-			.capacity(capacity)
-			.build());
-
-		return new EventBundle(event, savedCourse, savedPace);
-	}
-
 	private EventBundle createEventBundle(
 		String title,
 		EventType eventType,

@@ -3,7 +3,6 @@ package com.kt.onrace.domain.entry.service;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,7 +48,6 @@ public class EntryService {
 	private final MemberRepository memberRepository;
 	private final EventStockService eventStockService;
 	private final EventStockRepository eventStockRepository;
-	private final ApplicationEventPublisher applicationEventPublisher;
 
 	@ServiceLog(slowMs = 2000)
 	@Transactional
@@ -217,7 +215,6 @@ public class EntryService {
 
 	/**
 	 * 결제 확정 — RESERVED → APPLIED 전환, DB 확정 재고 증가
-	 * Redis 예약 키 삭제는 트랜잭션 커밋 후 ReservationConfirmedListener에서 처리
 	 */
 	@ServiceLog(slowMs = 2000)
 	@Transactional
@@ -232,9 +229,6 @@ public class EntryService {
 
 		entry.confirmPayment();
 		eventStockRepository.findByEventPaceIdOrThrow(paceId).confirmStock();
-
-		// TODO: ReservationConfirmedEvent 복구 후 이벤트 발행 재연결
-		// applicationEventPublisher.publishEvent(new ReservationConfirmedEvent(paceId, userId));
 	}
 
 }

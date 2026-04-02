@@ -111,27 +111,17 @@ public class Order extends BaseEntity {
 	public static Order createPending(
 		String orderNumber,
 		Long userId,
-		Long eventCourseId,
-		Long eventPaceId,
 		Long entryId,
+		OrderSelection selection,
 		OrderEventSnapshot eventSnapshot,
-		Long itemTotalAmount,
-		Long shippingFee,
-		Long discountAmount,
-		Long finalAmount,
-		String recipientName,
-		String addressLabel,
-		String recipientPhone,
-		String zipCode,
-		String address,
-		String detailAddress,
-		String deliveryMemo
+		PaymentSnapshot paymentSnapshot,
+		RecipientSnapshot recipientSnapshot
 	) {
 		return Order.builder()
 			.orderNumber(orderNumber)
 			.userId(userId)
-			.eventCourseId(eventCourseId)
-			.eventPaceId(eventPaceId)
+			.eventCourseId(selection.eventCourseId())
+			.eventPaceId(selection.eventPaceId())
 			.entryId(entryId)
 			.eventId(eventSnapshot != null ? eventSnapshot.eventId() : null)
 			.eventTitle(eventSnapshot != null ? eventSnapshot.eventTitle() : null)
@@ -142,17 +132,17 @@ public class Order extends BaseEntity {
 			.courseName(eventSnapshot != null ? eventSnapshot.courseName() : null)
 			.paceName(eventSnapshot != null ? eventSnapshot.paceName() : null)
 			.orderStatus(OrderStatus.PENDING)
-			.itemTotalAmount(itemTotalAmount)
-			.shippingFee(shippingFee)
-			.discountAmount(discountAmount)
-			.finalAmount(finalAmount)
-			.recipientName(recipientName)
-			.addressLabel(addressLabel)
-			.recipientPhone(recipientPhone)
-			.zipCode(zipCode)
-			.address(address)
-			.detailAddress(detailAddress)
-			.deliveryMemo(deliveryMemo)
+			.itemTotalAmount(paymentSnapshot.itemTotalAmount())
+			.shippingFee(paymentSnapshot.shippingFee())
+			.discountAmount(paymentSnapshot.discountAmount())
+			.finalAmount(paymentSnapshot.finalAmount())
+			.recipientName(recipientSnapshot.recipientName())
+			.addressLabel(recipientSnapshot.addressLabel())
+			.recipientPhone(recipientSnapshot.recipientPhone())
+			.zipCode(recipientSnapshot.zipCode())
+			.address(recipientSnapshot.address())
+			.detailAddress(recipientSnapshot.detailAddress())
+			.deliveryMemo(recipientSnapshot.deliveryMemo())
 			.build();
 	}
 
@@ -199,6 +189,31 @@ public class Order extends BaseEntity {
 		String eventVenue,
 		String courseName,
 		String paceName
+	) {
+	}
+
+	public record OrderSelection(
+		Long eventCourseId,
+		Long eventPaceId
+	) {
+	}
+
+	public record PaymentSnapshot(
+		Long itemTotalAmount,
+		Long shippingFee,
+		Long discountAmount,
+		Long finalAmount
+	) {
+	}
+
+	public record RecipientSnapshot(
+		String recipientName,
+		String addressLabel,
+		String recipientPhone,
+		String zipCode,
+		String address,
+		String detailAddress,
+		String deliveryMemo
 	) {
 	}
 

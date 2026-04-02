@@ -231,21 +231,19 @@ public class OrderService {
 		Order order = Order.createPending(
 			orderNumber,
 			userId,
-			course.getId(),
-			pace.getId(),
 			eligibility.entryId(),
+			new Order.OrderSelection(course.getId(), pace.getId()),
 			buildOrderEventSnapshot(event, course, pace),
-			itemTotalAmount,
-			shippingFee,
-			discountAmount,
-			calculatedFinalAmount,
-			shippingAddress.receiverName(),
-			shippingAddress.label(),
-			shippingAddress.phone(),
-			shippingAddress.zipcode(),
-			shippingAddress.address1(),
-			shippingAddress.address2(),
-			shippingAddress.memo()
+			new Order.PaymentSnapshot(itemTotalAmount, shippingFee, discountAmount, calculatedFinalAmount),
+			new Order.RecipientSnapshot(
+				shippingAddress.receiverName(),
+				shippingAddress.label(),
+				shippingAddress.phone(),
+				shippingAddress.zipcode(),
+				shippingAddress.address1(),
+				shippingAddress.address2(),
+				shippingAddress.memo()
+			)
 		);
 
 		for (EventPackage pkg : selectedPackages) {
