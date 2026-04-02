@@ -1,12 +1,8 @@
 package com.kt.onrace.domain.order;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
@@ -23,10 +19,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.kt.onrace.domain.address.entity.Address;
-import com.kt.onrace.domain.address.repository.AddressRepository;
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
+import com.kt.onrace.domain.address.entity.Address;
+import com.kt.onrace.domain.address.repository.AddressRepository;
 import com.kt.onrace.domain.event.entity.Event;
 import com.kt.onrace.domain.event.entity.EventAppType;
 import com.kt.onrace.domain.event.entity.EventCourse;
@@ -34,13 +30,13 @@ import com.kt.onrace.domain.event.entity.EventImage;
 import com.kt.onrace.domain.event.entity.EventImageType;
 import com.kt.onrace.domain.event.entity.EventItem;
 import com.kt.onrace.domain.event.entity.EventItemType;
-import com.kt.onrace.domain.event.entity.EventPackage;
 import com.kt.onrace.domain.event.entity.EventPace;
+import com.kt.onrace.domain.event.entity.EventPackage;
 import com.kt.onrace.domain.event.entity.EventRegion;
 import com.kt.onrace.domain.event.entity.EventType;
 import com.kt.onrace.domain.event.repository.EventCourseRepository;
-import com.kt.onrace.domain.event.repository.EventPackageRepository;
 import com.kt.onrace.domain.event.repository.EventPaceRepository;
+import com.kt.onrace.domain.event.repository.EventPackageRepository;
 import com.kt.onrace.domain.event.repository.EventRepository;
 import com.kt.onrace.domain.order.contract.OrderCheckoutEligibility;
 import com.kt.onrace.domain.order.contract.OrderEntryContract;
@@ -98,13 +94,15 @@ class OrderServiceTest {
 	void checkoutPrepareReturnsDefaultAddress() {
 		TestFixture fixture = createFixture();
 
-		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(fixture.event());
+		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(
+			fixture.event());
 		when(eventCourseRepository.findByIdAndEventIdOrThrow(
 			eq(10L), eq(1L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.course());
 		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
 			eq(20L), eq(10L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.pace());
 		when(eventPackageRepository.findByEventId(eq(1L))).thenReturn(List.of(fixture.eventPackage()));
-		when(addressRepository.findFirstByUserIdAndIsDefaultTrue(eq(7L))).thenReturn(Optional.of(fixture.defaultAddress()));
+		when(addressRepository.findFirstByUserIdAndIsDefaultTrue(eq(7L))).thenReturn(
+			Optional.of(fixture.defaultAddress()));
 		when(orderPrepareTokenService.issueToken(eq(7L), eq(1L), eq(10L), eq(20L))).thenReturn("signed-prepare-token");
 
 		CheckoutPrepareResponseDto response = orderService.getCheckoutPrepareInfo(
@@ -127,7 +125,8 @@ class OrderServiceTest {
 	void checkoutPrepareReturnsLatestAddressWhenDefaultMissing() {
 		TestFixture fixture = createFixture();
 
-		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(fixture.event());
+		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(
+			fixture.event());
 		when(eventCourseRepository.findByIdAndEventIdOrThrow(
 			eq(10L), eq(1L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.course());
 		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
@@ -151,7 +150,8 @@ class OrderServiceTest {
 	void checkoutPrepareReturnsEmptyWhenAddressDoesNotExist() {
 		TestFixture fixture = createFixture();
 
-		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(fixture.event());
+		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(
+			fixture.event());
 		when(eventCourseRepository.findByIdAndEventIdOrThrow(
 			eq(10L), eq(1L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.course());
 		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
@@ -174,7 +174,8 @@ class OrderServiceTest {
 	void checkoutPrepareReturnsEmptyWhenUserHasNoAddress() {
 		TestFixture fixture = createFixture();
 
-		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(fixture.event());
+		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(
+			fixture.event());
 		when(eventCourseRepository.findByIdAndEventIdOrThrow(
 			eq(10L), eq(1L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.course());
 		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
@@ -198,7 +199,8 @@ class OrderServiceTest {
 		TestFixture fixture = createFixture();
 		OrderPrepareTokenService.ValidatedPrepareToken validatedPrepareToken = validatedPrepareToken();
 
-		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(fixture.event());
+		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(
+			fixture.event());
 		when(eventCourseRepository.findByIdAndEventIdOrThrow(
 			eq(10L), eq(1L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.course());
 		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
@@ -258,14 +260,16 @@ class OrderServiceTest {
 		TestFixture fixture = createFixture();
 		OrderPrepareTokenService.ValidatedPrepareToken validatedPrepareToken = validatedPrepareToken();
 
-		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(fixture.event());
+		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(
+			fixture.event());
 		when(eventCourseRepository.findByIdAndEventIdOrThrow(
 			eq(10L), eq(1L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.course());
 		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
 			eq(20L), eq(10L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.pace());
 		mockCheckoutEligibility(7L, true, null);
 		when(eventPackageRepository.findAllById(eq(List.of(30L)))).thenReturn(List.of(fixture.eventPackage()));
-		when(addressRepository.findFirstByUserIdAndIsDefaultTrue(eq(7L))).thenReturn(Optional.of(fixture.defaultAddress()));
+		when(addressRepository.findFirstByUserIdAndIsDefaultTrue(eq(7L))).thenReturn(
+			Optional.of(fixture.defaultAddress()));
 		when(orderPrepareTokenService.validatePrepareToken(any(), eq(7L), any())).thenReturn(validatedPrepareToken);
 		when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -312,7 +316,8 @@ class OrderServiceTest {
 	void checkoutThrowsWhenNoSavedAddressExists() {
 		TestFixture fixture = createFixture();
 
-		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(fixture.event());
+		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(
+			fixture.event());
 		when(eventCourseRepository.findByIdAndEventIdOrThrow(
 			eq(10L), eq(1L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.course());
 		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
@@ -350,7 +355,8 @@ class OrderServiceTest {
 	void checkoutThrowsWhenAddressBelongsToAnotherUser() {
 		TestFixture fixture = createFixture();
 
-		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(fixture.event());
+		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(
+			fixture.event());
 		when(eventCourseRepository.findByIdAndEventIdOrThrow(
 			eq(10L), eq(1L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.course());
 		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
@@ -387,7 +393,8 @@ class OrderServiceTest {
 	void checkoutThrowsWhenEntryEligibilityFails() {
 		TestFixture fixture = createFixture();
 
-		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(fixture.event());
+		when(eventRepository.findByIdOrThrow(eq(1L), eq(BusinessErrorCode.EVENT_NOT_FOUND))).thenReturn(
+			fixture.event());
 		when(eventCourseRepository.findByIdAndEventIdOrThrow(
 			eq(10L), eq(1L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.course());
 		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
@@ -469,7 +476,7 @@ class OrderServiceTest {
 		setCreatedAt(order, LocalDateTime.of(2026, 2, 15, 14, 30));
 
 		OrderPackage orderPackage = OrderPackage.builder()
-			.eventPackageId(30L)
+			.eventItemId(30L)
 			.name("기념 티셔츠")
 			.price(10000L)
 			.build();
@@ -536,7 +543,8 @@ class OrderServiceTest {
 	void confirmPaymentThrowsWhenOrderStatusCannotBeConfirmed() {
 		Order order = createOrder("ORD-CONFIRM-CANCELLED", 7L, 10L, 20L, OrderStatus.CANCELLED, 53000L);
 
-		when(orderRepository.findByOrderNumberAndUserId(eq("ORD-CONFIRM-CANCELLED"), eq(7L))).thenReturn(Optional.of(order));
+		when(orderRepository.findByOrderNumberAndUserId(eq("ORD-CONFIRM-CANCELLED"), eq(7L))).thenReturn(
+			Optional.of(order));
 
 		assertThatThrownBy(() -> orderService.confirmPayment("ORD-CONFIRM-CANCELLED", 7L))
 			.isInstanceOf(BusinessException.class)
@@ -588,7 +596,8 @@ class OrderServiceTest {
 	void terminalTransitionsAreIdempotent() {
 		Order order = createOrder("ORD-CANCELLED-001", 7L, 10L, 20L, OrderStatus.CANCELLED, 53000L);
 
-		when(orderRepository.findByOrderNumberAndUserId(eq("ORD-CANCELLED-001"), eq(7L))).thenReturn(Optional.of(order));
+		when(orderRepository.findByOrderNumberAndUserId(eq("ORD-CANCELLED-001"), eq(7L))).thenReturn(
+			Optional.of(order));
 
 		orderService.cancelPayment("ORD-CANCELLED-001", 7L);
 
