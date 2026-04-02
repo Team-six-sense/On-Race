@@ -3,35 +3,36 @@ package com.kt.onrace.domain.mypage.service;
 import static com.kt.onrace.domain.entry.entity.QEntry.entry;
 import static com.kt.onrace.domain.event.entity.QEvent.event;
 import static com.kt.onrace.domain.event.entity.QEventCourse.eventCourse;
-import static com.kt.onrace.domain.event.entity.QEventImage.eventImage;
 import static com.kt.onrace.domain.event.entity.QEventPace.eventPace;
 
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.kt.onrace.common.exception.BusinessErrorCode;
+import com.kt.onrace.common.exception.BusinessException;
+import com.kt.onrace.common.logging.annotation.ServiceLog;
 import com.kt.onrace.domain.entry.entity.Entry;
 import com.kt.onrace.domain.entry.entity.EntryStatus;
 import com.kt.onrace.domain.event.entity.EventAppType;
-import com.kt.onrace.domain.event.entity.EventImageType;
+import com.kt.onrace.domain.event.entity.EventCourse;
+import com.kt.onrace.domain.event.entity.Event;
+import com.kt.onrace.domain.event.entity.EventPace;
 import com.kt.onrace.domain.mypage.dto.MyPageApplicationHistoryFilter;
 import com.kt.onrace.domain.mypage.dto.MyPageApplicationHistoryItemDto;
-import com.kt.onrace.domain.mypage.dto.MyPageApplicationHistoryListResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageEntryItemDto;
 import com.kt.onrace.domain.mypage.dto.MyPageEntryListResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageStatusDto;
 import com.kt.onrace.domain.mypage.service.apply.ApplyDisplayDecision;
+import com.kt.onrace.domain.mypage.service.apply.ApplyDisplayStatus;
 import com.kt.onrace.domain.mypage.service.apply.ApplyDisplayStatusContext;
 import com.kt.onrace.domain.mypage.service.apply.ApplyDisplayStatusResolver;
 import com.kt.onrace.domain.mypage.service.apply.ApplyDisplaySurface;
 import com.kt.onrace.domain.mypage.service.apply.ApplyResultStatus;
 import com.kt.onrace.domain.mypage.service.apply.ApplyUserStatus;
 import com.kt.onrace.domain.order.entity.OrderStatus;
-import com.querydsl.core.Tuple;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -40,8 +41,9 @@ import lombok.RequiredArgsConstructor;
 
 /**
  * 사용자의 신청내역 목록과 기존 분리형 요약 목록을 함께 조회하는 서비스이다.
- * 기본 목록은 혼합형 필터/빈 상태를 제공하고, overview용 요약 목록은 기존 계약을 유지한다.
+ * 기본 목록은 프론트 EventHistory 형식의 flat 리스트를 반환하고, overview용 요약 목록은 기존 계약을 유지한다.
  */
+@ServiceLog
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -56,53 +58,21 @@ public class ApplicationHistoryService {
 	private final JPAQueryFactory queryFactory;
 	private final ApplyDisplayStatusResolver applyDisplayStatusResolver;
 
-	public MyPageApplicationHistoryListResponseDto getEntries(
+	public List<MyPageApplicationHistoryItemDto> getEntries(
 		Long userId,
-		MyPageApplicationHistoryFilter filter,
-		int page,
-		int size
+		MyPageApplicationHistoryFilter filter
 	) {
-		MyPagePagingPolicy.validate(page, size);
-
-		ApplicationHistoryCounts counts = countApplicationHistoryEntries(userId);
-		long totalCount = filter.pickCount(counts.allCount(), counts.lotteryCount(), counts.firstComeCount());
-		if (totalCount == 0) {
-			return MyPageApplicationHistoryListResponseDto.empty(
-				filter.name(),
-				counts.toDto(),
-				page,
-				size,
-				filter.emptyTitle(),
-				filter.emptyDescription()
-			);
-		}
-
 		List<Entry> entries = queryFactory.selectFrom(entry)
 			.join(entry.event, event).fetchJoin()
 			.join(entry.eventCourse, eventCourse).fetchJoin()
 			.join(entry.eventPace, eventPace).fetchJoin()
 			.where(applicationHistoryCondition(userId), appTypeCondition(filter))
 			.orderBy(entry.createdAt.desc())
-			.offset(MyPagePagingPolicy.offset(page, size))
-			.limit(size)
 			.fetch();
 
-		Map<Long, String> thumbnailByEventId = loadThumbnailByEventId(entries);
-		List<MyPageApplicationHistoryItemDto> items = entries.stream()
-			.map(currentEntry -> toApplicationHistoryItem(
-				currentEntry,
-				thumbnailByEventId.get(currentEntry.getEvent().getId())
-			))
+		return entries.stream()
+			.map(this::toApplicationHistoryItem)
 			.toList();
-
-		return MyPageApplicationHistoryListResponseDto.of(
-			filter.name(),
-			counts.toDto(),
-			page,
-			size,
-			totalCount,
-			items
-		);
 	}
 
 	public MyPageEntryListResponseDto getSummaryEntries(Long userId, int page, int size) {
@@ -215,100 +185,36 @@ public class ApplicationHistoryService {
 			.notExists();
 	}
 
-	private ApplicationHistoryCounts countApplicationHistoryEntries(Long userId) {
-		com.querydsl.core.types.Expression<Long> countExpression = entry.count();
+	private MyPageApplicationHistoryItemDto toApplicationHistoryItem(Entry currentEntry) {
+		ApplyDisplayDecision decision = resolveApplyDisplayDecision(ApplyDisplaySurface.APPLICATION_HISTORY, currentEntry);
+		var currentEvent = currentEntry.getEvent();
+		EventCourse course = requireEventCourse(currentEntry);
+		EventPace pace = requireEventPace(currentEntry);
 
-		List<Tuple> rows = queryFactory.select(event.appType, countExpression)
-			.from(entry)
-			.join(entry.event, event)
-			.where(applicationHistoryCondition(userId))
-			.groupBy(event.appType)
-			.fetch();
-
-		long lotteryCount = 0;
-		long firstComeCount = 0;
-		for (Tuple row : rows) {
-			EventAppType appType = row.get(event.appType);
-			Long count = row.get(countExpression);
-			if (appType == EventAppType.LOTTERY) {
-				lotteryCount = count == null ? 0 : count;
-			}
-			if (appType == EventAppType.FIRST_COME) {
-				firstComeCount = count == null ? 0 : count;
-			}
-		}
-
-		return new ApplicationHistoryCounts(
-			lotteryCount + firstComeCount,
-			lotteryCount,
-			firstComeCount
-		);
-	}
-
-	private Map<Long, String> loadThumbnailByEventId(List<Entry> entries) {
-		Set<Long> eventIds = entries.stream()
-			.map(Entry::getEvent)
-			.map(com.kt.onrace.domain.event.entity.Event::getId)
-			.collect(Collectors.toSet());
-		if (eventIds.isEmpty()) {
-			return Map.of();
-		}
-
-		List<Tuple> rows = queryFactory.select(eventImage.event.id, eventImage.url)
-			.from(eventImage)
-			.where(
-				eventImage.event.id.in(eventIds),
-				eventImage.type.eq(EventImageType.THUMBNAIL)
-			)
-			.orderBy(eventImage.event.id.asc(), eventImage.sort.asc())
-			.fetch();
-
-		Map<Long, String> thumbnailByEventId = new java.util.LinkedHashMap<>();
-		for (Tuple row : rows) {
-			Long eventId = row.get(eventImage.event.id);
-			String thumbnailUrl = row.get(eventImage.url);
-			thumbnailByEventId.putIfAbsent(eventId, thumbnailUrl);
-		}
-		return thumbnailByEventId;
-	}
-
-	private MyPageApplicationHistoryItemDto toApplicationHistoryItem(Entry currentEntry, String thumbnailUrl) {
-		MyPageStatusDto status = toMyPageStatusDto(resolveApplyDisplayDecision(ApplyDisplaySurface.APPLICATION_HISTORY, currentEntry));
-		String courseName = currentEntry.getEventCourse() != null ? currentEntry.getEventCourse().getName() : null;
-		String paceName = currentEntry.getEventPace() != null ? currentEntry.getEventPace().getName() : null;
-
-		return new MyPageApplicationHistoryItemDto(
+		return MyPageApplicationHistoryItemDto.of(
 			currentEntry.getId(),
-			currentEntry.getEvent().getId(),
+			currentEvent.getId(),
+			currentEvent.getTitle(),
+			currentEvent.getAppType(),
+			currentEvent.getStatus(),
+			resolveEntryStatus(decision.displayStatus()),
 			currentEntry.getCreatedAt(),
-			thumbnailUrl,
-			currentEntry.getEvent().getTitle(),
-			new MyPageApplicationHistoryItemDto.SelectedOption(
-				courseName,
-				paceName,
-				buildSelectedOptionDisplay(courseName, paceName)
-			),
-			new MyPageApplicationHistoryItemDto.EventMethod(
-				currentEntry.getEvent().getAppType().name(),
-				resolveEventMethodLabel(currentEntry.getEvent().getAppType())
-			),
-			new MyPageApplicationHistoryItemDto.RecruitmentSchedule(
-				currentEntry.getEvent().getAppStartAt(),
-				currentEntry.getEvent().getAppEndAt()
-			),
-			status.statusText(),
-			new MyPageApplicationHistoryItemDto.Action(
-				status.actionType(),
-				status.actionLabel(),
-				status.actionEnabled()
-			)
+			currentEvent.getEventAt(),
+			currentEvent.getAppStartAt(),
+			currentEvent.getAppEndAt(),
+			resolveResultAt(currentEvent),
+			currentEvent.getVenue(),
+			course.getName(),
+			pace.getName()
 		);
 	}
 
 	private MyPageEntryItemDto toSummaryEntryItem(Entry currentEntry) {
 		MyPageStatusDto status = toMyPageStatusDto(resolveApplyDisplayDecision(ApplyDisplaySurface.SUMMARY, currentEntry));
+		EventCourse course = requireEventCourse(currentEntry);
+		EventPace pace = requireEventPace(currentEntry);
 
-		return new MyPageEntryItemDto(
+		return MyPageEntryItemDto.of(
 			currentEntry.getId(),
 			currentEntry.getEvent().getId(),
 			status.statusText(),
@@ -317,12 +223,36 @@ public class ApplicationHistoryService {
 			status.actionEnabled(),
 			null,
 			currentEntry.getEvent().getTitle(),
-			currentEntry.getEventCourse() != null ? currentEntry.getEventCourse().getName() : null,
-			currentEntry.getEventPace() != null ? currentEntry.getEventPace().getName() : null,
-			currentEntry.getEventCourse() != null ? currentEntry.getEventCourse().getPrice() : null,
+			course.getName(),
+			pace.getName(),
+			course.getPrice(),
 			currentEntry.getCreatedAt(),
-			currentEntry.getEvent().getLotteryAnnouncedAt()
+			resolveResultAt(currentEntry.getEvent())
 		);
+	}
+
+	private LocalDateTime resolveResultAt(Event currentEvent) {
+		if (currentEvent.getAppType() != EventAppType.LOTTERY) {
+			return null;
+		}
+
+		return currentEvent.getLotteryAnnouncedAt();
+	}
+
+	private EventCourse requireEventCourse(Entry currentEntry) {
+		EventCourse course = currentEntry.getEventCourse();
+		if (course == null) {
+			throw new BusinessException(BusinessErrorCode.COMMON_SYSTEM_ERROR);
+		}
+		return course;
+	}
+
+	private EventPace requireEventPace(Entry currentEntry) {
+		EventPace pace = currentEntry.getEventPace();
+		if (pace == null) {
+			throw new BusinessException(BusinessErrorCode.COMMON_SYSTEM_ERROR);
+		}
+		return pace;
 	}
 
 	private ApplyDisplayDecision resolveApplyDisplayDecision(ApplyDisplaySurface surface, Entry currentEntry) {
@@ -360,36 +290,16 @@ public class ApplicationHistoryService {
 		);
 	}
 
-	private String buildSelectedOptionDisplay(String courseName, String paceName) {
-		if (courseName == null && paceName == null) {
-			return null;
-		}
-
-		if (courseName == null) {
-			return paceName;
-		}
-
-		if (paceName == null) {
-			return courseName;
-		}
-
-		return courseName + " / " + paceName;
-	}
-
-	private String resolveEventMethodLabel(EventAppType appType) {
-		return switch (appType) {
-			case LOTTERY -> "추첨";
-			case FIRST_COME -> "선착";
+	private String resolveEntryStatus(ApplyDisplayStatus displayStatus) {
+		return switch (displayStatus) {
+			case PRE_ENTRY_SAVED, WAITING_TO_APPLY -> "신청 대기";
+			case AVAILABLE_TO_APPLY -> "신청 가능";
+			case ENTRY_CLOSED, ENTRY_UNAVAILABLE -> "신청 불가";
+			case RESERVED, ENTRY_APPLIED -> "신청 완료";
+			case LOTTERY_APPLIED -> "응모 완료";
+			case RESULT_PENDING, RESULT_CHECK_REQUIRED -> "발표 대기";
+			case WON -> "당첨";
+			case LOST -> "미당첨";
 		};
-	}
-
-	private record ApplicationHistoryCounts(
-		long allCount,
-		long lotteryCount,
-		long firstComeCount
-	) {
-		private MyPageApplicationHistoryListResponseDto.Counts toDto() {
-			return new MyPageApplicationHistoryListResponseDto.Counts(allCount, lotteryCount, firstComeCount);
-		}
 	}
 }

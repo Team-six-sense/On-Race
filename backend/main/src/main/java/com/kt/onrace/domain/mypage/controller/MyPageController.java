@@ -1,5 +1,7 @@
 package com.kt.onrace.domain.mypage.controller;
 
+import java.util.List;
+
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -11,11 +13,11 @@ import org.springframework.web.bind.annotation.RestController;
 import com.kt.onrace.common.logging.annotation.ApiLog;
 import com.kt.onrace.common.response.ApiResponse;
 import com.kt.onrace.domain.mypage.dto.MyPageAccountResponseDto;
-import com.kt.onrace.domain.mypage.dto.MyPageApplicationHistoryListResponseDto;
+import com.kt.onrace.domain.mypage.dto.MyPageApplicationHistoryItemDto;
 import com.kt.onrace.domain.mypage.dto.MyPageAddressResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageEntryListResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageOrderDetailResponseDto;
-import com.kt.onrace.domain.mypage.dto.MyPageOrderListResponseDto;
+import com.kt.onrace.domain.mypage.dto.MyPagePaymentHistoryItemDto;
 import com.kt.onrace.domain.mypage.dto.MyPageOverviewResponseDto;
 import com.kt.onrace.domain.mypage.service.MyPageService;
 
@@ -51,13 +53,11 @@ public class MyPageController {
 	}
 
 	@GetMapping("/entries")
-	public ApiResponse<MyPageApplicationHistoryListResponseDto> getEntries(
+	public ApiResponse<List<MyPageApplicationHistoryItemDto>> getEntries(
 		@RequestHeader("X-User-Id") Long userId,
-		@RequestParam(defaultValue = "ALL") String filter,
-		@RequestParam(defaultValue = "0") @Min(0) int page,
-		@RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
+		@RequestParam(defaultValue = "ALL") String filter
 	) {
-		return ApiResponse.success(myPageService.getEntries(userId, filter, page, size));
+		return ApiResponse.success(myPageService.getEntries(userId, filter));
 	}
 
 	@GetMapping("/waiting-entries")
@@ -70,13 +70,11 @@ public class MyPageController {
 	}
 
 	@GetMapping("/orders")
-	public ApiResponse<MyPageOrderListResponseDto> getOrders(
+	public ApiResponse<List<MyPagePaymentHistoryItemDto>> getOrders(
 		@RequestHeader("X-User-Id") Long userId,
-		@RequestParam(defaultValue = "ALL") String tab,
-		@RequestParam(defaultValue = "0") @Min(0) int page,
-		@RequestParam(defaultValue = "20") @Min(1) @Max(100) int size
+		@RequestParam(defaultValue = "ALL") String tab
 	) {
-		return ApiResponse.success(myPageService.getOrders(userId, tab, page, size));
+		return ApiResponse.success(myPageService.getOrders(userId, tab));
 	}
 
 	@GetMapping("/orders/{orderNumber}")

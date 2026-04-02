@@ -70,8 +70,3 @@ order:
   prepare-token:
     # checkout prepare token TTL이다. queue pass token TTL, reservation TTL과는 별개다.
     ttl-seconds: ${MAIN_ORDER_PREPARE_TOKEN_TTL_SECONDS:300}
-  entry-id:
-    monitor:
-      enabled: ${MAIN_ORDER_ENTRY_ID_MONITOR_ENABLED:true}
-      fixed-delay-ms: ${MAIN_ORDER_ENTRY_ID_MONITOR_FIXED_DELAY_MS:300000}
-      sample-size: ${MAIN_ORDER_ENTRY_ID_MONITOR_SAMPLE_SIZE:10}

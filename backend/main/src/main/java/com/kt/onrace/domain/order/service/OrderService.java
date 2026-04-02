@@ -234,6 +234,7 @@ public class OrderService {
 			course.getId(),
 			pace.getId(),
 			eligibility.entryId(),
+			buildOrderEventSnapshot(event, course, pace),
 			itemTotalAmount,
 			shippingFee,
 			discountAmount,
@@ -391,6 +392,19 @@ public class OrderService {
 			address.getAddress1(),
 			address.getAddress2(),
 			overrideMemo != null ? overrideMemo : address.getMemo()
+		);
+	}
+
+	private Order.OrderEventSnapshot buildOrderEventSnapshot(Event event, EventCourse course, EventPace pace) {
+		return new Order.OrderEventSnapshot(
+			event.getId(),
+			event.getTitle(),
+			event.getAppType(),
+			event.getStatus(),
+			event.getEventAt(),
+			event.getVenue(),
+			course.getName(),
+			pace != null ? pace.getName() : null
 		);
 	}
 

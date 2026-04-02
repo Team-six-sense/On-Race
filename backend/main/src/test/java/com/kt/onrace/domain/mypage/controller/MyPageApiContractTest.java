@@ -67,7 +67,6 @@ class MyPageApiContractTest {
 	private static final long ORDER_ONLY_USER_ID = 12L;
 	private static final long ADDRESS_ONLY_USER_ID = 13L;
 	private static final long ACTION_CASE_USER_ID = 14L;
-	private static final long LEGACY_ORDER_USER_ID = 15L;
 	private static final String GATEWAY_TOKEN = "onrace-super-secret-key";
 
 	@LocalServerPort
@@ -129,15 +128,12 @@ class MyPageApiContractTest {
 		createMember(ORDER_ONLY_USER_ID);
 		createMember(ADDRESS_ONLY_USER_ID);
 		createMember(ACTION_CASE_USER_ID);
-		createMember(LEGACY_ORDER_USER_ID);
-
 		stubAuthAccount(MIXED_USER_ID, "runner@example.com", "홍길동", "01012345678", "LOCAL", true, "VERIFIED", true);
 		stubAuthAccount(EMPTY_USER_ID, "empty@example.com", "빈사용자", "01000000000", "LOCAL", true, "UNVERIFIED", false);
 		stubAuthAccount(ENTRY_ONLY_USER_ID, "kakao@example.com", "신청사용자", "01011112222", "KAKAO", false, "UNVERIFIED", false);
 		stubAuthAccount(ORDER_ONLY_USER_ID, "naver@example.com", "주문사용자", "01033334444", "NAVER", false, "VERIFIED", true);
 		stubAuthAccount(ADDRESS_ONLY_USER_ID, "address@example.com", "주소사용자", "01022223333", "LOCAL", true, "UNVERIFIED", false);
 		stubAuthAccount(ACTION_CASE_USER_ID, "action@example.com", "상태검증사용자", "01044445555", "LOCAL", true, "VERIFIED", true);
-		stubAuthAccount(LEGACY_ORDER_USER_ID, "legacy@example.com", "레거시주문사용자", "01055556666", "LOCAL", true, "VERIFIED", false);
 
 		LocalDateTime now = LocalDateTime.now();
 
@@ -146,7 +142,6 @@ class MyPageApiContractTest {
 		seedOrderOnlyUser(now);
 		seedAddressOnlyUser();
 		seedActionCaseUser(now);
-		seedLegacyOrderUser(now);
 	}
 
 	@Test
@@ -169,53 +164,45 @@ class MyPageApiContractTest {
 		JsonNode emptyOrders = get(EMPTY_USER_ID, "/mypage/orders");
 		JsonNode emptyAddress = get(EMPTY_USER_ID, "/mypage/address");
 
+		assertThat(account.path("data").path("id").asLong()).isEqualTo(MIXED_USER_ID);
 		assertThat(account.path("data").path("name").asText()).isEqualTo("홍길동");
-		assertThat(account.path("data").path("accountType").asText()).isEqualTo("EMAIL");
-		assertThat(account.path("data").path("authProvider").asText()).isEqualTo("LOCAL");
+		assertThat(account.path("data").path("phoneNumber").asText()).isEqualTo("01012345678");
 		assertThat(account.path("data").path("email").asText()).isEqualTo("runner@example.com");
-		assertThat(account.path("data").path("canChangePassword").asBoolean()).isTrue();
-		assertThat(account.path("data").path("verificationStatus").asText()).isEqualTo("COMPLETED");
-		assertThat(account.path("data").path("marketingConsent").asBoolean()).isTrue();
-		assertThat(account.path("data").path("address").path("hasAddress").asBoolean()).isTrue();
-		assertThat(account.path("data").path("address").path("defaultAddress").path("label").asText()).isEqualTo("집");
-		assertThat(account.path("data").path("address").path("defaultAddress").path("receiverName").asText()).isEqualTo("홍길동");
-		assertThat(account.path("data").path("address").path("defaultAddress").path("address").asText()).isEqualTo("서울시 강남구 101동");
-		assertThat(account.path("data").path("address").path("defaultAddress").path("phone").asText()).isEqualTo("01012345678");
+		assertThat(account.path("data").path("isPassAuth").asBoolean()).isTrue();
+		assertThat(account.path("data").path("addressList")).hasSize(1);
+		assertThat(account.path("data").path("addressList").get(0).path("label").asText()).isEqualTo("집");
+		assertThat(account.path("data").path("addressList").get(0).path("receiverName").asText()).isEqualTo("홍길동");
+		assertThat(account.path("data").path("addressList").get(0).path("phoneNumber").asText()).isEqualTo("01012345678");
+		assertThat(account.path("data").path("addressList").get(0).path("zipcode").asText()).isEqualTo("12345");
+		assertThat(account.path("data").path("addressList").get(0).path("address1").asText()).isEqualTo("서울시 강남구");
+		assertThat(account.path("data").path("addressList").get(0).path("address2").asText()).isEqualTo("101동");
+		assertThat(account.path("data").path("addressList").get(0).path("memo").asText()).isEqualTo("문앞");
+		assertThat(account.path("data").path("addressList").get(0).path("isDefault").asBoolean()).isTrue();
 
 		assertThat(overview.path("data").path("entries").path("totalCount").asInt()).isZero();
 		assertThat(overview.path("data").path("waitingEntries").path("totalCount").asInt()).isEqualTo(1);
 		assertThat(overview.path("data").path("orders").path("totalCount").asInt()).isEqualTo(1);
 		assertThat(overview.path("data").path("address").path("hasAddress").asBoolean()).isTrue();
+		assertThat(overview.path("data").path("waitingEntries").path("items").get(0).path("courseName").asText()).isNotBlank();
+		assertThat(overview.path("data").path("waitingEntries").path("items").get(0).path("paceName").asText()).isNotBlank();
 
-		assertThat(entries.path("data").path("filter").asText()).isEqualTo("ALL");
-		assertThat(entries.path("data").path("counts").path("all").asInt()).isEqualTo(1);
-		assertThat(entries.path("data").path("counts").path("lottery").asInt()).isZero();
-		assertThat(entries.path("data").path("counts").path("firstCome").asInt()).isEqualTo(1);
-		assertThat(entries.path("data").path("page").asInt()).isZero();
-		assertThat(entries.path("data").path("size").asInt()).isEqualTo(20);
-		assertThat(entries.path("data").path("totalCount").asInt()).isEqualTo(1);
-		assertThat(entries.path("data").path("hasNext").asBoolean()).isFalse();
-		assertThat(textValues(entries.path("data").path("items"), "statusDisplayValue"))
-			.containsExactly("사전정보 저장");
-		assertThat(entries.path("data").path("items").get(0).path("thumbnailUrl").asText())
-			.startsWith("https://example.com/thumb/");
-		assertThat(entries.path("data").path("items").get(0).path("eventName").asText()).isNotBlank();
-		assertThat(entries.path("data").path("items").get(0).path("selectedOption").path("displayValue").asText())
-			.contains("/");
-		assertThat(entries.path("data").path("items").get(0).path("eventMethod").path("code").asText())
+		assertThat(entries.path("data")).hasSize(1);
+		assertThat(textValues(entries.path("data"), "entryStatus"))
+			.containsExactly("신청 대기");
+		assertThat(entries.path("data").get(0).path("title").asText()).isNotBlank();
+		assertThat(entries.path("data").get(0).path("appType").asText())
 			.isIn("LOTTERY", "FIRST_COME");
-		assertThat(entries.path("data").path("items").get(0).path("action").path("type").asText())
-			.isIn("NONE", "EDIT", "APPLY", "CHECKOUT");
-		assertThat(entries.path("data").path("emptyState").path("empty").asBoolean()).isFalse();
+		assertThat(entries.path("data").get(0).path("status").asText())
+			.isIn("IN_PROGRESS", "CLOSING_SOON", "READY", "END", "DRAW_COMPLETED");
+		assertThat(entries.path("data").get(0).path("course").asText()).isNotBlank();
+		assertThat(entries.path("data").get(0).path("pace").asText()).isNotBlank();
+		assertThat(entries.path("data").get(0).path("venue").asText()).isNotBlank();
+		assertThat(entries.path("data").get(0).path("resultAt").isNull()).isTrue();
 
-		assertThat(lotteryEntries.path("data").path("filter").asText()).isEqualTo("LOTTERY");
-		assertThat(lotteryEntries.path("data").path("counts").path("lottery").asInt()).isZero();
-		assertThat(lotteryEntries.path("data").path("totalCount").asInt()).isZero();
-		assertThat(lotteryEntries.path("data").path("items")).isEmpty();
-		assertThat(firstComeEntries.path("data").path("filter").asText()).isEqualTo("FIRST_COME");
-		assertThat(firstComeEntries.path("data").path("totalCount").asInt()).isEqualTo(1);
-		assertThat(textValues(firstComeEntries.path("data").path("items"), "statusDisplayValue"))
-			.containsExactly("사전정보 저장");
+		assertThat(lotteryEntries.path("data")).isEmpty();
+		assertThat(firstComeEntries.path("data")).hasSize(1);
+		assertThat(textValues(firstComeEntries.path("data"), "entryStatus"))
+			.containsExactly("신청 대기");
 
 		assertThat(waitingEntries.path("data").path("items").get(0).path("status").asText()).isEqualTo("신청 대기");
 		assertThat(waitingEntries.path("data").path("page").asInt()).isZero();
@@ -223,13 +210,18 @@ class MyPageApiContractTest {
 		assertThat(waitingEntries.path("data").path("hasNext").asBoolean()).isFalse();
 		assertThat(waitingEntries.path("data").path("items").get(0).path("actionType").asText()).isEqualTo("EDIT");
 		assertThat(waitingEntries.path("data").path("items").get(0).path("actionLabel").asText()).isEqualTo("사전정보 수정");
+		assertThat(waitingEntries.path("data").path("items").get(0).path("courseName").asText()).isNotBlank();
+		assertThat(waitingEntries.path("data").path("items").get(0).path("paceName").asText()).isNotBlank();
 
-		assertThat(orders.path("data").path("items").get(0).path("status").asText()).isEqualTo("결제 대기");
-		assertThat(orders.path("data").path("page").asInt()).isZero();
-		assertThat(orders.path("data").path("size").asInt()).isEqualTo(20);
-		assertThat(orders.path("data").path("hasNext").asBoolean()).isFalse();
-		assertThat(orders.path("data").path("items").get(0).path("actionType").asText()).isEqualTo("DETAIL");
-		assertThat(orders.path("data").path("items").get(0).path("paymentDeadlineAt").isNull()).isTrue();
+		assertThat(orders.path("data")).hasSize(1);
+		assertThat(orders.path("data").get(0).path("id").asText()).isEqualTo("ORD-TEST-0001");
+		assertThat(orders.path("data").get(0).path("appType").asText()).isEqualTo("LOTTERY");
+		assertThat(orders.path("data").get(0).path("status").asText()).isEqualTo("IN_PROGRESS");
+		assertThat(orders.path("data").get(0).path("orderStatus").asText()).isEqualTo("입금대기");
+		assertThat(orders.path("data").get(0).path("title").asText()).isEqualTo("서울 마라톤 대회 2026");
+		assertThat(orders.path("data").get(0).path("course").asText()).isEqualTo("풀코스");
+		assertThat(orders.path("data").get(0).path("pace").asText()).isEqualTo("6:00/km");
+		assertThat(orders.path("data").get(0).path("price").asLong()).isEqualTo(38000L);
 		assertThat(orderDetail.path("data").path("orderNumber").asText()).isEqualTo("ORD-TEST-0001");
 		assertThat(orderDetail.path("data").path("status").asText()).isEqualTo("결제 대기");
 		assertThat(orderDetail.path("data").path("canCancel").asBoolean()).isTrue();
@@ -239,31 +231,24 @@ class MyPageApiContractTest {
 		assertThat(address.path("data").path("defaultAddress").path("label").asText()).isEqualTo("집");
 		assertThat(address.path("data").path("defaultAddress").path("address").asText()).isEqualTo("서울시 강남구 101동");
 
+		assertThat(emptyAccount.path("data").path("id").asLong()).isEqualTo(EMPTY_USER_ID);
 		assertThat(emptyAccount.path("data").path("name").asText()).isEqualTo("빈사용자");
-		assertThat(emptyAccount.path("data").path("accountType").asText()).isEqualTo("EMAIL");
-		assertThat(emptyAccount.path("data").path("verificationStatus").asText()).isEqualTo("PENDING");
-		assertThat(emptyAccount.path("data").path("address").path("hasAddress").asBoolean()).isFalse();
-		assertThat(emptyAccount.path("data").path("address").path("defaultAddress").isNull()).isTrue();
+		assertThat(emptyAccount.path("data").path("phoneNumber").asText()).isEqualTo("01000000000");
+		assertThat(emptyAccount.path("data").path("email").asText()).isEqualTo("empty@example.com");
+		assertThat(emptyAccount.path("data").path("isPassAuth").asBoolean()).isFalse();
+		assertThat(emptyAccount.path("data").path("addressList")).isEmpty();
 		assertThat(emptyOverview.path("data").path("entries").path("items").isArray()).isTrue();
 		assertThat(emptyOverview.path("data").path("entries").path("page").asInt()).isZero();
 		assertThat(emptyOverview.path("data").path("entries").path("size").asInt()).isEqualTo(3);
 		assertThat(emptyOverview.path("data").path("entries").path("items")).isEmpty();
 		assertThat(emptyOverview.path("data").path("address").path("hasAddress").asBoolean()).isFalse();
 		assertThat(emptyOverview.path("data").path("address").path("defaultAddress").isNull()).isTrue();
-		assertThat(emptyEntries.path("data").path("filter").asText()).isEqualTo("ALL");
-		assertThat(emptyEntries.path("data").path("counts").path("all").asInt()).isZero();
-		assertThat(emptyEntries.path("data").path("page").asInt()).isZero();
-		assertThat(emptyEntries.path("data").path("size").asInt()).isEqualTo(20);
-		assertThat(emptyEntries.path("data").path("items")).isEmpty();
-		assertThat(emptyEntries.path("data").path("emptyState").path("empty").asBoolean()).isTrue();
-		assertThat(emptyEntries.path("data").path("emptyState").path("title").asText()).isEqualTo("신청 내역이 없어요.");
-		assertThat(emptyLotteryEntries.path("data").path("emptyState").path("title").asText()).isEqualTo("추첨 신청 내역이 없어요.");
+		assertThat(emptyEntries.path("data")).isEmpty();
+		assertThat(emptyLotteryEntries.path("data")).isEmpty();
 		assertThat(emptyWaitingEntries.path("data").path("page").asInt()).isZero();
 		assertThat(emptyWaitingEntries.path("data").path("size").asInt()).isEqualTo(20);
 		assertThat(emptyWaitingEntries.path("data").path("items")).isEmpty();
-		assertThat(emptyOrders.path("data").path("page").asInt()).isZero();
-		assertThat(emptyOrders.path("data").path("size").asInt()).isEqualTo(20);
-		assertThat(emptyOrders.path("data").path("items")).isEmpty();
+		assertThat(emptyOrders.path("data")).isEmpty();
 		assertThat(emptyAddress.path("data").path("hasAddress").asBoolean()).isFalse();
 		assertThat(emptyAddress.path("data").path("defaultAddress").isNull()).isTrue();
 
@@ -306,30 +291,31 @@ class MyPageApiContractTest {
 		JsonNode entryOrders = get(ENTRY_ONLY_USER_ID, "/mypage/orders");
 		JsonNode entryAddress = get(ENTRY_ONLY_USER_ID, "/mypage/address");
 
-		assertThat(entryAccount.path("data").path("accountType").asText()).isEqualTo("SNS");
-		assertThat(entryAccount.path("data").path("authProvider").asText()).isEqualTo("KAKAO");
-		assertThat(entryAccount.path("data").path("canChangePassword").asBoolean()).isFalse();
-		assertThat(entryAccount.path("data").path("verificationStatus").asText()).isEqualTo("PENDING");
+		assertThat(entryAccount.path("data").path("id").asLong()).isEqualTo(ENTRY_ONLY_USER_ID);
+		assertThat(entryAccount.path("data").path("name").asText()).isEqualTo("신청사용자");
+		assertThat(entryAccount.path("data").path("phoneNumber").asText()).isEqualTo("01011112222");
+		assertThat(entryAccount.path("data").path("email").asText()).isEqualTo("kakao@example.com");
+		assertThat(entryAccount.path("data").path("isPassAuth").asBoolean()).isFalse();
+		assertThat(entryAccount.path("data").path("addressList")).isEmpty();
 		assertThat(entryOverview.path("data").path("entries").path("totalCount").asInt()).isEqualTo(3);
 		assertThat(entryOverview.path("data").path("waitingEntries").path("totalCount").asInt()).isEqualTo(1);
 		assertThat(entryOverview.path("data").path("orders").path("totalCount").asInt()).isZero();
 		assertThat(entryOverview.path("data").path("address").path("hasAddress").asBoolean()).isFalse();
-		assertThat(entryItems.path("data").path("page").asInt()).isZero();
-		assertThat(entryItems.path("data").path("size").asInt()).isEqualTo(20);
-		assertThat(entryItems.path("data").path("counts").path("all").asInt()).isEqualTo(4);
-		assertThat(entryItems.path("data").path("counts").path("lottery").asInt()).isEqualTo(3);
-		assertThat(entryItems.path("data").path("counts").path("firstCome").asInt()).isEqualTo(1);
-		assertThat(textValues(entryItems.path("data").path("items"), "statusDisplayValue"))
-			.containsExactlyInAnyOrder("사전정보 저장", "응모 완료", "당첨", "미당첨");
-		assertThat(textValues(entryItems.path("data").path("items"), "eventName"))
+		assertThat(textValues(entryItems.path("data"), "entryStatus"))
+			.containsExactlyInAnyOrder("신청 대기", "응모 완료", "당첨", "미당첨");
+		assertThat(textValues(entryItems.path("data"), "title"))
 			.hasSize(4);
-		assertThat(textValues(lotteryEntryItems.path("data").path("items"), "statusDisplayValue"))
+		assertThat(findItemByTitle(entryItems.path("data"), "세트1 신청 대기 이벤트").path("resultAt").isNull()).isTrue();
+		assertThat(findItemByTitle(entryItems.path("data"), "세트1 응모 완료 이벤트").path("resultAt").asText()).isNotBlank();
+		assertThat(findItemByTitle(entryItems.path("data"), "세트1 당첨 이벤트").path("resultAt").asText()).isNotBlank();
+		assertThat(findItemByTitle(entryItems.path("data"), "세트1 미당첨 이벤트").path("resultAt").asText()).isNotBlank();
+		assertThat(textValues(lotteryEntryItems.path("data"), "entryStatus"))
 			.containsExactlyInAnyOrder("응모 완료", "당첨", "미당첨");
-		assertThat(textValues(firstComeEntryItems.path("data").path("items"), "statusDisplayValue"))
-			.containsExactly("사전정보 저장");
+		assertThat(textValues(firstComeEntryItems.path("data"), "entryStatus"))
+			.containsExactly("신청 대기");
 		assertThat(textValues(waitingItems.path("data").path("items"), "status"))
 			.containsExactly("신청 대기");
-		assertThat(entryOrders.path("data").path("items")).isEmpty();
+		assertThat(entryOrders.path("data")).isEmpty();
 		assertThat(entryAddress.path("data").path("hasAddress").asBoolean()).isFalse();
 
 		JsonNode orderAccount = get(ORDER_ONLY_USER_ID, "/mypage/account");
@@ -339,20 +325,21 @@ class MyPageApiContractTest {
 		JsonNode orderWaitingEntries = get(ORDER_ONLY_USER_ID, "/mypage/waiting-entries");
 		JsonNode orderAddress = get(ORDER_ONLY_USER_ID, "/mypage/address");
 
-		assertThat(orderAccount.path("data").path("accountType").asText()).isEqualTo("SNS");
-		assertThat(orderAccount.path("data").path("authProvider").asText()).isEqualTo("NAVER");
-		assertThat(orderAccount.path("data").path("canChangePassword").asBoolean()).isFalse();
-		assertThat(orderAccount.path("data").path("verificationStatus").asText()).isEqualTo("COMPLETED");
+		assertThat(orderAccount.path("data").path("id").asLong()).isEqualTo(ORDER_ONLY_USER_ID);
+		assertThat(orderAccount.path("data").path("name").asText()).isEqualTo("주문사용자");
+		assertThat(orderAccount.path("data").path("phoneNumber").asText()).isEqualTo("01033334444");
+		assertThat(orderAccount.path("data").path("email").asText()).isEqualTo("naver@example.com");
+		assertThat(orderAccount.path("data").path("isPassAuth").asBoolean()).isTrue();
+		assertThat(orderAccount.path("data").path("addressList")).isEmpty();
 		assertThat(orderOverview.path("data").path("entries").path("totalCount").asInt()).isZero();
 		assertThat(orderOverview.path("data").path("waitingEntries").path("totalCount").asInt()).isZero();
 		assertThat(orderOverview.path("data").path("orders").path("totalCount").asInt()).isEqualTo(3);
-		assertThat(orderItems.path("data").path("page").asInt()).isZero();
-		assertThat(orderItems.path("data").path("size").asInt()).isEqualTo(20);
-		assertThat(textValues(orderItems.path("data").path("items"), "status"))
-			.containsExactlyInAnyOrder("결제 대기", "결제 완료", "주문 취소");
-		assertThat(textValues(orderItems.path("data").path("items"), "actionType"))
-			.containsExactlyInAnyOrder("DETAIL", "DETAIL", "DETAIL");
-		assertThat(orderEntries.path("data").path("items")).isEmpty();
+		assertThat(orderItems.path("data")).hasSize(3);
+		assertThat(textValues(orderItems.path("data"), "orderStatus"))
+			.containsExactlyInAnyOrder("입금대기", "결제완료", "결제취소");
+		assertThat(textValues(orderItems.path("data"), "appType"))
+			.containsExactlyInAnyOrder("FIRST_COME", "FIRST_COME", "FIRST_COME");
+		assertThat(orderEntries.path("data")).isEmpty();
 		assertThat(orderWaitingEntries.path("data").path("items")).isEmpty();
 		assertThat(orderAddress.path("data").path("hasAddress").asBoolean()).isFalse();
 
@@ -362,7 +349,16 @@ class MyPageApiContractTest {
 		JsonNode addressEntries = get(ADDRESS_ONLY_USER_ID, "/mypage/entries");
 		JsonNode addressOrders = get(ADDRESS_ONLY_USER_ID, "/mypage/orders");
 
+		assertThat(addressAccount.path("data").path("id").asLong()).isEqualTo(ADDRESS_ONLY_USER_ID);
 		assertThat(addressAccount.path("data").path("name").asText()).isEqualTo("주소사용자");
+		assertThat(addressAccount.path("data").path("phoneNumber").asText()).isEqualTo("01022223333");
+		assertThat(addressAccount.path("data").path("email").asText()).isEqualTo("address@example.com");
+		assertThat(addressAccount.path("data").path("isPassAuth").asBoolean()).isFalse();
+		assertThat(addressAccount.path("data").path("addressList")).hasSize(2);
+		assertThat(addressAccount.path("data").path("addressList").get(0).path("label").asText()).isEqualTo("집");
+		assertThat(addressAccount.path("data").path("addressList").get(0).path("isDefault").asBoolean()).isTrue();
+		assertThat(addressAccount.path("data").path("addressList").get(1).path("label").asText()).isEqualTo("회사");
+		assertThat(addressAccount.path("data").path("addressList").get(1).path("isDefault").asBoolean()).isFalse();
 		assertThat(addressOverview.path("data").path("entries").path("totalCount").asInt()).isZero();
 		assertThat(addressOverview.path("data").path("waitingEntries").path("totalCount").asInt()).isZero();
 		assertThat(addressOverview.path("data").path("orders").path("totalCount").asInt()).isZero();
@@ -372,8 +368,8 @@ class MyPageApiContractTest {
 		assertThat(addressOnly.path("data").path("defaultAddress").path("address").asText()).isEqualTo("서울시 강남구 201동");
 		assertThat(addressOnly.path("data").path("defaultAddress").path("phone").asText()).isEqualTo("01022223333");
 		assertThat(addressRepository.countByUserId(ADDRESS_ONLY_USER_ID)).isEqualTo(2L);
-		assertThat(addressEntries.path("data").path("items")).isEmpty();
-		assertThat(addressOrders.path("data").path("items")).isEmpty();
+		assertThat(addressEntries.path("data")).isEmpty();
+		assertThat(addressOrders.path("data")).isEmpty();
 	}
 
 	@Test
@@ -382,31 +378,51 @@ class MyPageApiContractTest {
 		JsonNode lotteryEntries = get(ACTION_CASE_USER_ID, "/mypage/entries?filter=LOTTERY");
 		JsonNode firstComeEntries = get(ACTION_CASE_USER_ID, "/mypage/entries?filter=FIRST_COME");
 
-		assertThat(allEntries.path("data").path("counts").path("all").asInt()).isEqualTo(4);
-		assertThat(allEntries.path("data").path("counts").path("lottery").asInt()).isEqualTo(1);
-		assertThat(allEntries.path("data").path("counts").path("firstCome").asInt()).isEqualTo(3);
-		assertThat(textValues(allEntries.path("data").path("items"), "statusDisplayValue"))
-			.containsExactlyInAnyOrder("결과 발표 대기", "신청 가능", "예약 중", "신청 마감");
-		assertThat(textValues(allEntries.path("data").path("items"), "eventName")).hasSize(4);
-		assertThat(textValues(allEntries.path("data").path("items"), "thumbnailUrl"))
-			.allSatisfy(value -> assertThat(value).startsWith("https://example.com/thumb/"));
+		assertThat(allEntries.path("data")).hasSize(4);
+		assertThat(textValues(allEntries.path("data"), "entryStatus"))
+			.containsExactlyInAnyOrder("발표 대기", "신청 가능", "신청 완료", "신청 불가");
+		assertThat(textValues(allEntries.path("data"), "title")).hasSize(4);
+		assertThat(textValues(allEntries.path("data"), "appType"))
+			.containsExactlyInAnyOrder("LOTTERY", "FIRST_COME", "FIRST_COME", "FIRST_COME");
 
-		assertThat(actionValues(allEntries.path("data").path("items"), "type"))
-			.containsExactlyInAnyOrder("NONE", "APPLY", "CHECKOUT", "NONE");
-		assertThat(actionValues(allEntries.path("data").path("items"), "label"))
-			.containsExactlyInAnyOrder(null, "신청하기", "결제하기", null);
-		assertThat(booleanValues(allEntries.path("data").path("items"), "enabled"))
-			.containsExactlyInAnyOrder(false, true, true, false);
+		assertThat(lotteryEntries.path("data")).hasSize(1);
+		assertThat(textValues(lotteryEntries.path("data"), "entryStatus"))
+			.containsExactly("발표 대기");
 
-		assertThat(lotteryEntries.path("data").path("totalCount").asInt()).isEqualTo(1);
-		assertThat(textValues(lotteryEntries.path("data").path("items"), "statusDisplayValue"))
-			.containsExactly("결과 발표 대기");
+		assertThat(firstComeEntries.path("data")).hasSize(3);
+		assertThat(textValues(firstComeEntries.path("data"), "entryStatus"))
+			.containsExactlyInAnyOrder("신청 가능", "신청 완료", "신청 불가");
+	}
 
-		assertThat(firstComeEntries.path("data").path("totalCount").asInt()).isEqualTo(3);
-		assertThat(textValues(firstComeEntries.path("data").path("items"), "statusDisplayValue"))
-			.containsExactlyInAnyOrder("신청 가능", "예약 중", "신청 마감");
-		assertThat(actionValues(firstComeEntries.path("data").path("items"), "type"))
-			.containsExactlyInAnyOrder("APPLY", "CHECKOUT", "NONE");
+	@Test
+	void firstComeEntriesAlwaysReturnNullResultAtEvenWhenLotteryAnnouncementDateExists() throws Exception {
+		LocalDateTime now = LocalDateTime.now();
+		EventBundle firstComeWithAnnouncementBundle = createEventBundle(
+			"비정상 발표일 포함 선착순 이벤트",
+			EventType.RUNNING,
+			EventAppType.FIRST_COME,
+			now.plusDays(16),
+			now.minusDays(1),
+			now.plusDays(4),
+			now.plusDays(2),
+			EventRegion.SEOUL,
+			"월드컵공원",
+			"7K",
+			7000,
+			17000L,
+			"5:45/km",
+			5,
+			45,
+			90
+		);
+		createEntry(ACTION_CASE_USER_ID, firstComeWithAnnouncementBundle, EntryStatus.PRE_SAVED);
+
+		JsonNode firstComeEntries = get(ACTION_CASE_USER_ID, "/mypage/entries?filter=FIRST_COME");
+		JsonNode target = findItemByTitle(firstComeEntries.path("data"), "비정상 발표일 포함 선착순 이벤트");
+
+		assertThat(target.isMissingNode()).isFalse();
+		assertThat(target.path("appType").asText()).isEqualTo("FIRST_COME");
+		assertThat(target.path("resultAt").isNull()).isTrue();
 	}
 
 	@Test
@@ -417,11 +433,11 @@ class MyPageApiContractTest {
 
 		assertThat(overview.path("data").path("entries").path("totalCount").asInt()).isZero();
 		assertThat(overview.path("data").path("waitingEntries").path("totalCount").asInt()).isEqualTo(1);
-		assertThat(entries.path("data").path("counts").path("all").asInt()).isEqualTo(1);
-		assertThat(textValues(entries.path("data").path("items"), "statusDisplayValue"))
-			.containsExactly("사전정보 저장");
-		assertThat(textValues(orders.path("data").path("items"), "status"))
-			.containsExactly("결제 대기");
+		assertThat(entries.path("data")).hasSize(1);
+		assertThat(textValues(entries.path("data"), "entryStatus"))
+			.containsExactly("신청 대기");
+		assertThat(textValues(orders.path("data"), "orderStatus"))
+			.containsExactly("입금대기");
 	}
 
 	@Test
@@ -455,22 +471,8 @@ class MyPageApiContractTest {
 		assertThat(overview.path("data").path("waitingEntries").path("totalCount").asInt()).isEqualTo(1);
 		assertThat(textValues(waitingEntries.path("data").path("items"), "status"))
 			.containsExactly("신청 대기");
-		assertThat(textValues(pendingOrders.path("data").path("items"), "status"))
-			.containsExactly("결제 대기");
-	}
-
-	@Test
-	void entriesExcludeLegacyPaidOrdersBackfilledByEventFallback() throws Exception {
-		JsonNode overview = get(LEGACY_ORDER_USER_ID, "/mypage");
-		JsonNode entries = get(LEGACY_ORDER_USER_ID, "/mypage/entries");
-		JsonNode orders = get(LEGACY_ORDER_USER_ID, "/mypage/orders");
-
-		assertThat(overview.path("data").path("entries").path("totalCount").asInt()).isZero();
-		assertThat(overview.path("data").path("orders").path("totalCount").asInt()).isEqualTo(1);
-		assertThat(entries.path("data").path("counts").path("all").asInt()).isZero();
-		assertThat(entries.path("data").path("items")).isEmpty();
-		assertThat(textValues(orders.path("data").path("items"), "status"))
-			.containsExactly("결제 완료");
+		assertThat(textValues(pendingOrders.path("data"), "orderStatus"))
+			.containsExactly("입금대기");
 	}
 
 	private JsonNode get(Long userId, String path) throws Exception {
@@ -501,21 +503,13 @@ class MyPageApiContractTest {
 		return values;
 	}
 
-	private List<String> actionValues(JsonNode items, String fieldName) {
-		List<String> values = new ArrayList<>();
+	private JsonNode findItemByTitle(JsonNode items, String title) {
 		for (JsonNode item : items) {
-			JsonNode valueNode = item.path("action").path(fieldName);
-			values.add(valueNode.isNull() ? null : valueNode.asText());
+			if (title.equals(item.path("title").asText())) {
+				return item;
+			}
 		}
-		return values;
-	}
-
-	private List<Boolean> booleanValues(JsonNode items, String fieldName) {
-		List<Boolean> values = new ArrayList<>();
-		for (JsonNode item : items) {
-			values.add(item.path("action").path(fieldName).asBoolean());
-		}
-		return values;
+		return objectMapper.createObjectNode().path("missing");
 	}
 
 	private void stubAuthAccount(
@@ -784,42 +778,6 @@ class MyPageApiContractTest {
 		createEntry(ACTION_CASE_USER_ID, firstComeClosedBundle, EntryStatus.PRE_SAVED);
 	}
 
-	private void seedLegacyOrderUser(LocalDateTime now) {
-		EventBundle currentEntryBundle = createEventBundle(
-			"레거시 주문 연결 이벤트",
-			EventType.MARATHON,
-			EventAppType.LOTTERY,
-			now.plusDays(18),
-			now.minusDays(6),
-			now.minusDays(2),
-			now.minusDays(1),
-			EventRegion.SEOUL,
-			"잠실보조경기장",
-			"하프",
-			21097,
-			31000L,
-			"5:40/km",
-			5,
-			40,
-			140
-		);
-		Entry entry = createEntry(LEGACY_ORDER_USER_ID, currentEntryBundle, EntryStatus.WON);
-
-		EventBundle legacyOrderBundle = createSiblingCourseBundle(
-			currentEntryBundle.event(),
-			"10K",
-			10000,
-			26000L,
-			"5:20/km",
-			5,
-			20,
-			160
-		);
-		createOrder(LEGACY_ORDER_USER_ID, legacyOrderBundle, null, OrderStatus.PAID, "ORD-LEGACY-PAID");
-
-		assertThat(entry.getId()).isNotNull();
-	}
-
 	private Address createAddress(Long userId, String label, boolean isDefault, String receiverName, String phone,
 		String zipcode, String address1, String address2, String memo) {
 		return addressRepository.saveAndFlush(Address.builder()
@@ -857,6 +815,14 @@ class MyPageApiContractTest {
 			.eventCourseId(bundle.course().getId())
 			.eventPaceId(bundle.pace().getId())
 			.entryId(entryId)
+			.eventId(bundle.event().getId())
+			.eventTitle(bundle.event().getTitle())
+			.eventAppType(bundle.event().getAppType())
+			.eventStatus(bundle.event().getStatus())
+			.eventAt(bundle.event().getEventAt())
+			.eventVenue(bundle.event().getVenue())
+			.courseName(bundle.course().getName())
+			.paceName(bundle.pace().getName())
 			.orderStatus(orderStatus)
 			.itemTotalAmount(price)
 			.shippingFee(shippingFee)

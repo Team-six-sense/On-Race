@@ -3,11 +3,15 @@ package com.kt.onrace.domain.order.entity;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.time.LocalDateTime;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
+import com.kt.onrace.domain.event.entity.EventAppType;
+import com.kt.onrace.domain.event.entity.EventStatus;
 
 class OrderTest {
 
@@ -20,6 +24,16 @@ class OrderTest {
 			10L,
 			20L,
 			1000L,
+			new Order.OrderEventSnapshot(
+				1L,
+				"서울 마라톤",
+				EventAppType.LOTTERY,
+				EventStatus.IN_PROGRESS,
+				LocalDateTime.of(2026, 3, 15, 9, 0),
+				"서울 올림픽공원",
+				"하프코스",
+				"5시간"
+			),
 			60000L,
 			3000L,
 			0L,
@@ -34,6 +48,12 @@ class OrderTest {
 		);
 
 		assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.PENDING);
+		assertThat(order.getEventId()).isEqualTo(1L);
+		assertThat(order.getEventTitle()).isEqualTo("서울 마라톤");
+		assertThat(order.getEventAppType()).isEqualTo(EventAppType.LOTTERY);
+		assertThat(order.getEventStatus()).isEqualTo(EventStatus.IN_PROGRESS);
+		assertThat(order.getCourseName()).isEqualTo("하프코스");
+		assertThat(order.getPaceName()).isEqualTo("5시간");
 	}
 
 	@Test

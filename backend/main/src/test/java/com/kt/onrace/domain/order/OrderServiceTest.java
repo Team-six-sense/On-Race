@@ -241,6 +241,14 @@ class OrderServiceTest {
 		assertThat(savedOrder.getFinalAmount()).isEqualTo(63000L);
 		assertThat(savedOrder.getEntryId()).isEqualTo(1000L);
 		assertThat(savedOrder.getOrderStatus()).isEqualTo(OrderStatus.PENDING);
+		assertThat(savedOrder.getEventId()).isEqualTo(fixture.event().getId());
+		assertThat(savedOrder.getEventTitle()).isEqualTo(fixture.event().getTitle());
+		assertThat(savedOrder.getEventAppType()).isEqualTo(fixture.event().getAppType());
+		assertThat(savedOrder.getEventStatus()).isEqualTo(fixture.event().getStatus());
+		assertThat(savedOrder.getEventAt()).isEqualTo(fixture.event().getEventAt());
+		assertThat(savedOrder.getEventVenue()).isEqualTo(fixture.event().getVenue());
+		assertThat(savedOrder.getCourseName()).isEqualTo(fixture.course().getName());
+		assertThat(savedOrder.getPaceName()).isEqualTo(fixture.pace().getName());
 		verify(orderPrepareTokenService).consumePrepareToken(eq(validatedPrepareToken));
 	}
 
@@ -291,6 +299,11 @@ class OrderServiceTest {
 		assertThat(savedOrder.getDetailAddress()).isEqualTo("101동");
 		assertThat(savedOrder.getDeliveryMemo()).isEqualTo("직접 입력 메모");
 		assertThat(savedOrder.getEntryId()).isEqualTo(1000L);
+		assertThat(savedOrder.getEventId()).isEqualTo(fixture.event().getId());
+		assertThat(savedOrder.getEventTitle()).isEqualTo(fixture.event().getTitle());
+		assertThat(savedOrder.getEventVenue()).isEqualTo(fixture.event().getVenue());
+		assertThat(savedOrder.getCourseName()).isEqualTo(fixture.course().getName());
+		assertThat(savedOrder.getPaceName()).isEqualTo(fixture.pace().getName());
 		verify(orderPrepareTokenService).consumePrepareToken(eq(validatedPrepareToken));
 	}
 
