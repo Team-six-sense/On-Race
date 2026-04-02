@@ -41,6 +41,8 @@ services:
       - MAIN_SERVICE_URI=http://main:8082
     depends_on:
       - main-redis
+      - auth
+      - main
     networks:
       - on-race-network
     restart: always

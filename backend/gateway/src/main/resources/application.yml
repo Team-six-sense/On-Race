@@ -48,20 +48,20 @@ spring:
                     redis-rate-limiter.burstCapacity: 100
                     redis-rate-limiter.requestedTokens: 1
                     key-resolver: "#{@userOrIpKeyResolver}"
-            - id: queue-route
-              uri: ${QUEUE_SERVICE_URI:http://localhost:8083}
-              predicates:
-                - Path=/queue/**
-              filters:
-                - name: BotDetectionFilter
-                  args:
-                    challengeUri: ${CHALLENGE_URI:http://localhost:3000/challenge}
-                - name: RequestRateLimiter
-                  args:
-                    redis-rate-limiter.replenishRate: 50
-                    redis-rate-limiter.burstCapacity: 100
-                    redis-rate-limiter.requestedTokens: 1
-                    key-resolver: "#{@userOrIpKeyResolver}"
+            #            - id: queue-route
+            #              uri: ${QUEUE_SERVICE_URI:http://localhost:8083}
+            #              predicates:
+            #                - Path=/queue/**
+            #              filters:
+            #                - name: BotDetectionFilter
+            #                  args:
+            #                    challengeUri: ${CHALLENGE_URI:http://localhost:3000/challenge}
+            #                - name: RequestRateLimiter
+            #                  args:
+            #                    redis-rate-limiter.replenishRate: 50
+            #                    redis-rate-limiter.burstCapacity: 100
+            #                    redis-rate-limiter.requestedTokens: 1
+            #                    key-resolver: "#{@userOrIpKeyResolver}"
             - id: entry-apply-lottery-route
               uri: ${MAIN_SERVICE_URI:http://localhost:8082}
               predicates:
@@ -75,25 +75,25 @@ spring:
                     redis-rate-limiter.burstCapacity: 20
                     redis-rate-limiter.requestedTokens: 1
                     key-resolver: "#{@userOrIpKeyResolver}"
-            - id: entry-apply-first-come-route
-              uri: ${MAIN_SERVICE_URI:http://localhost:8082}
-              predicates:
-                - Path=/main/events/*/entries/apply/first-come
-              filters:
-                - StripPrefix=1
-                - SetRequestHeader=X-Forwarded-Prefix, /main
-                - name: RequestRateLimiter
-                  args:
-                    redis-rate-limiter.replenishRate: 10
-                    redis-rate-limiter.burstCapacity: 20
-                    redis-rate-limiter.requestedTokens: 1
-                    key-resolver: "#{@userOrIpKeyResolver}"
-                - name: BotDetectionFilter
-                  args:
-                    challengeUri: ${CHALLENGE_URI:http://localhost:3000/challenge}
-                - name: WaitingRoomFilter
-                  args:
-                    queueUrl: ${WAITING_ROOM_URI:http://localhost:3000/queue}
+            #            - id: entry-apply-first-come-route
+            #              uri: ${MAIN_SERVICE_URI:http://localhost:8082}
+            #              predicates:
+            #                - Path=/main/events/*/entries/apply/first-come
+            #              filters:
+            #                - StripPrefix=1
+            #                - SetRequestHeader=X-Forwarded-Prefix, /main
+            #                - name: RequestRateLimiter
+            #                  args:
+            #                    redis-rate-limiter.replenishRate: 10
+            #                    redis-rate-limiter.burstCapacity: 20
+            #                    redis-rate-limiter.requestedTokens: 1
+            #                    key-resolver: "#{@userOrIpKeyResolver}"
+            #                - name: BotDetectionFilter
+            #                  args:
+            #                    challengeUri: ${CHALLENGE_URI:http://localhost:3000/challenge}
+            #                - name: WaitingRoomFilter
+            #                  args:
+            #                    queueUrl: ${WAITING_ROOM_URI:http://localhost:3000/queue}
             - id: stock-check-route
               uri: ${MAIN_SERVICE_URI:http://localhost:8082}
               predicates:

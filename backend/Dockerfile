@@ -8,6 +8,7 @@ COPY common ./common
 COPY gateway/build.gradle ./gateway/build.gradle
 COPY auth/build.gradle ./auth/build.gradle
 COPY main/build.gradle ./main/build.gradle
+COPY queue/build.gradle ./queue/build.gradle
 
 RUN chmod +x ./gradlew
 
