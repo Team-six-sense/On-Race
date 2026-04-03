@@ -58,9 +58,14 @@ module "data" {
   db_password       = random_password.db_password.result
   db_secret_arn     = aws_secretsmanager_secret.db_secret.arn
 
+  redis_node_type            = "cache.t4g.micro" # [수정] 대폭 하향
+  automatic_failover_enabled = false             # [수정] 단일 노드 운영을 위해 false
+  num_cache_clusters         = 1                 # [수정] 2 -> 1
+  /*
   redis_node_type            = "cache.t4g.medium"
   automatic_failover_enabled = true
   num_cache_clusters         = 2
+  */
 }
 
 # 4. SQS 대기열 모듈 호출 (KEDA 스케일링 소스)

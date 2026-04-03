@@ -247,7 +247,8 @@ resource "kubernetes_manifest" "karpenter_node_pool" {
             name  = "default"
           }
           requirements = [
-            { key = "karpenter.sh/capacity-type", operator = "In", values = ["spot", "on-demand"] },
+            #{ key = "karpenter.sh/capacity-type", operator = "In", values = ["spot", "on-demand"] },
+            { key = "karpenter.sh/capacity-type", operator = "In", values = ["spot"] }, # [수정] on-demand 제거
             { key = "k8s.amazonaws.com/instance-category", operator = "In", values = ["c", "m", "r"] }, # 컴퓨팅/메모리 최적화 인스턴스 포함
             { key = "k8s.amazonaws.com/instance-cpu", operator = "In", values = ["2", "4", "8"] }, # 너무 작은 인스턴스 배제
             { key = "kubernetes.io/arch", operator = "In", values = ["amd64"] },

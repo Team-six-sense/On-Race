@@ -104,7 +104,8 @@ resource "aws_db_instance" "this" {
   identifier        = "${var.project_name}-db"
   engine            = "mysql"
   engine_version    = "8.0"
-  instance_class    = "db.t3.medium"
+  instance_class    = "db.t3.micro" # [수정] m5.large/t3.medium -> t3.micro
+  #instance_class    = "db.t3.medium"
   allocated_storage = 20
 
   username = "admin"
@@ -114,7 +115,8 @@ resource "aws_db_instance" "this" {
   db_subnet_group_name   = aws_db_subnet_group.this.name
   vpc_security_group_ids = [aws_security_group.rds.id]
 
-  multi_az            = true
+  #multi_az            = true
+  multi_az            = false       # [수정] 비용 절감을 위해 가용영역 이중화 해제
   skip_final_snapshot = true
 }
 

@@ -25,6 +25,7 @@ provider "aws" {
       Environment = var.environment
       ManagedBy   = "Terraform"
       Layer       = "App"
+      Owner       = "t6-on-race"
     }
   }
 }

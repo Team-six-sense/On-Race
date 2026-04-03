@@ -30,6 +30,7 @@ provider "aws" {
       Environment = var.environment
       ManagedBy   = "Terraform"
       Layer       = "Base" # 계층 식별 추가
+      Owner       = "t6-on-race"
     }
   }
 }
