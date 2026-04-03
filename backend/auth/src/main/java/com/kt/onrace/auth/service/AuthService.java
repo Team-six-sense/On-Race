@@ -85,16 +85,6 @@ public class AuthService {
 			throw new BusinessException(BusinessErrorCode.AUTH_DUPLICATE_PHONE);
 		}
 
-		String encodedPassword = passwordEncoder.encode(request.password());
-
-		User user = User.createUser(
-				request.email(),
-				request.name(),
-				encodedPassword,
-				request.phoneNumber());
-
-		User saved = userRepository.save(user);
-
 		List<TermVersion> activeVersions = termVersionRepository.findAllActiveWithMaster();
 		Map<Long, Boolean> agreementMap = request.termAgreements().stream()
 				.collect(Collectors.toMap(TermAgreement::termVersionId, TermAgreement::agreed));
@@ -105,6 +95,24 @@ public class AuthService {
 			}
 		}
 
+		if (!emailVerifyService.consumeVerification(request.email())) {
+			throw new BusinessException(BusinessErrorCode.AUTH_EMAIL_NOT_VERIFIED);
+		}
+
+		if (!smsVerifyService.consumeVerification(request.phoneNumber())) {
+			throw new BusinessException(BusinessErrorCode.AUTH_PHONE_NOT_VERIFIED);
+		}
+
+		String encodedPassword = passwordEncoder.encode(request.password());
+
+		User user = User.createUser(
+				request.email(),
+				request.name(),
+				encodedPassword,
+				request.phoneNumber());
+
+		User saved = userRepository.save(user);
+
 		LocalDateTime now = LocalDateTime.now();
 		for (TermVersion tv : activeVersions) {
 			boolean agreed = Boolean.TRUE.equals(agreementMap.get(tv.getId()));
@@ -112,9 +120,6 @@ public class AuthService {
 		}
 
 		mainServiceClient.syncUserCreated(saved.getId());
-
-		emailVerifyService.deleteVerified(request.email());
-		smsVerifyService.deleteVerified(request.phoneNumber());
 
 		return new SignupResponse(saved.getId(), saved.getEmail(), saved.getCreatedAt());
 	}
