@@ -14,7 +14,7 @@ resource "helm_release" "loki" {
   namespace        = "loki"
   create_namespace = true
   
-  timeout          = 900
+  timeout          = 1500
 
   # [핵심] templatefile을 통해 변수들을 실제 값으로 치환하여 주입
   values = [
