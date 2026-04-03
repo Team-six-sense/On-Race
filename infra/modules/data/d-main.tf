@@ -64,7 +64,8 @@ resource "aws_elasticache_replication_group" "this" {
 
   automatic_failover_enabled = var.automatic_failover_enabled
   num_cache_clusters         = var.num_cache_clusters
-  multi_az_enabled           = true
+  #multi_az_enabled           = true
+  multi_az_enabled           = false
   
   at_rest_encryption_enabled = true
   transit_encryption_enabled = true

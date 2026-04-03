@@ -84,11 +84,6 @@ resource "aws_eks_node_group" "system" {
     version = aws_launch_template.node.latest_version
   }
 
-  # [핵심 추가] 시스템 노드에도 공용 보안 그룹을 입혀서 통신로를 확보합니다.
-  vpc_config {
-    security_group_ids = [aws_security_group.nodes.id]
-  }
-
   scaling_config {
     desired_size = var.min_size
     min_size     = var.min_size

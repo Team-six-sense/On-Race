@@ -37,7 +37,7 @@ resource "aws_cloudfront_distribution" "ai_vqa_cdn" {
     # [수정] base에서 출력한 domain_name 사용
     domain_name              = data.terraform_remote_state.base.outputs.ai_vqa_bucket_domain_name
     origin_id                = "S3-VQA-Data"
-    origin_access_control_id = aws_cloudfront_origin_access_control.ai_vqa_oac.id
+    origin_access_control_id = data.terraform_remote_state.base.outputs.ai_vqa_oac_id
   }
   # ... (이하 동일)
 }
