@@ -77,7 +77,29 @@ output "ai_model_sg_id" {
   value       = aws_security_group.ai_model_sg.id
 }
 
-output "ai_macro_private_ips" {
-  description = "AI 매크로 탐지 EC2의 프라이빗 IP 리스트 (Startup Probe 참조용)"
-  value       = aws_instance.ai_macro_detector[*].private_ip
+output "ai_ec2_instance_profile_name" {
+  description = "AI EC2용 IAM 인스턴스 프로파일 이름 (App 계층 인스턴스 생성 시 참조)"
+  value       = aws_iam_instance_profile.ai_ec2_profile.name
+}
+
+output "ai_vqa_bucket_id" {
+  value = aws_s3_bucket.ai_vqa_data.id
+}
+
+output "ai_vqa_bucket_arn" {
+  value = aws_s3_bucket.ai_vqa_data.arn
+}
+
+output "ai_vqa_bucket_domain_name" {
+  value = aws_s3_bucket.ai_vqa_data.bucket_regional_domain_name
+}
+
+output "ecr_repository_url" {
+  description = "ECR 리포지토리 URL"
+  value       = aws_ecr_repository.app_repo.repository_url
+}
+
+output "ecr_repository_arn" {
+  description = "ECR 리포지토리 ARN"
+  value       = aws_ecr_repository.app_repo.arn
 }

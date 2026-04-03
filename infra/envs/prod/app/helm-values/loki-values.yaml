@@ -21,7 +21,8 @@ loki:
       admin: "${loki_bucket_name}"
     s3:
       region: ap-northeast-2
-      s3ForcePathStyle: true
+      # [수정] AWS ap-northeast-2 리전은 가상 호스트 스타일을 사용하므로 false로 변경
+      s3ForcePathStyle: false
 
   serviceAccount:
     create: true
@@ -48,7 +49,7 @@ singleBinary:
     limits:
       memory: 1Gi
 
-# Chunks Cache 메모리 제한 (기본값 9.8Gi -> 1Gi로 하향)
+# Chunks Cache 메모리 제한 (하향 조정 유지)
 chunksCache:
   enabled: true
   allocatedMemory: 512

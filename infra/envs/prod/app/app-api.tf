@@ -86,17 +86,18 @@ resource "kubernetes_deployment_v1" "on_race_api" {
 
         init_container {
           name  = "wait-for-ai-macro"
-          image = "busybox:1.36"
+          image = "${data.terraform_remote_state.base.outputs.ecr_repository_url}:busybox"
           command = [
             "sh",
             "-c",
-            "until nc -z ${data.terraform_remote_state.base.outputs.ai_macro_private_ips[0]} 8000; do echo 'Waiting for AI Macro EC2...'; sleep 3; done;"
+            # [수정] 동일 계층(app-ai-rules.tf)에 선언된 리소스를 직접 참조
+            "until nc -z ${aws_instance.ai_macro_detector[0].private_ip} 8000; do echo 'Waiting for AI Macro EC2...'; sleep 3; done;"
           ]
         }
 
         container {
           name  = "api"
-          image = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com/t6-on-race-api:latest"
+          image = "${data.terraform_remote_state.base.outputs.ecr_repository_url}:latest"
           
           image_pull_policy = "Always"
           port { container_port = 8080 }
@@ -133,7 +134,7 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           }
           env {
             name  = "AI_MODEL_URL"
-            value = "http://${data.terraform_remote_state.base.outputs.ai_macro_private_ips[0]}:8000"
+            value = "http://${aws_instance.ai_macro_detector[0].private_ip}:8000"
           }
 
           # [Startup Probe] AI EC2 연결 및 SG 규칙 전파 대기
@@ -143,7 +144,7 @@ resource "kubernetes_deployment_v1" "on_race_api" {
             }
             initial_delay_seconds = 5
             period_seconds        = 5
-            failure_threshold     = 30 
+            failure_threshold     = 60 
           }
 
           resources {

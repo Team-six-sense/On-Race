@@ -58,7 +58,7 @@ module "data" {
   db_password       = random_password.db_password.result
   db_secret_arn     = aws_secretsmanager_secret.db_secret.arn
 
-  redis_node_type            = "cache.m7g.large" 
+  redis_node_type            = "cache.t4g.medium"
   automatic_failover_enabled = true
   num_cache_clusters         = 2
 }
@@ -87,15 +87,96 @@ resource "aws_s3_bucket" "ai_vqa_data" {
   }
 }
 
+# [App에서 이동] S3 퍼블릭 액세스 완전 차단
+resource "aws_s3_bucket_public_access_block" "ai_vqa_block" {
+  bucket = aws_s3_bucket.ai_vqa_data.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
 resource "aws_s3_bucket_lifecycle_configuration" "ai_vqa_lifecycle" {
   bucket = aws_s3_bucket.ai_vqa_data.id
 
   rule {
-    id     = "auto-delete-35-days"
+    id     = "vqa-temp-cleanup"
     status = "Enabled"
-    filter {}
+    filter { prefix = "vqa/temp/" }
     expiration {
       days = 35
     }
   }
+}
+
+# 6. ECR 리포지토리
+resource "aws_ecr_repository" "app_repo" {
+  name                 = "${var.project_name}-repo"
+  image_tag_mutability = "MUTABLE"
+  force_delete         = false
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+}
+
+# 7. GitHub Actions용 OIDC Provider (Data 소스)
+data "aws_iam_openid_connect_provider" "github" {
+  url = "https://token.actions.githubusercontent.com"
+}
+
+# 8. GitHub Actions 전용 IAM 역할
+resource "aws_iam_role" "github_actions_ecr_role" {
+  name = "${var.project_name}-github-actions-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRoleWithWebIdentity"
+      Effect = "Allow"
+      Principal = {
+        Federated = data.aws_iam_openid_connect_provider.github.arn
+      }
+      Condition = {
+        StringLike = {
+          "token.actions.githubusercontent.com:sub": "repo:Team-six-sense/On-Race:ref:refs/heads/*"
+        }
+        StringEquals = {
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+        }
+      }
+    }]
+  })
+}
+
+# 9. ECR Push 최소 권한 정책
+resource "aws_iam_policy" "ecr_push_policy" {
+  name = "${var.project_name}-ecr-push-policy"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = ["ecr:GetAuthorizationToken"]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:PutImage",
+          "ecr:InitiateLayerUpload",
+          "ecr:UploadLayerPart",
+          "ecr:CompleteLayerUpload"
+        ]
+        # [수정] 동일 파일 내 리소스를 직접 참조하여 의존성 명확화
+        Resource = aws_ecr_repository.app_repo.arn 
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "github_actions_attach" {
+  role       = aws_iam_role.github_actions_ecr_role.name
+  policy_arn = aws_iam_policy.ecr_push_policy.arn
 }

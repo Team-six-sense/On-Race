@@ -81,7 +81,7 @@ resource "kubernetes_manifest" "on_race_tps_scaler" {
     spec = {
       scaleTargetRef  = { name = "on-race-api" }
       minReplicaCount = 2
-      maxReplicaCount = 700 # [수정] 최대 확장 한도 상향
+      maxReplicaCount = 300 # [수정] 최대 확장 한도 상향
 
       advanced = {
         restoreToOriginalReplicaCount = true
@@ -129,7 +129,7 @@ resource "kubernetes_manifest" "on_race_tps_scaler" {
           metadata = {
             serverAddress = "http://t6-on-race-prometheus-server.monitoring.svc.cluster.local:80"
             metricName    = "onrace_tps_requests_total"
-            threshold     = "50" # 파드당 50 TPS 기준 (700대 시 총 35,000 TPS 수용)
+            threshold     = "50" # 파드당 50 TPS 기준 (300대 시 총 35,000 TPS 수용)
             query         = "sum(rate(onrace_tps_requests_total{result=\"allowed\"}[1m]))"
           }
         },

@@ -43,14 +43,6 @@ module "ebs_csi_irsa" {
   }
 }
 
-
-# 4. Karpenter용 태그 주입 (보안 그룹)
-resource "aws_ec2_tag" "eks_sg_karpenter_tag" {
-  resource_id = module.eks.node_security_group_id
-  key         = "karpenter.sh/discovery"
-  value       = module.eks.cluster_name
-}
-
 # 5. Karpenter용 태그 주입 (서브넷)
 resource "aws_ec2_tag" "subnet_karpenter_tag" {
   for_each    = toset(data.terraform_remote_state.base.outputs.private_subnets)

@@ -26,7 +26,7 @@ resource "aws_subnet" "public" {
   }
 }
 
-# 3. Private Subnets (EKS Worker Nodes, 700개 파드 수용 대역)
+# 3. Private Subnets (EKS Worker Nodes, 300개 파드 수용 대역)
 resource "aws_subnet" "private" {
   count             = length(var.private_subnets)
   vpc_id            = aws_vpc.this.id

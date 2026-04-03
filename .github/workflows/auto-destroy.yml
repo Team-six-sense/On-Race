@@ -8,12 +8,16 @@ env:
 on:
   schedule:
     - cron: '0 17 * * *' # 매일 한국 시간 새벽 2시 (UTC 17:00)
-  workflow_dispatch:      # 수동 실행 버튼 활성화
+  workflow_dispatch: 
 
 jobs:
   destroy-app-only:
     name: 'Destroy EKS & Apps'
     runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
     
     steps:
       - name: Checkout Code
@@ -22,41 +26,26 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          # [수정] OIDC 방식만 사용 (Access Key 제거)
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      # 1. K8s 동적 리소스 선제 삭제 (DependencyViolation 방지)
       - name: Pre-Cleanup K8s Resources
         run: |
           aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }} || echo "Cluster not found, skipping..."
-          
-          echo "Deleting Ingresses and Services (ALB/NLB)..."
           kubectl delete ingress --all --all-namespaces --timeout=60s || true
           kubectl delete svc --all --all-namespaces --field-selector type=LoadBalancer --timeout=60s || true
-          
-          echo "Deleting Karpenter resources (Nodes)..."
           kubectl delete nodepools --all --timeout=60s || true
-          
-          echo "Waiting 2 minutes for AWS to release ENIs and Security Groups..."
           sleep 120
 
-      # 2. App 계층 삭제 (VPC/DB는 유지됨)
       - name: Terraform Destroy (App Only)
         working-directory: ./infra/envs/prod/app
         run: |
           terraform init
           terraform destroy -auto-approve
-
-      # 3. [Base 삭제 방지] VPC/DB 삭제가 필요할 때만 수동으로 이 아래 주석을 풀고 실행하세요.
-      # - name: Terraform Destroy (Base)
-      #   working-directory: ./infra/envs/prod/base
-      #   run: |
-      #     terraform init
-      #     terraform destroy -auto-approve
 
       - name: Notify Slack (Success)
         if: success()

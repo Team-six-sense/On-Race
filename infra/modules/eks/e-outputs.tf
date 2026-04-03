@@ -20,13 +20,13 @@ output "node_iam_role_name" {
   value = aws_iam_role.node.name
 }
 
-output "node_security_group_id" {
-  description = "EKS 워커 노드 보안 그룹 ID (Redis 방화벽 허용용)"
-  value       = aws_security_group.karpenter_node.id
-}
-
 # 클러스터 자체 보안 그룹 ID (EKS가 자동 생성하는 SG)
 output "cluster_security_group_id" {
   description = "EKS 클러스터가 생성한 기본 보안 그룹 ID"
   value       = aws_eks_cluster.this.vpc_config[0].cluster_security_group_id
+}
+
+output "node_security_group_id" {
+  description = "Common Security Group ID used by all nodes (Managed & Karpenter)"
+  value       = aws_security_group.nodes.id
 }

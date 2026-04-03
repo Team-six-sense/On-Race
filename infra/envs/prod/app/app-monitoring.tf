@@ -49,7 +49,14 @@ resource "helm_release" "prometheus" {
     value = "gp3"
   }
 
-  depends_on = [module.eks]
+  timeout = 600
+
+  # EBS CSI 드라이버와 gp3 스토리지 클래스가 먼저 준비되도록 강제
+  depends_on = [
+    module.eks,
+    aws_eks_addon.ebs_csi,
+    kubernetes_storage_class_v1.gp3_default
+  ]
 }
 
 # 4. Grafana 배포 (로그 및 메트릭 시각화)

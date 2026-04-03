@@ -24,20 +24,14 @@ resource "aws_eks_cluster" "this" {
   role_arn = aws_iam_role.cluster.arn
   version  = "1.30"
 
-  # 감사 로그 활성화
   enabled_cluster_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
 
   vpc_config {
     subnet_ids = var.subnet_ids
-    # [추가] 보안 강화: 특정 IP만 접근 허용 (변수 처리 권장)
-    # public_access_cidrs = [var.my_ip]
   }
 
-  # Access Entry API 활성화 (기존 aws-auth와 병행 사용)
   access_config {
-    authentication_mode = "API_AND_CONFIG_MAP"
-
-    # 클러스터를 생성한 IAM 유저에게 자동으로 Admin 권한을 부여합니다.
+    authentication_mode                         = "API_AND_CONFIG_MAP"
     bootstrap_cluster_creator_admin_permissions = true
   }
 
@@ -55,7 +49,27 @@ resource "aws_iam_openid_connect_provider" "this" {
   url             = aws_eks_cluster.this.identity[0].oidc[0].issuer
 }
 
-# 4. Managed Node Group
+# 4. [수정] 모든 워커 노드(Managed + Karpenter)가 공유할 공용 보안 그룹
+resource "aws_security_group" "nodes" {
+  name        = "${var.cluster_name}-nodes-common-sg"
+  description = "Shared security group for all EKS nodes (Managed and Karpenter)"
+  vpc_id      = var.vpc_id
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.cluster_name}-nodes-common-sg"
+    # Karpenter가 이 보안 그룹을 찾아 노드에 입히기 위한 핵심 태그
+    "karpenter.sh/discovery" = var.cluster_name
+  }
+}
+
+# 5. [수정] Managed Node Group
 resource "aws_eks_node_group" "system" {
   cluster_name    = aws_eks_cluster.this.name
   node_group_name = "${var.project_name}-system-nodes"
@@ -65,10 +79,14 @@ resource "aws_eks_node_group" "system" {
   ami_type       = "AL2023_x86_64_STANDARD"
   instance_types = var.instance_types
 
-  # 정의한 런치 템플릿 연결
   launch_template {
     id      = aws_launch_template.node.id
     version = aws_launch_template.node.latest_version
+  }
+
+  # [핵심 추가] 시스템 노드에도 공용 보안 그룹을 입혀서 통신로를 확보합니다.
+  vpc_config {
+    security_group_ids = [aws_security_group.nodes.id]
   }
 
   scaling_config {
@@ -88,27 +106,7 @@ resource "aws_eks_node_group" "system" {
   ]
 }
 
-# 5. Karpenter를 위한 노드 보안 그룹 및 태그 설정
-resource "aws_security_group" "karpenter_node" {
-  name        = "${var.cluster_name}-karpenter-node-sg"
-  description = "Security group for nodes launched by Karpenter"
-  vpc_id      = var.vpc_id
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "${var.cluster_name}-karpenter-node-sg"
-    # Karpenter가 이 보안 그룹을 찾아 노드에 입히기 위한 핵심 태그
-    "karpenter.sh/discovery" = aws_eks_cluster.this.name
-  }
-}
-
-# 6. EKS 컨트롤 플레인 -> Karpenter 노드 통신 허용
+# 6. [수정] EKS 컨트롤 플레인 -> 노드 전체 통신 허용
 resource "aws_security_group_rule" "cluster_to_node" {
   description              = "Allow cluster control plane to communicate with nodes"
   type                     = "ingress"
@@ -116,16 +114,27 @@ resource "aws_security_group_rule" "cluster_to_node" {
   to_port                  = 65535
   protocol                 = "-1"
   source_security_group_id = aws_eks_cluster.this.vpc_config[0].cluster_security_group_id
-  security_group_id        = aws_security_group.karpenter_node.id
+  security_group_id        = aws_security_group.nodes.id
 }
 
-# 7. Karpenter 노드 상호 간 통신 허용
+# 6-1. [수정] 노드 전체 -> EKS 컨트롤 플레인(API 서버) 통신 허용 (타임아웃 해결)
+resource "aws_security_group_rule" "node_to_cluster" {
+  description              = "Allow all nodes to communicate with control plane API"
+  type                     = "ingress"
+  from_port                = 443
+  to_port                  = 443
+  protocol                 = "tcp"
+  security_group_id        = aws_eks_cluster.this.vpc_config[0].cluster_security_group_id
+  source_security_group_id = aws_security_group.nodes.id
+}
+
+# 7. [수정] 노드 상호 간 통신 허용
 resource "aws_security_group_rule" "node_to_node" {
   description              = "Allow nodes to communicate with each other"
   type                     = "ingress"
   from_port                = 0
   to_port                  = 65535
   protocol                 = "-1"
-  security_group_id        = aws_security_group.karpenter_node.id
-  source_security_group_id = aws_security_group.karpenter_node.id
+  security_group_id        = aws_security_group.nodes.id
+  source_security_group_id = aws_security_group.nodes.id
 }

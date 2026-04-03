@@ -71,19 +71,3 @@ resource "aws_security_group" "ai_model_sg" {
 
   tags = { Name = "${var.project_name}-ai-model-sg" }
 }
-
-# 5. AI 모델 인스턴스 (A/B 가용 영역 분산)
-resource "aws_instance" "ai_macro_detector" {
-  count         = 2
-  ami           = data.aws_ami.al2023.id
-  instance_type = "t3.medium"
-  
-  # 가용 영역 분산을 위해 모듈러 연산 적용 (인덱스 에러 방지 및 가용성 확보)
-  subnet_id              = module.vpc.private_subnets[count.index % length(module.vpc.private_subnets)]
-  vpc_security_group_ids = [aws_security_group.ai_model_sg.id]
-  iam_instance_profile   = aws_iam_instance_profile.ai_ec2_profile.name
-
-  tags = { 
-    Name = "${var.project_name}-ai-macro-${count.index == 0 ? "a" : "b"}" 
-  }
-}
