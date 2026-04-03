@@ -71,3 +71,13 @@ output "ai_vqa_bucket_name" {
   description = "AI 팀용 VQA S3 버킷 이름"
   value       = aws_s3_bucket.ai_vqa_data.id
 }
+
+output "ai_model_sg_id" {
+  description = "AI 매크로 탐지 EC2 보안 그룹 ID"
+  value       = aws_security_group.ai_model_sg.id
+}
+
+output "ai_macro_private_ips" {
+  description = "AI 매크로 탐지 EC2의 프라이빗 IP 리스트 (Startup Probe 참조용)"
+  value       = aws_instance.ai_macro_detector[*].private_ip
+}

@@ -7,7 +7,8 @@ module "eks" {
   vpc_id          = data.terraform_remote_state.base.outputs.vpc_id
   subnet_ids      = data.terraform_remote_state.base.outputs.private_subnets
   
-  instance_types  = ["m5.large"] 
+  # instance_types  = ["m5.large"] 
+  instance_types  = ["t3.medium"] 
   min_size        = 2
   max_size        = 5
 }

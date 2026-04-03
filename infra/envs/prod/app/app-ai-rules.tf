@@ -1,3 +1,13 @@
+# EKS 노드 -> AI 모델 EC2 접근 허용 규칙
+resource "aws_security_group_rule" "eks_to_ai_model" {
+  type                     = "ingress"
+  from_port                = 8000
+  to_port                  = 8000
+  protocol                 = "tcp"
+  security_group_id        = data.terraform_remote_state.base.outputs.ai_model_sg_id
+  source_security_group_id = module.eks.node_security_group_id
+}
+/*
 # [수정] 최신 Amazon Linux 2023 AMI를 동적으로 가져오기
 data "aws_ami" "al2023" {
   most_recent = true
@@ -46,3 +56,4 @@ resource "aws_instance" "ai_macro_detector" {
     Name = "${var.project_name}-ai-macro-${count.index == 0 ? "a" : "b"}" 
   }
 }
+*/

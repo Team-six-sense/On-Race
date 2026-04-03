@@ -104,7 +104,7 @@ resource "aws_db_instance" "this" {
   identifier        = "${var.project_name}-db"
   engine            = "mysql"
   engine_version    = "8.0"
-  instance_class    = "db.m5.large"
+  instance_class    = "db.t3.medium"
   allocated_storage = 20
 
   username = "admin"

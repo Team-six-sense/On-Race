@@ -1,0 +1,89 @@
+# [데이터] 최신 Amazon Linux 2023 AMI 동적 조회
+data "aws_ami" "al2023" {
+  most_recent = true
+  owners      = ["amazon"]
+
+  filter {
+    name   = "name"
+    values = ["al2023-ami-*-x86_64"]
+  }
+}
+
+# 1. EC2가 사용할 IAM 역할 (Role)
+resource "aws_iam_role" "ai_ec2_role" {
+  name = "${var.project_name}-ai-ec2-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+# 2. EC2 인스턴스 프로파일
+resource "aws_iam_instance_profile" "ai_ec2_profile" {
+  name = "${var.project_name}-ai-ec2-profile"
+  role = aws_iam_role.ai_ec2_role.name
+}
+
+# 3. AI VQA S3 버킷 접근 권한 정책 (Inline Policy)
+resource "aws_iam_role_policy" "ai_ec2_s3_policy" {
+  name = "${var.project_name}-ai-ec2-s3-policy"
+  role = aws_iam_role.ai_ec2_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          aws_s3_bucket.ai_vqa_data.arn,
+          "${aws_s3_bucket.ai_vqa_data.arn}/*"
+        ]
+      }
+    ]
+  })
+}
+
+# 4. AI 모델용 보안 그룹 (껍데기)
+resource "aws_security_group" "ai_model_sg" {
+  name   = "${var.project_name}-ai-model-sg"
+  vpc_id = module.vpc.vpc_id
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = { Name = "${var.project_name}-ai-model-sg" }
+}
+
+# 5. AI 모델 인스턴스 (A/B 가용 영역 분산)
+resource "aws_instance" "ai_macro_detector" {
+  count         = 2
+  ami           = data.aws_ami.al2023.id
+  instance_type = "t3.medium"
+  
+  # 가용 영역 분산을 위해 모듈러 연산 적용 (인덱스 에러 방지 및 가용성 확보)
+  subnet_id              = module.vpc.private_subnets[count.index % length(module.vpc.private_subnets)]
+  vpc_security_group_ids = [aws_security_group.ai_model_sg.id]
+  iam_instance_profile   = aws_iam_instance_profile.ai_ec2_profile.name
+
+  tags = { 
+    Name = "${var.project_name}-ai-macro-${count.index == 0 ? "a" : "b"}" 
+  }
+}

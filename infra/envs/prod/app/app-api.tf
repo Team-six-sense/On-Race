@@ -61,7 +61,7 @@ resource "aws_security_group_rule" "eks_to_redis" {
   source_security_group_id = module.eks.node_security_group_id
 }
 
-# 7. 메인 API Deployment (Java 21 최적화)
+# 7. 메인 API Deployment (Java 21 최적화 및 AI 연동)
 resource "kubernetes_deployment_v1" "on_race_api" {
   metadata {
     name      = "on-race-api"
@@ -88,11 +88,10 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           name  = "api"
           image = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com/t6-on-race-api:latest"
           
-          # [중요] latest 태그 사용 시 항상 새 이미지를 당겨오도록 설정
           image_pull_policy = "Always"
           port { container_port = 8080 }
 
-          # [Java 21 메모리 최적화] Limit(2Gi)의 75%를 힙으로 할당
+          # [Java 21 최적화]
           env {
             name  = "JAVA_TOOL_OPTIONS"
             value = "-XX:InitialRAMPercentage=75.0 -XX:MaxRAMPercentage=75.0 -XX:MinRAMPercentage=75.0"
@@ -122,14 +121,27 @@ resource "kubernetes_deployment_v1" "on_race_api" {
             name  = "SPRING_REDIS_PORT"
             value = "6379"
           }
-
-          # [리소스 할당] Java 앱은 최소 1Gi 이상의 메모리가 안정적입니다.
-          resources {
-            requests = { cpu = "200m", memory = "1Gi" }
-            limits   = { cpu = "1000m", memory = "2Gi" }
+          env {
+            name  = "AI_MODEL_URL"
+            value = "http://${data.terraform_remote_state.base.outputs.ai_macro_private_ips[0]}:8000"
           }
 
-          # [헬스체크] 스프링 부트 Actuator 경로 사용
+          # [Startup Probe] AI EC2 연결 및 SG 규칙 전파 대기
+          startup_probe {
+            tcp_socket {
+              port = 8000
+              host = data.terraform_remote_state.base.outputs.ai_macro_private_ips[0]
+            }
+            initial_delay_seconds = 5
+            period_seconds        = 5
+            failure_threshold     = 30 
+          }
+
+          resources {
+            requests = { cpu = "500m", memory = "1.5Gi" }
+            limits   = { cpu = "1200m", memory = "2Gi" }
+          }
+
           readiness_probe {
             http_get { 
               path = "/actuator/health"
@@ -161,7 +173,6 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           image = "dweomer/stunnel:latest"
           port  { container_port = 6379 }
 
-          # stunnel 실행에 필요한 필수 환경 변수
           env {
             name  = "STUNNEL_SERVICE"
             value = "redis-tls"
@@ -198,7 +209,7 @@ resource "kubernetes_deployment_v1" "on_race_api" {
   }
 }
 
-# 8. 로드밸런서 서비스 (메트릭 수집 활성)
+# 8. 로드밸런서 서비스
 resource "kubernetes_service_v1" "on_race_api" {
   metadata {
     name      = "t6-on-race-api"
@@ -210,8 +221,6 @@ resource "kubernetes_service_v1" "on_race_api" {
       "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type" = "ip"
       "service.beta.kubernetes.io/aws-load-balancer-scheme"          = "internet-facing"
       "service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags" = "Project=${var.project_name},Environment=${var.environment}"
-      
-      # 프로메테우스 메트릭 수집 활성화
       "prometheus.io/scrape" = "true"
       "prometheus.io/path"   = "/actuator/prometheus"
       "prometheus.io/port"   = "8080"
@@ -229,10 +238,10 @@ resource "kubernetes_service_v1" "on_race_api" {
   }
 
   wait_for_load_balancer = false 
-  depends_on             = [time_sleep.wait_for_lb_controller]
+  depends_on              = [time_sleep.wait_for_lb_controller]
 }
 
-# 9. Redis TLS 통신을 위한 Stunnel 설정
+# 9. Stunnel ConfigMap
 resource "kubernetes_config_map_v1" "redis_stunnel_conf" {
   metadata {
     name      = "redis-stunnel-conf"

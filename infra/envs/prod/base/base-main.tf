@@ -23,11 +23,11 @@ resource "random_password" "db_password" {
   override_special = "!#$%&*()-_=+[]{}<>:?"
 }
 
-# [중요] app-api.tf의 데이터 소스와 일치시키기 위해 v4로 업데이트
+# Secret Manager 설정
 resource "aws_secretsmanager_secret" "db_secret" {
   name                    = "${var.project_name}-${var.environment}-db-password-v4"
   description             = "On-Race RDS Root Password Managed by Terraform"
-  recovery_window_in_days = 0 # 테스트 및 잦은 재배포를 위해 즉시 삭제 허용
+  recovery_window_in_days = 0 
 
   tags = {
     Project = var.project_name
@@ -45,7 +45,7 @@ resource "aws_secretsmanager_secret_version" "db_secret_val" {
   })
 }
 
-# 3. 데이터 계층 모듈 호출 (Redis L7 인스턴스 반영)
+# 3. 데이터 계층 모듈 호출 (Secret ARN 주입 확인)
 module "data" {
   source = "../../../modules/data"
 
@@ -54,10 +54,10 @@ module "data" {
   vpc_id            = module.vpc.vpc_id
   database_subnets  = module.vpc.database_subnets
 
+  # 비밀번호 직접 주입과 ARN 주입을 병행하여 모듈 내부의 유연성 확보
   db_password       = random_password.db_password.result
   db_secret_arn     = aws_secretsmanager_secret.db_secret.arn
 
-  # L7(7세대) Graviton 인스턴스 사용으로 티켓팅 성능 극대화
   redis_node_type            = "cache.m7g.large" 
   automatic_failover_enabled = true
   num_cache_clusters         = 2
