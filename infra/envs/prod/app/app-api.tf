@@ -84,6 +84,16 @@ resource "kubernetes_deployment_v1" "on_race_api" {
       spec {
         service_account_name = kubernetes_service_account_v1.api_sa.metadata[0].name
 
+        init_container {
+          name  = "wait-for-ai-macro"
+          image = "busybox:1.36"
+          command = [
+            "sh",
+            "-c",
+            "until nc -z ${data.terraform_remote_state.base.outputs.ai_macro_private_ips[0]} 8000; do echo 'Waiting for AI Macro EC2...'; sleep 3; done;"
+          ]
+        }
+
         container {
           name  = "api"
           image = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com/t6-on-race-api:latest"
@@ -130,7 +140,6 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           startup_probe {
             tcp_socket {
               port = 8000
-              host = data.terraform_remote_state.base.outputs.ai_macro_private_ips[0]
             }
             initial_delay_seconds = 5
             period_seconds        = 5
