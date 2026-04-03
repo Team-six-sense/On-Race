@@ -54,6 +54,8 @@ resource "helm_release" "keda" {
   version          = "2.17.0"
   create_namespace = true
 
+  timeout          = 300
+
   set {
     name  = "operator.serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
     value = module.keda_irsa.iam_role_arn
