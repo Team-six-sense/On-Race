@@ -92,7 +92,8 @@ resource "aws_iam_policy" "ai_s3_access" {
 # 5. EKS IRSA (서브 모듈 경로 수정)
 module "ai_vqa_irsa" {
   # [해결] // 를 사용하여 서브 디렉토리 경로 명시 (Unreadable module subdirectory 에러 방지)
-  source    = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+  version = "~> 5.0"
   
   role_name = "${var.project_name}-ai-vqa-pod-role"
   oidc_providers = {
