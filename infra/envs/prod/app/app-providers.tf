@@ -50,14 +50,3 @@ provider "helm" {
     }
   }
 }
-
-# [추가] base 계층의 Output(보안그룹 ID 등)을 읽어오기 위한 데이터 소스
-data "terraform_remote_state" "base" {
-  backend = "s3"
-
-  config = {
-    bucket = "t6-on-race-terraform-state-prod"
-    key    = "prod/base/terraform.tfstate" # base-providers.tf에 설정된 경로와 일치
-    region = "ap-northeast-2"
-  }
-}
