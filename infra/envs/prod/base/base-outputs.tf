@@ -103,3 +103,8 @@ output "ecr_repository_arn" {
   description = "ECR 리포지토리 ARN"
   value       = aws_ecr_repository.app_repo.arn
 }
+
+output "github_actions_role_arn" {
+  description = "ARN of the IAM role for GitHub Actions"
+  value       = aws_iam_role.github_actions_ecr_role.arn
+}
