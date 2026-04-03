@@ -69,11 +69,11 @@ public class AuthService {
 
 	@Transactional
 	public SignupResponse signup(SignupRequest request) {
-		if (!emailVerifyService.consumeVerification(request.email())) {
+		if (!emailVerifyService.isVerified(request.email())) {
 			throw new BusinessException(BusinessErrorCode.AUTH_EMAIL_NOT_VERIFIED);
 		}
 
-		if (!smsVerifyService.consumeVerification(request.phoneNumber())) {
+		if (!smsVerifyService.isVerified(request.phoneNumber())) {
 			throw new BusinessException(BusinessErrorCode.AUTH_PHONE_NOT_VERIFIED);
 		}
 
@@ -85,16 +85,6 @@ public class AuthService {
 			throw new BusinessException(BusinessErrorCode.AUTH_DUPLICATE_PHONE);
 		}
 
-		String encodedPassword = passwordEncoder.encode(request.password());
-
-		User user = User.createUser(
-				request.email(),
-				request.name(),
-				encodedPassword,
-				request.phoneNumber());
-
-		User saved = userRepository.save(user);
-
 		List<TermVersion> activeVersions = termVersionRepository.findAllActiveWithMaster();
 		Map<Long, Boolean> agreementMap = request.termAgreements().stream()
 				.collect(Collectors.toMap(TermAgreement::termVersionId, TermAgreement::agreed));
@@ -104,6 +94,24 @@ public class AuthService {
 				throw new BusinessException(BusinessErrorCode.AUTH_REQUIRED_TERM_NOT_AGREED);
 			}
 		}
+
+		if (!emailVerifyService.consumeVerification(request.email())) {
+			throw new BusinessException(BusinessErrorCode.AUTH_EMAIL_NOT_VERIFIED);
+		}
+
+		if (!smsVerifyService.consumeVerification(request.phoneNumber())) {
+			throw new BusinessException(BusinessErrorCode.AUTH_PHONE_NOT_VERIFIED);
+		}
+
+		String encodedPassword = passwordEncoder.encode(request.password());
+
+		User user = User.createUser(
+				request.email(),
+				request.name(),
+				encodedPassword,
+				request.phoneNumber());
+
+		User saved = userRepository.save(user);
 
 		LocalDateTime now = LocalDateTime.now();
 		for (TermVersion tv : activeVersions) {
