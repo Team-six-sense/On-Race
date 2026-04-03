@@ -231,3 +231,9 @@ resource "aws_iam_role_policy_attachment" "github_actions_state_attach" {
   role       = aws_iam_role.github_actions_ecr_role.name
   policy_arn = aws_iam_policy.terraform_state_policy.arn
 }
+
+# GitHub Actions 역할이 "모든 인프라"를 주무를 수 있게 마스터 권한을 줍니다.
+resource "aws_iam_role_policy_attachment" "github_actions_admin_attach" {
+  role       = aws_iam_role.github_actions_ecr_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+}

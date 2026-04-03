@@ -4,11 +4,9 @@ resource "aws_launch_template" "node" {
 
   metadata_options {
     http_endpoint               = "enabled"
-    http_tokens                 = "required" # IMDSv2 사용 강제
-    http_put_response_hop_limit = 2          # 파드 내에서 노드 IAM 권한 접근 허용
+    http_tokens                  = "required" 
+    http_put_response_hop_limit = 2          
   }
-
-  description = "EKS Managed Node Group Launch Template for IMDSv2 Hop Limit"
 
   tag_specifications {
     resource_type = "instance"
@@ -38,7 +36,7 @@ resource "aws_eks_cluster" "this" {
   depends_on = [aws_iam_role_policy_attachment.cluster_policy]
 }
 
-# 3. OIDC Provider (Karpenter/KEDA 필수)
+# 3. OIDC Provider
 data "tls_certificate" "this" {
   url = aws_eks_cluster.this.identity[0].oidc[0].issuer
 }
@@ -49,10 +47,10 @@ resource "aws_iam_openid_connect_provider" "this" {
   url             = aws_eks_cluster.this.identity[0].oidc[0].issuer
 }
 
-# 4. [수정] 모든 워커 노드(Managed + Karpenter)가 공유할 공용 보안 그룹
+# 4. 공용 보안 그룹 (Karpenter discovery용 태그 포함)
 resource "aws_security_group" "nodes" {
   name        = "${var.cluster_name}-nodes-common-sg"
-  description = "Shared security group for all EKS nodes (Managed and Karpenter)"
+  description = "Shared security group for all EKS nodes"
   vpc_id      = var.vpc_id
 
   egress {
@@ -64,12 +62,11 @@ resource "aws_security_group" "nodes" {
 
   tags = {
     Name = "${var.cluster_name}-nodes-common-sg"
-    # Karpenter가 이 보안 그룹을 찾아 노드에 입히기 위한 핵심 태그
     "karpenter.sh/discovery" = var.cluster_name
   }
 }
 
-# 5. [수정] Managed Node Group
+# 5. Managed Node Group (에러 유발하던 vpc_config 제거됨)
 resource "aws_eks_node_group" "system" {
   cluster_name    = aws_eks_cluster.this.name
   node_group_name = "${var.project_name}-system-nodes"
@@ -90,9 +87,7 @@ resource "aws_eks_node_group" "system" {
     max_size     = var.max_size
   }
 
-  labels = {
-    "role" = "system"
-  }
+  labels = { "role" = "system" }
 
   depends_on = [
     aws_iam_role_policy_attachment.node_policy,
@@ -101,9 +96,11 @@ resource "aws_eks_node_group" "system" {
   ]
 }
 
-# 6. [수정] EKS 컨트롤 플레인 -> 노드 전체 통신 허용
+# 6. 보안 그룹 규칙 통합 (API 서버 통신 결계 해제)
+
+
 resource "aws_security_group_rule" "cluster_to_node" {
-  description              = "Allow cluster control plane to communicate with nodes"
+  description              = "Control plane to nodes"
   type                     = "ingress"
   from_port                = 0
   to_port                  = 65535
@@ -112,9 +109,8 @@ resource "aws_security_group_rule" "cluster_to_node" {
   security_group_id        = aws_security_group.nodes.id
 }
 
-# 6-1. [수정] 노드 전체 -> EKS 컨트롤 플레인(API 서버) 통신 허용 (타임아웃 해결)
 resource "aws_security_group_rule" "node_to_cluster" {
-  description              = "Allow all nodes to communicate with control plane API"
+  description              = "Nodes to API server (443)"
   type                     = "ingress"
   from_port                = 443
   to_port                  = 443
@@ -123,9 +119,8 @@ resource "aws_security_group_rule" "node_to_cluster" {
   source_security_group_id = aws_security_group.nodes.id
 }
 
-# 7. [수정] 노드 상호 간 통신 허용
 resource "aws_security_group_rule" "node_to_node" {
-  description              = "Allow nodes to communicate with each other"
+  description              = "Node to node"
   type                     = "ingress"
   from_port                = 0
   to_port                  = 65535
