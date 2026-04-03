@@ -180,3 +180,49 @@ resource "aws_iam_role_policy_attachment" "github_actions_attach" {
   role       = aws_iam_role.github_actions_ecr_role.name
   policy_arn = aws_iam_policy.ecr_push_policy.arn
 }
+
+# [추가] 10. Terraform Backend(S3, DynamoDB) 접근 권한 정책
+resource "aws_iam_policy" "terraform_state_policy" {
+  name        = "${var.project_name}-tfstate-policy"
+  description = "Allow GitHub Actions to manage Terraform state in S3 and DynamoDB"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:ListBucket",
+          "s3:GetBucketLocation"
+        ]
+        Resource = "arn:aws:s3:::t6-on-race-terraform-state-prod"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject"
+        ]
+        Resource = "arn:aws:s3:::t6-on-race-terraform-state-prod/prod/*"
+      },
+      {
+        # DynamoDB를 사용한 State Locking을 사용 중이라면 추가 (권장)
+        Effect = "Allow"
+        Action = [
+          "dynamodb:DescribeTable",
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:DeleteItem"
+        ]
+        Resource = "arn:aws:dynamodb:ap-northeast-2:*:table/t6-on-race-terraform-lock-prod"
+      }
+    ]
+  })
+}
+
+# 정책 연결 추가
+resource "aws_iam_role_policy_attachment" "github_actions_state_attach" {
+  role       = aws_iam_role.github_actions_ecr_role.name
+  policy_arn = aws_iam_policy.terraform_state_policy.arn
+}
