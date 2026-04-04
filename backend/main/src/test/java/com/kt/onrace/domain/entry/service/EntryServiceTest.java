@@ -122,7 +122,7 @@ class EntryServiceTest {
 		when(entryRepository.save(any(Entry.class))).thenAnswer(inv -> inv.getArgument(0));
 
 		EntryCoursePaceRequest request = new EntryCoursePaceRequest(COURSE_ID, PACE_ID);
-		EntryApplyResponse response = entryService.apply(USER_ID, EVENT_ID, request, null);
+		EntryApplyResponse response = entryService.apply(USER_ID, EVENT_ID, request, null, EventAppType.LOTTERY);
 
 		verify(entryRepository).save(entryCaptor.capture());
 		assertThat(entryCaptor.getValue().getStatus()).isEqualTo(EntryStatus.APPLIED);
@@ -145,7 +145,7 @@ class EntryServiceTest {
 		when(entryRepository.save(any(Entry.class))).thenAnswer(inv -> inv.getArgument(0));
 
 		EntryCoursePaceRequest request = new EntryCoursePaceRequest(COURSE_ID, PACE_ID);
-		EntryApplyResponse response = entryService.apply(USER_ID, EVENT_ID, request, null);
+		EntryApplyResponse response = entryService.apply(USER_ID, EVENT_ID, request, null, EventAppType.FIRST_COME);
 
 		verify(entryRepository).save(entryCaptor.capture());
 		assertThat(entryCaptor.getValue().getStatus()).isEqualTo(EntryStatus.RESERVED);
@@ -168,7 +168,7 @@ class EntryServiceTest {
 
 		EntryCoursePaceRequest request = new EntryCoursePaceRequest(COURSE_ID, PACE_ID);
 
-		assertThatThrownBy(() -> entryService.apply(USER_ID, EVENT_ID, request, null))
+		assertThatThrownBy(() -> entryService.apply(USER_ID, EVENT_ID, request, null, EventAppType.FIRST_COME))
 			.isInstanceOf(BusinessException.class)
 			.extracting("errorCode")
 			.isEqualTo(BusinessErrorCode.ENTRY_SOLD_OUT);
@@ -189,7 +189,7 @@ class EntryServiceTest {
 
 		EntryCoursePaceRequest request = new EntryCoursePaceRequest(COURSE_ID, PACE_ID);
 
-		assertThatThrownBy(() -> entryService.apply(USER_ID, EVENT_ID, request, null))
+		assertThatThrownBy(() -> entryService.apply(USER_ID, EVENT_ID, request, null, EventAppType.FIRST_COME))
 			.isInstanceOf(BusinessException.class)
 			.extracting("errorCode")
 			.isEqualTo(BusinessErrorCode.ENTRY_ALREADY_RESERVED);
@@ -201,7 +201,7 @@ class EntryServiceTest {
 		EntryCoursePaceRequest request = new EntryCoursePaceRequest(COURSE_ID, PACE_ID);
 		Long wrongQueuePaceId = 99L;
 
-		assertThatThrownBy(() -> entryService.apply(USER_ID, EVENT_ID, request, wrongQueuePaceId))
+		assertThatThrownBy(() -> entryService.apply(USER_ID, EVENT_ID, request, wrongQueuePaceId, EventAppType.FIRST_COME))
 			.isInstanceOf(BusinessException.class)
 			.extracting("errorCode")
 			.isEqualTo(BusinessErrorCode.ENTRY_QUEUE_PACE_MISMATCH);
@@ -224,7 +224,7 @@ class EntryServiceTest {
 		when(eventStockService.hasReservation(PACE_ID, USER_ID)).thenReturn(true);
 		when(eventStockRepository.findByEventPaceIdOrThrow(PACE_ID)).thenReturn(stock);
 
-		entryService.confirmReservation(USER_ID, PACE_ID);
+		entryService.confirmReservation(USER_ID, PACE_ID, EventAppType.FIRST_COME);
 
 		assertThat(entry.getStatus()).isEqualTo(EntryStatus.APPLIED);
 		assertThat(stock.getConfirmedStock()).isEqualTo(1);
@@ -237,7 +237,7 @@ class EntryServiceTest {
 	void confirmReservation_notFound() {
 		when(entryRepository.findByUserIdAndEventPaceId(USER_ID, PACE_ID)).thenReturn(Optional.empty());
 
-		assertThatThrownBy(() -> entryService.confirmReservation(USER_ID, PACE_ID))
+		assertThatThrownBy(() -> entryService.confirmReservation(USER_ID, PACE_ID, EventAppType.FIRST_COME))
 			.isInstanceOf(BusinessException.class)
 			.extracting("errorCode")
 			.isEqualTo(BusinessErrorCode.ENTRY_NOT_FOUND);
@@ -253,7 +253,7 @@ class EntryServiceTest {
 
 		when(entryRepository.findByUserIdAndEventPaceId(USER_ID, PACE_ID)).thenReturn(Optional.of(entry));
 
-		assertThatThrownBy(() -> entryService.confirmReservation(USER_ID, PACE_ID))
+		assertThatThrownBy(() -> entryService.confirmReservation(USER_ID, PACE_ID, EventAppType.FIRST_COME))
 			.isInstanceOf(BusinessException.class)
 			.extracting("errorCode")
 			.isEqualTo(BusinessErrorCode.ENTRY_CANNOT_APPLY);
@@ -270,7 +270,7 @@ class EntryServiceTest {
 		when(entryRepository.findByUserIdAndEventPaceId(USER_ID, PACE_ID)).thenReturn(Optional.of(entry));
 		when(eventStockService.hasReservation(PACE_ID, USER_ID)).thenReturn(false);
 
-		assertThatThrownBy(() -> entryService.confirmReservation(USER_ID, PACE_ID))
+		assertThatThrownBy(() -> entryService.confirmReservation(USER_ID, PACE_ID, EventAppType.FIRST_COME))
 			.isInstanceOf(BusinessException.class)
 			.extracting("errorCode")
 			.isEqualTo(BusinessErrorCode.ENTRY_RESERVATION_EXPIRED);

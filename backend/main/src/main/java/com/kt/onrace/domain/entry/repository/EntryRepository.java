@@ -10,8 +10,16 @@ import com.kt.onrace.domain.entry.entity.Entry;
 
 public interface EntryRepository extends JpaRepository<Entry, Long>, EntryRepositoryCustom {
 
+	default Entry findByIdOrThrow(Long id, ErrorCode errorCode) {
+		return findById(id).orElseThrow(() -> new BusinessException(errorCode));
+	}
+
 	default Entry findByUserIdAndEventIdOrThrow(Long userId, Long eventId, ErrorCode errorCode) {
 		return findByUserIdAndEventId(userId, eventId).orElseThrow(() -> new BusinessException(errorCode));
+	}
+
+	default Entry findByUserIdAndEventPaceIdOrThrow(Long userId, Long eventPaceId, ErrorCode errorCode) {
+		return findByUserIdAndEventPaceId(userId, eventPaceId).orElseThrow(() -> new BusinessException(errorCode));
 	}
 
 	Optional<Entry> findByUserIdAndEventId(Long userId, Long eventId);

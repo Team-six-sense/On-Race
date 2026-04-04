@@ -1,18 +1,17 @@
 package com.kt.onrace.domain.entry.service;
 
-import java.time.LocalDateTime;
-import java.util.concurrent.TimeUnit;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.kt.onrace.common.exception.BusinessErrorCode;
+import com.kt.onrace.common.util.Preconditions;
 import com.kt.onrace.domain.entry.entity.Entry;
 import com.kt.onrace.domain.entry.entity.EntryStatus;
 import com.kt.onrace.domain.entry.repository.EntryRepository;
 import com.kt.onrace.domain.event.entity.Event;
 import com.kt.onrace.domain.event.entity.EventAppType;
 import com.kt.onrace.domain.event.repository.EventRepository;
+import com.kt.onrace.domain.event.repository.EventStockRepository;
 import com.kt.onrace.domain.event.service.EventStockService;
 import com.kt.onrace.domain.order.contract.OrderCheckoutEligibility;
 import com.kt.onrace.domain.order.contract.OrderEntryContract;
@@ -27,74 +26,49 @@ public class EntryContractService implements OrderEntryContract {
 	private final EntryRepository entryRepository;
 	private final EventRepository eventRepository;
 	private final EventStockService eventStockService;
+	private final EventStockRepository eventStockRepository;
 	private final EntryService entryService;
 
 	@Override
 	public OrderCheckoutEligibility resolveCheckoutEligibility(Long userId, Long eventId, Long paceId) {
-		Event event = eventRepository.findByIdAndIsViewTrueAndIsDeletedFalseOrThrow(eventId,
-			BusinessErrorCode.EVENT_NOT_FOUND);
+		Event event = eventRepository.findByIdAndIsViewTrueAndIsDeletedFalseOrThrow(eventId, BusinessErrorCode.EVENT_NOT_FOUND);
+		Entry entry = entryRepository.findByUserIdAndEventPaceIdOrThrow(userId, paceId, BusinessErrorCode.ENTRY_NOT_FOUND);
 
-		Entry entry = entryRepository.findByUserIdAndEventIdOrThrow(userId, eventId, BusinessErrorCode.ENTRY_NOT_FOUND);
-
-		EventAppType appType = event.getAppType();
-
-		return switch (appType) {
-			case LOTTERY -> resolveLottery(entry, appType);
-			case FIRST_COME -> resolveFirstCome(entry, appType, paceId, userId);
-		};
-	}
-
-	private OrderCheckoutEligibility resolveLottery(Entry entry, EventAppType appType) {
-		boolean canCheckout = entry.getStatus() == EntryStatus.WON;
-		String failureCode = canCheckout ? null : BusinessErrorCode.ENTRY_CANNOT_APPLY.getCode();
+		boolean canCheckout = event.getAppType() == EventAppType.LOTTERY ?
+			entry.getStatus() == EntryStatus.WON : entry.isReserved() && eventStockService.hasReservation(paceId, userId);
 
 		return OrderCheckoutEligibility.builder()
 			.entryId(entry.getId())
-			.appType(appType)
-			.currentEntryStatus(entry.getStatus())
-			.requiredEntryStatus(EntryStatus.WON)
-			.reservedUntil(null)
-			.requiresReservationValidation(false)
 			.canCheckout(canCheckout)
-			.failureCode(failureCode)
+			.failureCode(canCheckout ? null : BusinessErrorCode.ENTRY_CANNOT_CHECKOUT.getCode())
 			.build();
-	}
-
-	private OrderCheckoutEligibility resolveFirstCome(Entry entry, EventAppType appType, Long paceId, Long userId) {
-		boolean isReserved = entry.isReserved();
-		boolean hasReservation = isReserved && eventStockService.hasReservation(paceId, userId);
-		boolean canCheckout = isReserved && hasReservation;
-
-		LocalDateTime reservedUntil = null;
-		if (canCheckout) {
-			long ttlMs = eventStockService.getReservationTtl(paceId, userId);
-			if (ttlMs > 0) {
-				reservedUntil = LocalDateTime.now().plusNanos(TimeUnit.MILLISECONDS.toNanos(ttlMs));
-			}
-		}
-
-		String failureCode = canCheckout ? null : BusinessErrorCode.ENTRY_RESERVATION_EXPIRED.getCode();
-
-		return OrderCheckoutEligibility.builder()
-			.entryId(entry.getId())
-			.appType(appType)
-			.currentEntryStatus(entry.getStatus())
-			.requiredEntryStatus(EntryStatus.RESERVED)
-			.reservedUntil(reservedUntil)
-			.requiresReservationValidation(true)
-			.canCheckout(canCheckout)
-			.failureCode(failureCode)
-			.build();
-	}
-
-	@Override
-	public boolean hasReservation(Long paceId, Long userId) {
-		return eventStockService.hasReservation(paceId, userId);
 	}
 
 	@Override
 	@Transactional
-	public void confirmReservation(Long userId, Long paceId) {
-		entryService.confirmReservation(userId, paceId);
+	public void handlePaymentConfirmed(Long entryId) {
+		Entry entry = entryRepository.findByIdOrThrow(entryId, BusinessErrorCode.ENTRY_NOT_FOUND);
+		EventAppType appType = entry.getEvent().getAppType();
+
+		if(appType == EventAppType.FIRST_COME) {
+			Preconditions.validate(entry.getStatus() == EntryStatus.RESERVED, BusinessErrorCode.ENTRY_CANNOT_CHECKOUT);
+		} else {
+			Preconditions.validate(entry.getStatus() == EntryStatus.WON, BusinessErrorCode.ENTRY_CANNOT_CHECKOUT);
+		}
+
+		entryService.confirmReservation(entry.getUserId(), entry.getEventPace().getId(), appType);
+	}
+
+	// 결제 실패는 재시도 가능하므로 재고선점 시간이 만료되기 전까지 재시도 가능, 환불시에만 호출
+	@Override
+	@Transactional
+	public void rollbackPendingPayment(Long entryId) {
+		Entry entry = entryRepository.findByIdOrThrow(entryId, BusinessErrorCode.ENTRY_NOT_FOUND);
+
+		if(entry.getEvent().getAppType() == EventAppType.FIRST_COME && entry.getStatus() == EntryStatus.APPLIED) {
+			Long paceId = entry.getEventPace().getId();
+			eventStockRepository.findByEventPaceIdOrThrow(paceId).cancelStock();
+			eventStockService.cancelConfirmedStock(paceId);
+		}
 	}
 }

@@ -51,6 +51,10 @@ public class EventStock extends BaseEntity {
 		this.confirmedStock++;
 	}
 
+	public void cancelStock() {
+		this.confirmedStock--;
+	}
+
 	public int getAvailableStock() {
 		return this.totalStock - this.confirmedStock;
 	}

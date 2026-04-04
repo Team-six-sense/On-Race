@@ -22,9 +22,11 @@ import com.kt.onrace.domain.entry.entity.Entry;
 import com.kt.onrace.domain.entry.entity.EntryStatus;
 import com.kt.onrace.domain.entry.repository.EntryRepository;
 import com.kt.onrace.domain.event.entity.Event;
+import com.kt.onrace.domain.event.entity.EventAppType;
 import com.kt.onrace.domain.event.entity.EventCourse;
 import com.kt.onrace.domain.event.entity.EventPace;
 import com.kt.onrace.domain.event.entity.EventStatus;
+import com.kt.onrace.domain.event.entity.EventType;
 import com.kt.onrace.domain.event.repository.EventCourseRepository;
 import com.kt.onrace.domain.event.repository.EventPaceRepository;
 import com.kt.onrace.domain.event.repository.EventRepository;
@@ -155,7 +157,8 @@ public class EntryService {
 
 	@ServiceLog(slowMs = 2000)
 	@Transactional
-	public EntryApplyResponse apply(Long userId, Long eventId, EntryCoursePaceRequest request, Long queuePaceId) {
+	public EntryApplyResponse apply(Long userId, Long eventId, EntryCoursePaceRequest request,
+			Long queuePaceId, EventAppType expectedAppType) {
 		if (queuePaceId != null) {
 			Preconditions.validate(queuePaceId.equals(request.paceId()), BusinessErrorCode.ENTRY_QUEUE_PACE_MISMATCH);
 		}
@@ -164,6 +167,8 @@ public class EntryService {
 
 		Event event = eventRepository.findByIdAndIsViewTrueAndIsDeletedFalseOrThrow(eventId,
 				BusinessErrorCode.EVENT_NOT_FOUND);
+
+		Preconditions.validate(event.getAppType() == expectedAppType, BusinessErrorCode.ENTRY_APP_TYPE_MISMATCH);
 
 		LocalDateTime now = LocalDateTime.now();
 		Preconditions.validate(event.getEventAt().isAfter(now), BusinessErrorCode.ENTRY_EVENT_ALREADY_ENDED);
@@ -244,7 +249,7 @@ public class EntryService {
 	 */
 	@ServiceLog(slowMs = 2000)
 	@Transactional
-	public void confirmReservation(Long userId, Long paceId) {
+	public void confirmReservation(Long userId, Long paceId, EventAppType type) {
 		Entry entry = entryRepository.findByUserIdAndEventPaceId(userId, paceId)
 				.orElseThrow(() -> new BusinessException(BusinessErrorCode.ENTRY_NOT_FOUND));
 
@@ -252,9 +257,10 @@ public class EntryService {
 		Preconditions.validate(eventStockService.hasReservation(paceId, userId),
 				BusinessErrorCode.ENTRY_RESERVATION_EXPIRED);
 
-		entry.confirmPayment();
-		eventStockRepository.findByEventPaceIdOrThrow(paceId).confirmStock();
+		if(type == EventAppType.FIRST_COME)
+			entry.confirmPayment();
 
+		eventStockRepository.findByEventPaceIdOrThrow(paceId).confirmStock();
 		eventStockService.deleteReservation(paceId, userId);
 		eventStockService.confirmStock(paceId);
 	}

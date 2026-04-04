@@ -19,6 +19,7 @@ import com.kt.onrace.domain.entry.dto.EntryPreSaveResponse;
 import com.kt.onrace.domain.entry.dto.EntryRateResponse;
 import com.kt.onrace.domain.entry.dto.EntryStockCheckResponse;
 import com.kt.onrace.domain.entry.service.EntryService;
+import com.kt.onrace.domain.event.entity.EventAppType;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -71,7 +72,7 @@ public class EntryController {
 		@PathVariable Long eventId,
 		@Valid @RequestBody EntryCoursePaceRequest request
 	) {
-		return ApiResponse.success(entryService.apply(userId, eventId, request, null));
+		return ApiResponse.success(entryService.apply(userId, eventId, request, null, EventAppType.LOTTERY));
 	}
 
 	@PostMapping("/apply/first-come")
@@ -81,24 +82,15 @@ public class EntryController {
 		@PathVariable Long eventId,
 		@Valid @RequestBody EntryCoursePaceRequest request
 	) {
-		return ApiResponse.success(entryService.apply(userId, eventId, request, queuePaceId));
+		return ApiResponse.success(entryService.apply(userId, eventId, request, queuePaceId, EventAppType.FIRST_COME));
 	}
 
 	@GetMapping("/stock-check")
 	public ApiResponse<EntryStockCheckResponse> checkStock(
+		@RequestHeader("X-User-Id") Long userId,
 		@PathVariable Long eventId,
 		@RequestParam Long paceId
-		) {
-		return ApiResponse.success(entryService.checkStock(paceId));
-	}
-
-	// TODO: 결제 API 연동 후 제거 — 테스트용 임시 API입니다 추후에 제가 삭제하겠습니다
-	@PostMapping("/confirm")
-	public ApiResponse<Void> confirmReservation(
-		@RequestHeader("X-User-Id") Long userId,
-		@RequestParam Long paceId
 	) {
-		entryService.confirmReservation(userId, paceId);
-		return ApiResponse.success();
+		return ApiResponse.success(entryService.checkStock(paceId));
 	}
 }

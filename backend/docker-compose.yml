@@ -24,7 +24,7 @@ services:
       - main-redis-data:/data
     networks:
       - on-race-network
-    command: redis-server --requirepass ${MAIN_REDIS_PASSWORD}
+    command: redis-server --requirepass ${MAIN_REDIS_PASSWORD} --notify-keyspace-events Ex
 
   gateway:
     build:

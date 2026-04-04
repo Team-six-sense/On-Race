@@ -95,4 +95,9 @@ public class EventStockService {
 		stock.incrementAndGet();
 	}
 
+	public void cancelConfirmedStock(Long paceId) {
+		redissonClient.getAtomicLong(RedisKeyGenerator.confirmStockKey(paceId)).decrementAndGet();
+		redissonClient.getAtomicLong(RedisKeyGenerator.tempStockKey(paceId)).incrementAndGet();
+	}
+
 }

@@ -4,7 +4,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -32,6 +31,7 @@ import com.kt.onrace.domain.entry.dto.EntryApplyResponse;
 import com.kt.onrace.domain.entry.dto.EntryCoursePaceRequest;
 import com.kt.onrace.domain.entry.dto.EntryStockCheckResponse;
 import com.kt.onrace.domain.entry.service.EntryService;
+import com.kt.onrace.domain.event.entity.EventAppType;
 
 @WebMvcTest(
 	controllers = EntryController.class,
@@ -60,7 +60,7 @@ class EntryControllerTest {
 	@DisplayName("응모 신청 성공 시 200과 엔트리 응답을 반환한다")
 	void applyLottery_success() throws Exception {
 		EntryApplyResponse response = new EntryApplyResponse(1L, EVENT_ID, "신청완료", null, null, null);
-		given(entryService.apply(eq(USER_ID), eq(EVENT_ID), any(EntryCoursePaceRequest.class), isNull()))
+		given(entryService.apply(eq(USER_ID), eq(EVENT_ID), any(EntryCoursePaceRequest.class), isNull(), eq(EventAppType.LOTTERY)))
 			.willReturn(response);
 
 		mockMvc.perform(post("/events/{eventId}/entries/apply/lottery", EVENT_ID)
@@ -72,7 +72,7 @@ class EntryControllerTest {
 			.andExpect(jsonPath("$.data.entryId").value(1L))
 			.andExpect(jsonPath("$.data.status").value("신청완료"));
 
-		verify(entryService).apply(eq(USER_ID), eq(EVENT_ID), any(EntryCoursePaceRequest.class), isNull());
+		verify(entryService).apply(eq(USER_ID), eq(EVENT_ID), any(EntryCoursePaceRequest.class), isNull(), eq(EventAppType.LOTTERY));
 	}
 
 	@Test
@@ -80,7 +80,7 @@ class EntryControllerTest {
 	void applyFirstCome_success() throws Exception {
 		LocalDateTime reservedUntil = LocalDateTime.of(2026, 4, 1, 12, 10, 0);
 		EntryApplyResponse response = new EntryApplyResponse(1L, EVENT_ID, "선점완료", reservedUntil, null, null);
-		given(entryService.apply(eq(USER_ID), eq(EVENT_ID), any(EntryCoursePaceRequest.class), isNull()))
+		given(entryService.apply(eq(USER_ID), eq(EVENT_ID), any(EntryCoursePaceRequest.class), isNull(), eq(EventAppType.FIRST_COME)))
 			.willReturn(response);
 
 		mockMvc.perform(post("/events/{eventId}/entries/apply/first-come", EVENT_ID)
@@ -97,7 +97,7 @@ class EntryControllerTest {
 	@DisplayName("선착순 신청 시 X-Queue-Pace-Id 헤더가 서비스에 전달된다")
 	void applyFirstCome_withQueuePaceId() throws Exception {
 		EntryApplyResponse response = new EntryApplyResponse(1L, EVENT_ID, "선점완료", null, null, null);
-		given(entryService.apply(eq(USER_ID), eq(EVENT_ID), any(EntryCoursePaceRequest.class), eq(PACE_ID)))
+		given(entryService.apply(eq(USER_ID), eq(EVENT_ID), any(EntryCoursePaceRequest.class), eq(PACE_ID), eq(EventAppType.FIRST_COME)))
 			.willReturn(response);
 
 		mockMvc.perform(post("/events/{eventId}/entries/apply/first-come", EVENT_ID)
@@ -108,7 +108,7 @@ class EntryControllerTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true));
 
-		verify(entryService).apply(eq(USER_ID), eq(EVENT_ID), any(EntryCoursePaceRequest.class), eq(PACE_ID));
+		verify(entryService).apply(eq(USER_ID), eq(EVENT_ID), any(EntryCoursePaceRequest.class), eq(PACE_ID), eq(EventAppType.FIRST_COME));
 	}
 
 	@Test
@@ -117,6 +117,7 @@ class EntryControllerTest {
 		given(entryService.checkStock(PACE_ID)).willReturn(EntryStockCheckResponse.available(5));
 
 		mockMvc.perform(get("/events/{eventId}/entries/stock-check", EVENT_ID)
+				.header(USER_ID_HEADER, USER_ID)
 				.param("paceId", String.valueOf(PACE_ID)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
@@ -124,17 +125,4 @@ class EntryControllerTest {
 			.andExpect(jsonPath("$.data.remainingStock").value(5));
 	}
 
-	@Test
-	@DisplayName("결제 확정 성공 시 200을 반환한다")
-	void confirmReservation_success() throws Exception {
-		doNothing().when(entryService).confirmReservation(USER_ID, PACE_ID);
-
-		mockMvc.perform(post("/events/{eventId}/entries/confirm", EVENT_ID)
-				.header(USER_ID_HEADER, USER_ID)
-				.param("paceId", String.valueOf(PACE_ID)))
-			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.success").value(true));
-
-		verify(entryService).confirmReservation(USER_ID, PACE_ID);
-	}
 }

@@ -687,10 +687,6 @@ class OrderServiceTest {
 		when(orderEntryContract.resolveCheckoutEligibility(eq(userId), eq(1L), eq(20L)))
 			.thenReturn(OrderCheckoutEligibility.builder()
 				.entryId(1000L)
-				.appType(EventAppType.LOTTERY)
-				.currentEntryStatus(com.kt.onrace.domain.entry.entity.EntryStatus.WON)
-				.requiredEntryStatus(com.kt.onrace.domain.entry.entity.EntryStatus.WON)
-				.requiresReservationValidation(false)
 				.canCheckout(canCheckout)
 				.failureCode(failureCode)
 				.build());
