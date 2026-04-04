@@ -59,15 +59,22 @@ public class EntryContractService implements OrderEntryContract {
 		entryService.confirmReservation(entry.getUserId(), entry.getEventPace().getId(), appType);
 	}
 
-	// 결제 실패는 재시도 가능하므로 재고선점 시간이 만료되기 전까지 재시도 가능, 환불시에만 호출
 	@Override
 	@Transactional
 	public void rollbackPendingPayment(Long entryId) {
 		Entry entry = entryRepository.findByIdOrThrow(entryId, BusinessErrorCode.ENTRY_NOT_FOUND);
+		EventAppType appType = entry.getEvent().getAppType();
 
-		if(entry.getEvent().getAppType() == EventAppType.FIRST_COME && entry.getStatus() == EntryStatus.APPLIED) {
-			Long paceId = entry.getEventPace().getId();
-			eventStockRepository.findByEventPaceIdOrThrow(paceId).cancelStock();
+		boolean shouldRollback = (appType == EventAppType.FIRST_COME && entry.getStatus() == EntryStatus.APPLIED)
+			|| (appType == EventAppType.LOTTERY && entry.getStatus() == EntryStatus.WON);
+
+		if (!shouldRollback) return;
+
+		Long paceId = entry.getEventPace().getId();
+		eventStockRepository.findByEventPaceIdOrThrow(paceId).cancelStock();
+
+		if (appType == EventAppType.FIRST_COME) {
+			eventStockService.cancelTempStock(paceId);
 			eventStockService.cancelConfirmedStock(paceId);
 		}
 	}

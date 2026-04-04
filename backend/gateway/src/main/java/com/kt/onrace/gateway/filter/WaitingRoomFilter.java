@@ -35,6 +35,7 @@ public class WaitingRoomFilter extends AbstractGatewayFilterFactory<WaitingRoomF
 
 	private static final String PASS_TOKEN_HEADER = "X-Queue-Token";
 	private static final String QUEUE_PACE_ID_HEADER = "X-Queue-Pace-Id";
+	private static final String USER_ID_HEADER = "X-User-Id";
 	private static final String QUEUE_PASS_TYPE = "QUEUE_PASS";
 	private static final String CLAIM_PACE_ID = "CLAIM_PACE_ID";
 	private static final Pattern EVENT_ID_PATTERN = Pattern.compile("/events/(\\d+)/");
@@ -60,8 +61,9 @@ public class WaitingRoomFilter extends AbstractGatewayFilterFactory<WaitingRoomF
 			}
 
 			String passToken = exchange.getRequest().getHeaders().getFirst(PASS_TOKEN_HEADER);
+			String userId = exchange.getRequest().getHeaders().getFirst(USER_ID_HEADER);
 
-			Optional<Long> paceId = extractPaceIdFromToken(passToken);
+			Optional<Long> paceId = extractPaceIdFromToken(passToken, userId);
 			if (paceId.isEmpty()) {
 				return sendQueueRequired(exchange, config);
 			}
@@ -98,8 +100,8 @@ public class WaitingRoomFilter extends AbstractGatewayFilterFactory<WaitingRoomF
 		return response.writeWith(Mono.just(buffer));
 	}
 
-	private Optional<Long> extractPaceIdFromToken(String token) {
-		if (token == null) {
+	private Optional<Long> extractPaceIdFromToken(String token, String userId) {
+		if (token == null || userId == null) {
 			return Optional.empty();
 		}
 		try {
@@ -110,6 +112,11 @@ public class WaitingRoomFilter extends AbstractGatewayFilterFactory<WaitingRoomF
 				.getPayload();
 
 			if (!QUEUE_PASS_TYPE.equals(claims.get("type", String.class))) {
+				return Optional.empty();
+			}
+
+			// pass token 소유자와 요청 사용자 일치 검증
+			if (!userId.equals(claims.getSubject())) {
 				return Optional.empty();
 			}
 

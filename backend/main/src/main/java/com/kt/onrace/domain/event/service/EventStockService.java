@@ -74,8 +74,7 @@ public class EventStockService {
 	}
 
 	public void restoreStock(Long paceId) {
-		RAtomicLong stock = redissonClient.getAtomicLong(RedisKeyGenerator.tempStockKey(paceId));
-		stock.incrementAndGet();
+		redissonClient.getAtomicLong(RedisKeyGenerator.tempStockKey(paceId)).incrementAndGet();
 	}
 
 	public boolean hasReservation(Long paceId, Long userId) {
@@ -97,6 +96,9 @@ public class EventStockService {
 
 	public void cancelConfirmedStock(Long paceId) {
 		redissonClient.getAtomicLong(RedisKeyGenerator.confirmStockKey(paceId)).decrementAndGet();
+	}
+
+	public void cancelTempStock(Long paceId) {
 		redissonClient.getAtomicLong(RedisKeyGenerator.tempStockKey(paceId)).incrementAndGet();
 	}
 

@@ -21,7 +21,7 @@ import lombok.extern.slf4j.Slf4j;
  *   reservation:{paceId}:{userId} 키 TTL 만료
  *   → __keyevent@*__:expired 채널로 알림
  *   → 이 리스너가 수신
- *   → Redis 재고 복원 + DB Entry 정리
+ *   → RESERVED 상태 확인 후 Redis 재고 복원 (Entry는 DB에 유지)
  */
 @Slf4j
 @Component
@@ -35,9 +35,6 @@ public class EntryExpListener {
 	private final EventStockService eventStockService;
 	private final EntryCleanupService entryCleanupService;
 
-	/**
-	 * 앱 시작 완료 후 Redis expired 이벤트 구독을 시작한다.
-	 */
 	@EventListener(ApplicationReadyEvent.class)
 	public void subscribe() {
 		RPatternTopic topic = redissonClient.getPatternTopic(EXPIRATION_PATTERN, StringCodec.INSTANCE);
@@ -57,8 +54,6 @@ public class EntryExpListener {
 				if (cleaned) {
 					eventStockService.restoreStock(paceId);    // RESERVED였을 때만
 				}
-
-				log.info("예약 만료 처리 완료 - paceId: {}, userId: {}", paceId, userId);
 			} catch (Exception e) {
 				log.error("예약 만료 처리 실패 - expiredKey: {}", expiredKey, e);
 			}
