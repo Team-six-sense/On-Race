@@ -1,9 +1,143 @@
+# name: "On-Race-Infra-CD"
+
+# env:
+#   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+#   AWS_REGION: ap-northeast-2
+#   CLUSTER_NAME: t6-on-race-prod-cluster
+
+# on:
+#   push:
+#     branches: [ "feat/infra/init-monitoring" ]
+
+# jobs:
+#   terraform:
+#     runs-on: ubuntu-latest
+    
+#     permissions:
+#       id-token: write
+#       contents: read
+    
+#     steps:
+#       - name: Checkout Code
+#         uses: actions/checkout@v4
+
+#       - name: Configure AWS Credentials
+#         uses: aws-actions/configure-aws-credentials@v4
+#         with:
+#           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+#           aws-region: ${{ env.AWS_REGION }}
+#           role-duration-seconds: 14400
+
+#       - name: Setup Terraform
+#         uses: hashicorp/setup-terraform@v3
+
+#       # 1. Base Layer (IAM, VPC 등) 배포
+#       - name: Base Layer Apply
+#         working-directory: ./infra/envs/prod/base
+#         run: |
+#           terraform init
+#           terraform apply -auto-approve
+
+#       # 2. [핵심 수정] EKS Access Entry 조건부 갱신
+#       # 클러스터가 존재할 때만 출입증을 갱신하여 ResourceNotFoundException 에러를 방지합니다.
+#       - name: Refresh EKS Access Entry
+#         run: |
+#           if aws eks describe-cluster --name ${{ env.CLUSTER_NAME }} --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
+#             echo "클러스터가 존재합니다. 출입증을 최신화합니다..."
+#             aws eks delete-access-entry --cluster-name ${{ env.CLUSTER_NAME }} --principal-arn ${{ secrets.AWS_ROLE_ARN }} || true
+#             aws eks create-access-entry --cluster-name ${{ env.CLUSTER_NAME }} --principal-arn ${{ secrets.AWS_ROLE_ARN }} --type STANDARD
+#             aws eks associate-access-policy --cluster-name ${{ env.CLUSTER_NAME }} --principal-arn ${{ secrets.AWS_ROLE_ARN }} --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy --access-scope type=cluster
+#           else
+#             echo "클러스터가 존재하지 않습니다. App Layer 배포 단계에서 클러스터와 권한이 새롭게 생성될 것입니다."
+#           fi
+
+#       # 3. App Layer (EKS, Helm 차트 등) 통합 배포
+#       - name: App Layer - Full Apply
+#         working-directory: ./infra/envs/prod/app
+#         run: |
+#           terraform init
+#           terraform apply -auto-approve
+
+#       # 4. kubectl 인증 정보 생성
+#       - name: Update Kubeconfig for Kubectl
+#         run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }}
+
+#       # 5. 테라폼 plan 단계에서 에러를 유발하는 CRD 기반 리소스들을 kubectl로 직접 적용
+#       - name: Apply K8s Configs via Kubectl
+#         run: |
+#           # Karpenter EC2NodeClass 적용
+#           cat <<EOF | kubectl apply -f -
+#           apiVersion: karpenter.k8s.aws/v1
+#           kind: EC2NodeClass
+#           metadata:
+#             name: default
+#           spec:
+#             amiFamily: AL2023
+#             role: t6-on-race-prod-cluster-karpenter-node-role
+#             subnetSelectorTerms: [{ tags: { "karpenter.sh/discovery": "${{ env.CLUSTER_NAME }}" } }]
+#             securityGroupSelectorTerms: [{ tags: { "karpenter.sh/discovery": "${{ env.CLUSTER_NAME }}" } }]
+#             amiSelectorTerms: [{ alias: "al2023@latest" }]
+#             metadataOptions:
+#               httpTokens: required
+#               httpPutResponseHopLimit: 2
+#               httpEndpoint: enabled
+#           EOF
+
+#           # Karpenter NodePool 적용
+#           cat <<EOF | kubectl apply -f -
+#           apiVersion: karpenter.sh/v1
+#           kind: NodePool
+#           metadata:
+#             name: default
+#           spec:
+#             template:
+#               spec:
+#                 nodeClassRef:
+#                   group: karpenter.k8s.aws
+#                   kind: EC2NodeClass
+#                   name: default
+#                 requirements:
+#                   - key: karpenter.sh/capacity-type
+#                     operator: In
+#                     values: ["spot"]
+#                   - key: kubernetes.io/arch
+#                     operator: In
+#                     values: ["amd64"]
+#             disruption:
+#               consolidationPolicy: WhenEmptyOrUnderutilized
+#               consolidateAfter: 1m
+#           EOF
+
+#           # KEDA ScaledObject 적용
+#           cat <<EOF | kubectl apply -f -
+#           apiVersion: keda.sh/v1alpha1
+#           kind: ScaledObject
+#           metadata:
+#             name: on-race-api-scaler
+#             namespace: t6-on-race-prod
+#           spec:
+#             scaleTargetRef:
+#               name: on-race-api
+#             minReplicaCount: 2
+#             maxReplicaCount: 300
+#             triggers:
+#               - type: prometheus
+#                 metadata:
+#                   serverAddress: http://t6-on-race-prometheus-server.monitoring.svc.cluster.local:80
+#                   metricName: onrace_tps_requests_total
+#                   threshold: "50"
+#                   query: "sum(rate(onrace_tps_requests_total{result=\"allowed\"}[1m]))"
+#           EOF
+
+
+# 1회용 "이미 존재하는 리소스를 삭제하는 코드 포함"
 name: "On-Race-Infra-CD"
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
   AWS_REGION: ap-northeast-2
   CLUSTER_NAME: t6-on-race-prod-cluster
+  AWS_ACCOUNT_ID: 274130523831 # 정책 ARN 구성을 위해 필요
 
 on:
   push:
@@ -31,6 +165,42 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
+      # [1회성 스텝] 테라폼이 "이미 존재함" 에러를 냈던 리소스들만 정밀 삭제
+      # 이 스텝은 배포가 한 번 성공(초록색 체크)하면 코드에서 반드시 제거하십시오.
+      - name: One-time Cleanup of Conflict Resources
+        run: |
+          echo "충돌 더미 리소스 정밀 타격 시작..."
+
+          # 1. IAM 정책 삭제
+          aws iam delete-policy --policy-arn arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:policy/t6-on-race-prod-keda-sqs-policy || true
+          aws iam delete-policy --policy-arn arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:policy/t6-on-race-ai-s3-access || true
+
+          # 2. IAM 역할 삭제 (연결된 정책 해제 후 삭제)
+          for role in t6-on-race-eks-cluster-role t6-on-race-eks-node-role t6-on-race-karpenter-node-role; do
+            echo "Deleting dummy role: $role"
+            policies=$(aws iam list-attached-role-policies --role-name $role --query 'AttachedPolicies[].PolicyArn' --output text || true)
+            for policy in $policies; do
+              aws iam detach-role-policy --role-name $role --policy-arn $policy || true
+            done
+            aws iam delete-role --role-name $role || true
+          done
+
+          # 3. CloudFront 공개 키 삭제
+          KEY_ID=$(aws cloudfront list-public-keys --query "PublicKeyList.Items[?Name=='t6-on-race-vqa-public-key'].Id" --output text)
+          if [ "$KEY_ID" != "None" ] && [ -n "$KEY_ID" ]; then
+            ETAG=$(aws cloudfront get-public-key --id $KEY_ID --query "ETag" --output text)
+            aws cloudfront delete-public-key --id $KEY_ID --if-match $ETAG || true
+          fi
+
+          # 4. EC2 및 네트워크 리소스 삭제
+          aws ec2 delete-launch-template --launch-template-name t6-on-race-node-lt || true
+          aws ec2 delete-security-group --group-name t6-on-race-prod-cluster-nodes-common-sg || true
+
+          # 5. S3 버킷 삭제 (데이터 강제 비우기 포함)
+          aws s3 rb s3://t6-on-race-loki-logs-202020842 --force || true
+
+          echo "정밀 청소 완료. 테라폼 배포를 시작합니다."
+
       # 1. Base Layer (IAM, VPC 등) 배포
       - name: Base Layer Apply
         working-directory: ./infra/envs/prod/base
@@ -38,17 +208,13 @@ jobs:
           terraform init
           terraform apply -auto-approve
 
-      # 2. [핵심 수정] EKS Access Entry 조건부 갱신
-      # 클러스터가 존재할 때만 출입증을 갱신하여 ResourceNotFoundException 에러를 방지합니다.
+      # 2. EKS Access Entry 조건부 갱신
       - name: Refresh EKS Access Entry
         run: |
           if aws eks describe-cluster --name ${{ env.CLUSTER_NAME }} --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
-            echo "클러스터가 존재합니다. 출입증을 최신화합니다..."
             aws eks delete-access-entry --cluster-name ${{ env.CLUSTER_NAME }} --principal-arn ${{ secrets.AWS_ROLE_ARN }} || true
             aws eks create-access-entry --cluster-name ${{ env.CLUSTER_NAME }} --principal-arn ${{ secrets.AWS_ROLE_ARN }} --type STANDARD
             aws eks associate-access-policy --cluster-name ${{ env.CLUSTER_NAME }} --principal-arn ${{ secrets.AWS_ROLE_ARN }} --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy --access-scope type=cluster
-          else
-            echo "클러스터가 존재하지 않습니다. App Layer 배포 단계에서 클러스터와 권한이 새롭게 생성될 것입니다."
           fi
 
       # 3. App Layer (EKS, Helm 차트 등) 통합 배포
@@ -62,10 +228,10 @@ jobs:
       - name: Update Kubeconfig for Kubectl
         run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }}
 
-      # 5. 테라폼 plan 단계에서 에러를 유발하는 CRD 기반 리소스들을 kubectl로 직접 적용
+      # 5. CRD 기반 리소스 직접 적용
       - name: Apply K8s Configs via Kubectl
         run: |
-          # Karpenter EC2NodeClass 적용
+          # EC2NodeClass
           cat <<EOF | kubectl apply -f -
           apiVersion: karpenter.k8s.aws/v1
           kind: EC2NodeClass
@@ -83,7 +249,7 @@ jobs:
               httpEndpoint: enabled
           EOF
 
-          # Karpenter NodePool 적용
+          # NodePool
           cat <<EOF | kubectl apply -f -
           apiVersion: karpenter.sh/v1
           kind: NodePool
@@ -108,7 +274,7 @@ jobs:
               consolidateAfter: 1m
           EOF
 
-          # KEDA ScaledObject 적용
+          # KEDA ScaledObject
           cat <<EOF | kubectl apply -f -
           apiVersion: keda.sh/v1alpha1
           kind: ScaledObject
