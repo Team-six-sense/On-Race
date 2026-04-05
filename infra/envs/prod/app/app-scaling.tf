@@ -190,12 +190,6 @@ resource "time_sleep" "wait_60_seconds_for_karpenter" {
   create_duration = "60s"
 }
 
-# [추가] Karpenter Helm 설치 후 CRD 및 웹훅이 준비될 때까지 대기
-resource "time_sleep" "wait_60_seconds_for_karpenter" {
-  depends_on = [helm_release.karpenter]
-  create_duration = "60s"
-}
-
 # 7. EC2NodeClass (v1 API 반영)
 resource "kubernetes_manifest" "karpenter_node_class" {
   manifest = {
