@@ -228,7 +228,7 @@ resource "kubernetes_manifest" "karpenter_node_class" {
       }
     }
   }
-  depends_on = [time_sleep.wait_60_seconds_for_karpenter]
+  depends_on = [time_sleep.wait_60_seconds_for_karpenter, helm_release.karpenter]
 }
 
 # 8. NodePool (v1 API 반영 및 리소스 최적화)
@@ -317,4 +317,5 @@ resource "kubernetes_manifest" "karpenter_vqa_node_pool" {
       }
     }
   }
+  depends_on = [helm_release.karpenter]
 }

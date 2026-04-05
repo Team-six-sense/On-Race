@@ -39,12 +39,6 @@ jobs:
           terraform init
           terraform apply -auto-approve
 
-      # 2. [중요] App Layer 실행 전, 이미 생성된 클러스터의 인증 정보를 미리 가져옴
-      # 테라폼이 Plan 단계에서 K8s API에 접속할 수 있게 해줍니다.
-      - name: Update Kubeconfig
-        run: |
-          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }} || echo "Cluster not ready yet"
-
       # 3. [핵심 수정] 쪼개져 있던 -target 스텝들을 하나로 통합하여 전체 배포
       - name: App Layer - Full Apply
         working-directory: ./infra/envs/prod/app

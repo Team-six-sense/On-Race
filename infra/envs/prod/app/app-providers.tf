@@ -35,17 +35,6 @@ data "aws_eks_cluster_auth" "eks" {
   name = module.eks.cluster_name
 }
 
-provider "kubernetes" {
-  config_path = "~/.kube/config"
-}
-
-provider "helm" {
-  kubernetes {
-    config_path = "~/.kube/config"
-  }
-}
-
-/*
 # 2. Kubernetes 프로바이더 (exec 블록 제거, token 직접 주입)
 provider "kubernetes" {
   host                   = module.eks.cluster_endpoint
@@ -61,4 +50,3 @@ provider "helm" {
     token                  = data.aws_eks_cluster_auth.eks.token
   }
 }
-*/
