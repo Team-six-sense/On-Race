@@ -30,26 +30,35 @@ provider "aws" {
   }
 }
 
+# 1. 테라폼 내장 AWS 프로바이더를 통해 안전하게 EKS 인증 토큰 발급
+data "aws_eks_cluster_auth" "eks" {
+  name = module.eks.cluster_name
+}
+
 provider "kubernetes" {
-  host                   = module.eks.cluster_endpoint
-  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
-  exec {
-    api_version = "client.authentication.k8s.io/v1beta1"
-    # [수정] --region 인자를 추가하여 토큰 생성 시 리전 불일치 에러를 방지합니다.
-    args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name, "--region", var.aws_region]
-    command     = "aws"
-  }
+  config_path = "~/.kube/config"
 }
 
 provider "helm" {
   kubernetes {
-    host                   = module.eks.cluster_endpoint
-    cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
-    exec {
-      api_version = "client.authentication.k8s.io/v1beta1"
-      # [수정] Helm 프로바이더에도 동일하게 --region 인자를 추가합니다.
-      args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name, "--region", var.aws_region]
-      command     = "aws"
-    }
+    config_path = "~/.kube/config"
   }
 }
+
+/*
+# 2. Kubernetes 프로바이더 (exec 블록 제거, token 직접 주입)
+provider "kubernetes" {
+  host                   = module.eks.cluster_endpoint
+  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+  token                  = data.aws_eks_cluster_auth.eks.token
+}
+
+# 3. Helm 프로바이더 (exec 블록 제거, token 직접 주입)
+provider "helm" {
+  kubernetes {
+    host                   = module.eks.cluster_endpoint
+    cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+    token                  = data.aws_eks_cluster_auth.eks.token
+  }
+}
+*/

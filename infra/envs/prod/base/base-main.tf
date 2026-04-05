@@ -134,7 +134,7 @@ data "aws_iam_openid_connect_provider" "github" {
 # 8. GitHub Actions 전용 IAM 역할
 resource "aws_iam_role" "github_actions_ecr_role" {
   name = "${var.project_name}-github-actions-role"
-  max_session_duration = 3600
+  max_session_duration = 14400
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{

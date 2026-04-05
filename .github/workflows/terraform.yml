@@ -13,7 +13,7 @@ jobs:
   terraform:
     runs-on: ubuntu-latest
     
-    # [추가] OIDC 인증 권한
+    # OIDC 인증 권한
     permissions:
       id-token: write
       contents: read
@@ -25,48 +25,34 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          # [수정] Role 기반 인증으로 변경
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-          role-duration-seconds: 3600 # 세션 유효 시간을 1시간으로 연장
+          role-duration-seconds: 3600
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
+      # 1. IAM Role 등 기초 인프라 배포
       - name: Base Layer Apply
         working-directory: ./infra/envs/prod/base
         run: |
           terraform init
           terraform apply -auto-approve
 
-      - name: App Layer - EKS & Network Core
+      # 2. [중요] App Layer 실행 전, 이미 생성된 클러스터의 인증 정보를 미리 가져옴
+      # 테라폼이 Plan 단계에서 K8s API에 접속할 수 있게 해줍니다.
+      - name: Update Kubeconfig
+        run: |
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }} || echo "Cluster not ready yet"
+
+      # 3. [핵심 수정] 쪼개져 있던 -target 스텝들을 하나로 통합하여 전체 배포
+      - name: App Layer - Full Apply
         working-directory: ./infra/envs/prod/app
         run: |
           terraform init
-          terraform apply -auto-approve -target=module.eks
+          terraform apply -auto-approve
 
-      - name: Update Kubeconfig
-        run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }}
-
-      - name: App Layer - Core Infrastructure
-        working-directory: ./infra/envs/prod/app
-        run: |
-          terraform apply -auto-approve \
-            -target=module.lb_controller_irsa \
-            -target=helm_release.lb_controller \
-            -target=aws_eks_addon.ebs_csi \
-            -target=kubernetes_storage_class_v1.gp3_default \
-            -target=module.karpenter \
-            -target=helm_release.karpenter
-
-      - name: Wait for Infrastructure Stabilization
-        run: sleep 120
-
-      - name: App Layer - Full Final Apply
-        working-directory: ./infra/envs/prod/app
-        run: terraform apply -auto-approve
-      
-      # KEDA ScaledObject 강제 적용 단계
+      # 4. KEDA ScaledObject 강제 적용 단계
       - name: Apply KEDA ScaledObject via Kubectl
         run: |
           cat <<EOF | kubectl apply -f -
