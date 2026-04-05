@@ -22,7 +22,7 @@ import {
 
 import {
   to = aws_cloudfront_key_group.vqa_key_group
-  id = "이곳에_키그룹_ID를_입력하세요" 
+  id = "7b318e84-894e-4080-b917-cabeec18d60c" 
 }
 
 # 3. 보안 그룹 (Security Group)
