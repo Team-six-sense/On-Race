@@ -190,6 +190,7 @@ resource "time_sleep" "wait_60_seconds_for_karpenter" {
   create_duration = "60s"
 }
 
+/*
 # 7. EC2NodeClass (v1 API 반영)
 resource "kubernetes_manifest" "karpenter_node_class" {
   manifest = {
@@ -316,4 +317,4 @@ resource "kubernetes_manifest" "karpenter_vqa_node_pool" {
   }
   # NodeClass가 먼저 생성되어야 함
   depends_on = [kubernetes_manifest.karpenter_node_class]
-}
+}*/
