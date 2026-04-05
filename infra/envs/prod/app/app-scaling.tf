@@ -190,6 +190,12 @@ resource "time_sleep" "wait_60_seconds_for_karpenter" {
   create_duration = "60s"
 }
 
+# [추가] Karpenter Helm 설치 후 CRD 및 웹훅이 준비될 때까지 대기
+resource "time_sleep" "wait_60_seconds_for_karpenter" {
+  depends_on = [helm_release.karpenter]
+  create_duration = "60s"
+}
+
 # 7. EC2NodeClass (v1 API 반영)
 resource "kubernetes_manifest" "karpenter_node_class" {
   manifest = {
@@ -199,14 +205,14 @@ resource "kubernetes_manifest" "karpenter_node_class" {
       name = "default"
     }
     spec = {
-      amiFamily = "AL2023" # 최신 EKS 최적화 OS
+      amiFamily = "AL2023"
       role      = module.karpenter.node_iam_role_name
 
-      "metadataOptions" = {
-        "httpEndpoint"            = "enabled"
-        "httpProtocolIPv6"        = "disabled"
-        "httpPutResponseHopLimit" = 2 # 파드(aws-node)의 메타데이터 접근 허용
-        "httpTokens"              = "required"
+      metadataOptions = {
+        httpEndpoint               = "enabled"
+        httpProtocolIPv6           = "disabled"
+        httpPutResponseHopLimit    = 2
+        httpTokens                 = "required"
       }
 
       amiSelectorTerms = [
@@ -221,17 +227,17 @@ resource "kubernetes_manifest" "karpenter_node_class" {
         { tags = { "karpenter.sh/discovery" = module.eks.cluster_name } }
       ]
       
-      # [추가] 노드에 공통 태그 부여
       tags = {
         "Name"        = "${var.project_name}-karpenter-node"
         "Environment" = var.environment
       }
     }
   }
-  depends_on = [time_sleep.wait_60_seconds_for_karpenter, helm_release.karpenter]
+  # Karpenter 설치 후 60초 대기 후 실행
+  depends_on = [time_sleep.wait_60_seconds_for_karpenter]
 }
 
-# 8. NodePool (v1 API 반영 및 리소스 최적화)
+# 8. NodePool (기본형)
 resource "kubernetes_manifest" "karpenter_node_pool" {
   manifest = {
     apiVersion = "karpenter.sh/v1"
@@ -248,29 +254,28 @@ resource "kubernetes_manifest" "karpenter_node_pool" {
             name  = "default"
           }
           requirements = [
-            #{ key = "karpenter.sh/capacity-type", operator = "In", values = ["spot", "on-demand"] },
-            { key = "karpenter.sh/capacity-type", operator = "In", values = ["spot"] }, # [수정] on-demand 제거
-            { key = "k8s.amazonaws.com/instance-category", operator = "In", values = ["c", "m", "r"] }, # 컴퓨팅/메모리 최적화 인스턴스 포함
-            { key = "k8s.amazonaws.com/instance-cpu", operator = "In", values = ["2", "4", "8"] }, # 너무 작은 인스턴스 배제
+            { key = "karpenter.sh/capacity-type", operator = "In", values = ["spot"] },
+            { key = "k8s.amazonaws.com/instance-category", operator = "In", values = ["c", "m", "r"] },
+            { key = "k8s.amazonaws.com/instance-cpu", operator = "In", values = ["2", "4", "8"] },
             { key = "kubernetes.io/arch", operator = "In", values = ["amd64"] },
             { key = "topology.kubernetes.io/zone", operator = "In", values = ["ap-northeast-2a", "ap-northeast-2c"] }
           ]
         }
       }
-      # [최적화] 비용 효율적인 노드 관리를 위한 정책
       disruption = {
         consolidationPolicy = "WhenEmptyOrUnderutilized"
         consolidateAfter    = "1m"
       }
       limits = {
-        cpu = "1000" # 전체 클러스터 CPU 한도 설정 (폭주 방지)
+        cpu = "1000"
       }
     }
   }
+  # NodeClass가 먼저 생성되어야 함
   depends_on = [kubernetes_manifest.karpenter_node_class]
 }
 
-# 9. VQA 전용 고성능 NodePool (c6a, c7a 전용)
+# 9. VQA 전용 고성능 NodePool
 resource "kubernetes_manifest" "karpenter_vqa_node_pool" {
   manifest = {
     apiVersion = "karpenter.sh/v1"
@@ -280,7 +285,6 @@ resource "kubernetes_manifest" "karpenter_vqa_node_pool" {
     }
     spec = {
       template = {
-        # [수정] labels는 metadata 블록 아래에 위치해야 합니다.
         metadata = {
           labels = {
             "workload" = "vqa"
@@ -292,7 +296,6 @@ resource "kubernetes_manifest" "karpenter_vqa_node_pool" {
             kind  = "EC2NodeClass"
             name  = "default"
           }
-          # [핵심] taints는 그대로 spec 아래에 둡니다.
           taints = [
             {
               key    = "workload"
@@ -317,5 +320,6 @@ resource "kubernetes_manifest" "karpenter_vqa_node_pool" {
       }
     }
   }
-  depends_on = [helm_release.karpenter]
+  # NodeClass가 먼저 생성되어야 함
+  depends_on = [kubernetes_manifest.karpenter_node_class]
 }

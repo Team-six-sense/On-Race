@@ -1,6 +1,5 @@
 terraform {
   required_version = ">= 1.5.0"
-
   required_providers {
     aws        = { source = "hashicorp/aws", version = "~> 5.0" }
     helm       = { source = "hashicorp/helm", version = "~> 2.12" }
@@ -30,19 +29,19 @@ provider "aws" {
   }
 }
 
-# 1. 테라폼 내장 AWS 프로바이더를 통해 안전하게 EKS 인증 토큰 발급
+# 1. 테라폼 내장 AWS 프로바이더를 통해 EKS 인증 토큰 발급
 data "aws_eks_cluster_auth" "eks" {
   name = module.eks.cluster_name
 }
 
-# 2. Kubernetes 프로바이더 (exec 블록 제거, token 직접 주입)
+# 2. Kubernetes 프로바이더 (Native Token 주입)
 provider "kubernetes" {
   host                   = module.eks.cluster_endpoint
   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
   token                  = data.aws_eks_cluster_auth.eks.token
 }
 
-# 3. Helm 프로바이더 (exec 블록 제거, token 직접 주입)
+# 3. Helm 프로바이더 (Native Token 주입)
 provider "helm" {
   kubernetes {
     host                   = module.eks.cluster_endpoint
