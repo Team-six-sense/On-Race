@@ -137,7 +137,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
   AWS_REGION: ap-northeast-2
   CLUSTER_NAME: t6-on-race-prod-cluster
-  AWS_ACCOUNT_ID: 274130523831 # 정책 ARN 구성을 위해 필요
+  AWS_ACCOUNT_ID: 274130523831
 
 on:
   push:
@@ -165,41 +165,58 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      # [1회성 스텝] 테라폼이 "이미 존재함" 에러를 냈던 리소스들만 정밀 삭제
-      # 이 스텝은 배포가 한 번 성공(초록색 체크)하면 코드에서 반드시 제거하십시오.
-      - name: One-time Cleanup of Conflict Resources
+      # [1회성 스텝] 파워쉘에서 [발견]된 리소스만 정밀 타격
+      - name: One-time Cleanup of Identified Conflict Resources
         run: |
-          echo "충돌 더미 리소스 정밀 타격 시작..."
+          echo "검색된 더미 리소스 정밀 삭제 시작..."
 
-          # 1. IAM 정책 삭제
-          aws iam delete-policy --policy-arn arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:policy/t6-on-race-prod-keda-sqs-policy || true
-          aws iam delete-policy --policy-arn arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:policy/t6-on-race-ai-s3-access || true
-
-          # 2. IAM 역할 삭제 (연결된 정책 해제 후 삭제)
-          for role in t6-on-race-eks-cluster-role t6-on-race-eks-node-role t6-on-race-karpenter-node-role; do
-            echo "Deleting dummy role: $role"
-            policies=$(aws iam list-attached-role-policies --role-name $role --query 'AttachedPolicies[].PolicyArn' --output text || true)
-            for policy in $policies; do
-              aws iam detach-role-policy --role-name $role --policy-arn $policy || true
+          # 1. 발견된 IAM 역할 삭제 (연결된 정책 해제 포함)
+          ROLES=(
+            "t6-on-race-ai-vqa-pod-role"
+            "t6-on-race-ebs-csi-role"
+            "t6-on-race-prod-keda-operator-role"
+            "t6-on-race-lb-controller"
+            "t6-on-race-prod-cluster-loki-irsa"
+          )
+          for role in "${ROLES[@]}"; do
+            echo "더미 역할 제거 중: $role"
+            # 관리형 정책 해제
+            attached_policies=$(aws iam list-attached-role-policies --role-name $role --query 'AttachedPolicies[].PolicyArn' --output text || true)
+            for policy in $attached_policies; do
+              if [ "$policy" != "None" ]; then
+                aws iam detach-role-policy --role-name $role --policy-arn $policy || true
+              fi
+            done
+            # 인라인 정책 삭제
+            inline_policies=$(aws iam list-role-policies --role-name $role --query 'PolicyNames[]' --output text || true)
+            for ipolicy in $inline_policies; do
+              if [ "$ipolicy" != "None" ]; then
+                aws iam delete-role-policy --role-name $role --policy-name $ipolicy || true
+              fi
             done
             aws iam delete-role --role-name $role || true
           done
 
-          # 3. CloudFront 공개 키 삭제
+          # 2. 발견된 CloudFront 공개 키 삭제
           KEY_ID=$(aws cloudfront list-public-keys --query "PublicKeyList.Items[?Name=='t6-on-race-vqa-public-key'].Id" --output text)
           if [ "$KEY_ID" != "None" ] && [ -n "$KEY_ID" ]; then
             ETAG=$(aws cloudfront get-public-key --id $KEY_ID --query "ETag" --output text)
             aws cloudfront delete-public-key --id $KEY_ID --if-match $ETAG || true
           fi
 
-          # 4. EC2 및 네트워크 리소스 삭제
+          # 3. 발견된 EC2 리소스 삭제
           aws ec2 delete-launch-template --launch-template-name t6-on-race-node-lt || true
-          aws ec2 delete-security-group --group-name t6-on-race-prod-cluster-nodes-common-sg || true
+          
+          # 보안 그룹 ID를 찾아서 삭제 (더 확실한 방법)
+          SG_ID=$(aws ec2 describe-security-groups --filters "Name=group-name,Values=t6-on-race-prod-cluster-nodes-common-sg" --query "SecurityGroups[0].GroupId" --output text)
+          if [ "$SG_ID" != "None" ] && [ -n "$SG_ID" ]; then
+            aws ec2 delete-security-group --group-id $SG_ID || true
+          fi
 
-          # 5. S3 버킷 삭제 (데이터 강제 비우기 포함)
+          # 4. 발견된 S3 버킷 삭제
           aws s3 rb s3://t6-on-race-loki-logs-202020842 --force || true
 
-          echo "정밀 청소 완료. 테라폼 배포를 시작합니다."
+          echo "정밀 청소 완료. 인프라 배포를 시도합니다."
 
       # 1. Base Layer (IAM, VPC 등) 배포
       - name: Base Layer Apply
@@ -217,7 +234,7 @@ jobs:
             aws eks associate-access-policy --cluster-name ${{ env.CLUSTER_NAME }} --principal-arn ${{ secrets.AWS_ROLE_ARN }} --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy --access-scope type=cluster
           fi
 
-      # 3. App Layer (EKS, Helm 차트 등) 통합 배포
+      # 3. App Layer 통합 배포
       - name: App Layer - Full Apply
         working-directory: ./infra/envs/prod/app
         run: |
@@ -231,7 +248,7 @@ jobs:
       # 5. CRD 기반 리소스 직접 적용
       - name: Apply K8s Configs via Kubectl
         run: |
-          # EC2NodeClass
+          # EC2NodeClass 적용
           cat <<EOF | kubectl apply -f -
           apiVersion: karpenter.k8s.aws/v1
           kind: EC2NodeClass
@@ -249,7 +266,7 @@ jobs:
               httpEndpoint: enabled
           EOF
 
-          # NodePool
+          # NodePool 적용
           cat <<EOF | kubectl apply -f -
           apiVersion: karpenter.sh/v1
           kind: NodePool
@@ -274,7 +291,7 @@ jobs:
               consolidateAfter: 1m
           EOF
 
-          # KEDA ScaledObject
+          # KEDA ScaledObject 적용
           cat <<EOF | kubectl apply -f -
           apiVersion: keda.sh/v1alpha1
           kind: ScaledObject
