@@ -86,13 +86,8 @@ resource "kubernetes_deployment_v1" "on_race_api" {
 
         init_container {
           name  = "wait-for-ai-macro"
-          image = "${data.terraform_remote_state.base.outputs.ecr_repository_url}:busybox"
-          command = [
-            "sh",
-            "-c",
-            # [수정] 동일 계층(app-ai-rules.tf)에 선언된 리소스를 직접 참조
-            "until nc -z ${aws_instance.ai_macro_detector[0].private_ip} 8000; do echo 'Waiting for AI Macro EC2...'; sleep 3; done;"
-          ]
+          image = "public.ecr.aws/docker/library/busybox:latest"
+          command = ["sh", "-c", "until nc -z ${aws_instance.ai_macro_detector[0].private_ip} 8000; do echo 'Waiting for AI Macro EC2...'; sleep 3; done"]
         }
 
         container {
@@ -102,12 +97,27 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           image_pull_policy = "Always"
           port { container_port = 8080 }
 
+          # [VQA] CloudFront Signed URL 관련 환경 변수
+          env {
+            name  = "CLOUDFRONT_KEY_ID"
+            value = "K2POEQMPBW4Z72" # 실제 Public Key ID로 수정됨
+          }
+          env {
+            name  = "CLOUDFRONT_DOMAIN"
+            value = "https://cdn.on-race.com"
+          }
+          env {
+            name  = "PRIVATE_KEY_PATH"
+            value = "/app/certs/vqa_private_key.pem"
+          }
+
           # [Java 21 최적화]
           env {
             name  = "JAVA_TOOL_OPTIONS"
             value = "-XX:InitialRAMPercentage=75.0 -XX:MaxRAMPercentage=75.0 -XX:MinRAMPercentage=75.0"
           }
 
+          # 인프라 연결 설정
           env {
             name  = "DB_ENDPOINT"
             value = data.terraform_remote_state.base.outputs.rds_proxy_endpoint
@@ -137,19 +147,23 @@ resource "kubernetes_deployment_v1" "on_race_api" {
             value = "http://${aws_instance.ai_macro_detector[0].private_ip}:8000"
           }
 
-          # [Startup Probe] AI EC2 연결 및 SG 규칙 전파 대기
-          startup_probe {
-            tcp_socket {
-              port = 8000
-            }
-            initial_delay_seconds = 5
-            period_seconds        = 5
-            failure_threshold     = 60 
+          # VQA 보안 키 마운트
+          volume_mount {
+            name       = "vqa-key-volume"
+            mount_path = "/app/certs"
+            read_only  = true
           }
 
           resources {
             requests = { cpu = "500m", memory = "1.5Gi" }
             limits   = { cpu = "1200m", memory = "2Gi" }
+          }
+
+          startup_probe {
+            tcp_socket { port = 8000 }
+            initial_delay_seconds = 5
+            period_seconds        = 5
+            failure_threshold     = 60 
           }
 
           readiness_probe {
@@ -177,7 +191,7 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           }
         }
 
-        # Stunnel 사이드카 (Redis TLS)
+        # Redis TLS 사이드카
         container {
           name  = "stunnel"
           image = "dweomer/stunnel:latest"
@@ -208,6 +222,14 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           }
         }
 
+        # 통합 볼륨 정의 (중복 제거됨)
+        volume {
+          name = "vqa-key-volume"
+          secret {
+            secret_name = kubernetes_secret_v1.vqa_signing_key.metadata[0].name
+          }
+        }
+        
         volume {
           name = "stunnel-conf"
           config_map {
