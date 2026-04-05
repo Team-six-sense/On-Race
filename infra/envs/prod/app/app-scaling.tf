@@ -68,7 +68,7 @@ resource "time_sleep" "wait_30_seconds_for_keda" {
   depends_on      = [helm_release.keda]
   create_duration = "30s"
 }
-
+/*
 # 5. KEDA ScaledObject (HPA 로직)
 resource "kubernetes_manifest" "on_race_tps_scaler" {
   manifest = {
@@ -147,6 +147,7 @@ resource "kubernetes_manifest" "on_race_tps_scaler" {
   }
   depends_on = [time_sleep.wait_30_seconds_for_keda, kubernetes_deployment_v1.on_race_api]
 }
+*/
 
 # 6. Karpenter 설정 (v1.0.1 최신 사양 반영)
 module "karpenter" {

@@ -71,3 +71,11 @@ resource "aws_security_group" "ai_model_sg" {
 
   tags = { Name = "${var.project_name}-ai-model-sg" }
 }
+
+# CloudFront S3 접근 제어(OAC) 리소스 추가
+resource "aws_cloudfront_origin_access_control" "ai_vqa" {
+  name                              = "${var.project_name}-vqa-oac"
+  origin_access_control_origin_type = "s3"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
+}

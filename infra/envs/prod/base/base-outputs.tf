@@ -108,3 +108,8 @@ output "github_actions_role_arn" {
   description = "ARN of the IAM role for GitHub Actions"
   value       = aws_iam_role.github_actions_ecr_role.arn
 }
+
+output "ai_vqa_oac_id" {
+  description = "AI VQA CloudFront OAC ID"
+  value       = aws_cloudfront_origin_access_control.ai_vqa.id
+}

@@ -64,3 +64,26 @@ jobs:
       - name: App Layer - Full Final Apply
         working-directory: ./infra/envs/prod/app
         run: terraform apply -auto-approve
+      
+      # KEDA ScaledObject 강제 적용 단계
+      - name: Apply KEDA ScaledObject via Kubectl
+        run: |
+          cat <<EOF | kubectl apply -f -
+          apiVersion: keda.sh/v1alpha1
+          kind: ScaledObject
+          metadata:
+            name: on-race-api-scaler
+            namespace: t6-on-race-prod
+          spec:
+            scaleTargetRef:
+              name: on-race-api
+            minReplicaCount: 2
+            maxReplicaCount: 300
+            triggers:
+              - type: prometheus
+                metadata:
+                  serverAddress: http://t6-on-race-prometheus-server.monitoring.svc.cluster.local:80
+                  metricName: onrace_tps_requests_total
+                  threshold: "50"
+                  query: "sum(rate(onrace_tps_requests_total{result=\"allowed\"}[1m]))"
+          EOF
