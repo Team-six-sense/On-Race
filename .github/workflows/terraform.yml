@@ -28,6 +28,7 @@ jobs:
           # [수정] Role 기반 인증으로 변경
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+          role-duration-seconds: 7200 # 세션 유효 시간을 2시간(7200초)으로 연장
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3

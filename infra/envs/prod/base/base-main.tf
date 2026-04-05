@@ -156,26 +156,40 @@ resource "aws_iam_role" "github_actions_ecr_role" {
 
 # 9. ECR Push 최소 권한 정책
 resource "aws_iam_policy" "ecr_push_policy" {
-  name = "${var.project_name}-ecr-push-policy"
+  name = "${var.project_name}-github-actions-policy" # 이름 변경 (ECR 전용이 아니므로)
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow"
-        Action = ["ecr:GetAuthorizationToken"]
+        Effect   = "Allow"
+        Action   = ["ec2:DescribeInstances", "ec2:DescribeTags"] # EC2 조회 권한 추가
         Resource = "*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = [
+          "s3:PutObject",
+          "s3:GetObject",
+          "s3:ListBucket",
+          "s3:DeleteObject"
+        ]
+        # State 버킷에 대한 접근 권한 명시 (S3 업로드 에러 해결)
+        Resource = [
+          "arn:aws:s3:::t6-on-race-terraform-state-prod",
+          "arn:aws:s3:::t6-on-race-terraform-state-prod/*"
+        ]
       },
       {
         Effect = "Allow"
         Action = [
+          "ecr:GetAuthorizationToken",
           "ecr:BatchCheckLayerAvailability",
           "ecr:PutImage",
           "ecr:InitiateLayerUpload",
           "ecr:UploadLayerPart",
           "ecr:CompleteLayerUpload"
         ]
-        # [수정] 동일 파일 내 리소스를 직접 참조하여 의존성 명확화
-        Resource = aws_ecr_repository.app_repo.arn 
+        Resource = aws_ecr_repository.app_repo.arn
       }
     ]
   })
