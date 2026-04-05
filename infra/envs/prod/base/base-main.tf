@@ -154,32 +154,44 @@ resource "aws_iam_role" "github_actions_ecr_role" {
   })
 }
 
-# 9. ECR Push 최소 권한 정책
+# 9. GitHub Actions 통합 관리 정책 (EKS, EC2, S3, ECR 권한 포함)
 resource "aws_iam_policy" "ecr_push_policy" {
-  name = "${var.project_name}-github-actions-policy" # 이름 변경 (ECR 전용이 아니므로)
+  name = "${var.project_name}-github-actions-policy"
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Effect   = "Allow"
-        Action   = ["ec2:DescribeInstances", "ec2:DescribeTags"] # EC2 조회 권한 추가
+        # 1. EKS 권한: DescribeCluster가 있어야 Terraform Provider가 EKS에 접속 가능합니다.
+        Effect = "Allow"
+        Action = [
+          "eks:DescribeCluster",
+          "eks:ListClusters",
+          "eks:AccessKubernetesApi"
+        ]
         Resource = "*"
       },
       {
+        # 2. EC2 조회 권한: 인스턴스 및 태그 정보 확인용
         Effect   = "Allow"
-        Action   = [
+        Action   = ["ec2:DescribeInstances", "ec2:DescribeTags"]
+        Resource = "*"
+      },
+      {
+        # 3. S3 권한: Terraform Remote State 백엔드 관리용
+        Effect = "Allow"
+        Action = [
           "s3:PutObject",
           "s3:GetObject",
           "s3:ListBucket",
           "s3:DeleteObject"
         ]
-        # State 버킷에 대한 접근 권한 명시 (S3 업로드 에러 해결)
         Resource = [
           "arn:aws:s3:::t6-on-race-terraform-state-prod",
           "arn:aws:s3:::t6-on-race-terraform-state-prod/*"
         ]
       },
       {
+        # 4. ECR 권한: 이미지 푸시 및 관리용
         Effect = "Allow"
         Action = [
           "ecr:GetAuthorizationToken",
@@ -190,6 +202,12 @@ resource "aws_iam_policy" "ecr_push_policy" {
           "ecr:CompleteLayerUpload"
         ]
         Resource = aws_ecr_repository.app_repo.arn
+      },
+      {
+        # 5. STS 권한: 현재 인증된 사용자 정보 확인 (Terraform 실행 시 필요)
+        Effect   = "Allow"
+        Action   = ["sts:GetCallerIdentity"]
+        Resource = "*"
       }
     ]
   })

@@ -35,7 +35,8 @@ provider "kubernetes" {
   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
   exec {
     api_version = "client.authentication.k8s.io/v1beta1"
-    args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
+    # [수정] --region 인자를 추가하여 토큰 생성 시 리전 불일치 에러를 방지합니다.
+    args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name, "--region", var.aws_region]
     command     = "aws"
   }
 }
@@ -46,7 +47,8 @@ provider "helm" {
     cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
     exec {
       api_version = "client.authentication.k8s.io/v1beta1"
-      args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
+      # [수정] Helm 프로바이더에도 동일하게 --region 인자를 추가합니다.
+      args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name, "--region", var.aws_region]
       command     = "aws"
     }
   }
