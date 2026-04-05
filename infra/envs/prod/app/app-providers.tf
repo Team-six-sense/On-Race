@@ -17,8 +17,19 @@ terraform {
 
 provider "aws" {
   region = var.aws_region
+  default_tags {
+    tags = {
+      Project     = var.project_name
+      Environment = var.environment
+      ManagedBy   = "Terraform"
+      Layer       = "App"
+      Owner       = "t6-on-race"
+    }
+  }
 }
 
+# 깃액션 환경에서 가장 안정적인 인증 방식 (Native Exec)
+# 테라폼이 K8s, Helm 작업을 수행할 때마다 AWS CLI를 통해 실시간으로 토큰을 발급받습니다.
 provider "kubernetes" {
   host                   = module.eks.cluster_endpoint
   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
