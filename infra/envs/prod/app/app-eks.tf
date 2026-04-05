@@ -99,3 +99,19 @@ resource "time_sleep" "wait_for_lb_controller" {
   depends_on      = [helm_release.lb_controller]
   create_duration = "180s" 
 }
+
+# 9. GitHub Actions 역할에 EKS 관리자 권한 부여 (Access Entry)
+resource "aws_eks_access_entry" "github_actions" {
+  cluster_name  = module.eks.cluster_name
+  principal_arn = data.terraform_remote_state.base.outputs.github_actions_role_arn
+  type          = "STANDARD"
+}
+
+resource "aws_eks_access_policy_association" "github_actions_admin" {
+  cluster_name  = module.eks.cluster_name
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+  principal_arn = data.terraform_remote_state.base.outputs.github_actions_role_arn
+  access_scope {
+    type = "cluster"
+  }
+}
