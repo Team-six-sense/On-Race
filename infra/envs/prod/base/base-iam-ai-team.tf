@@ -18,3 +18,9 @@ resource "aws_iam_user_group_membership" "ai_team_membership" {
   user   = aws_iam_user.ai_dev1.name
   groups = [aws_iam_group.ai_team.name]
 }
+
+# AI 팀이 EC2 인스턴스 목록을 볼 수 있도록 읽기 전용 권한 추가
+resource "aws_iam_group_policy_attachment" "ai_team_ec2_view" {
+  group      = aws_iam_group.ai_team.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess"
+}
