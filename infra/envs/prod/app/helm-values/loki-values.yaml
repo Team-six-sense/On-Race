@@ -32,15 +32,34 @@ loki:
 
 deploymentMode: SingleBinary
 
+read:
+  replicas: 0
+write:
+  replicas: 0
+backend:
+  replicas: 0
+
 # Gateway DNS 에러 해결을 위한 설정 추가
 gateway:
   enabled: true
   replicas: 1
   verboseLogging: true
   nginxConfig:
-    # EKS 내부 DNS(CoreDNS) 주소를 명시적으로 지정하여 host not found 에러 방지
-    resolver: 172.20.0.10
-    # 만약 위 IP로도 안되면 kube-dns.kube-system.svc.cluster.local 입력
+    file: |
+      worker_processes  5;
+      error_log  /dev/stderr;
+      pid        /tmp/nginx.pid;
+      events { worker_connections  4096; }
+      http {
+        resolver 172.20.0.10 valid=30s; # CoreDNS IP 직접 주입
+        client_max_body_size 100M;
+        server {
+          listen 8080;
+          location / {
+            proxy_pass http://loki-single-binary.loki.svc.cluster.local:3100;
+          }
+        }
+      }
 
 singleBinary:
   replicas: 1
