@@ -1,11 +1,18 @@
 import { ApiResponse } from '@/types/api';
-import { AccountInfo } from '../types/accountInfo';
-import { EventHistory } from '../types/eventHistory';
-import { PaymentHistory } from '../types/paymentHistory';
+import {
+  AccountInfo,
+  EntriesHistory,
+  HistoryOverview,
+  OrderHistory,
+  WaitingEntriesHistory,
+} from '../types';
 
 export interface IMypageService {
   // 마이페이지 API
-  getAccountInfo(id: number): Promise<ApiResponse<AccountInfo>>;
-  getEventHistory(id: number): Promise<ApiResponse<EventHistory[]>>;
-  getPaymentHistory(id: number): Promise<ApiResponse<PaymentHistory[]>>;
+  getAccountInfo(): Promise<ApiResponse<AccountInfo>>;
+  getHistoryOverview(): Promise<ApiResponse<HistoryOverview>>;
+  getEntriesHistory(): Promise<ApiResponse<EntriesHistory[]>>;
+  getWaitingHistory(): Promise<ApiResponse<WaitingEntriesHistory>>;
+  getOrderHistory(): Promise<ApiResponse<OrderHistory[]>>;
+  getOrderDetailInfo(id: number): Promise<ApiResponse<null>>;
 }

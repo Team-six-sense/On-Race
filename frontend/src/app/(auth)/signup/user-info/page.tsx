@@ -30,7 +30,8 @@ export default function SignupForm() {
   // 이메일 중복 확인 API 호출
   const handleDuplicationEmail = async () => {
     try {
-      await authService.checkEmailAddress({ email });
+      const response = await authService.checkEmailAddress({ email });
+      console.log(response.data);
     } catch (error: any) {
       throw new Error(error);
     }
@@ -39,7 +40,8 @@ export default function SignupForm() {
   // 휴대폰 본인 인증 API 호출
   const handleCheckCode = async () => {
     try {
-      await authService.sendSmsCode({ phoneNumber });
+      const response = await authService.sendSmsCode({ phoneNumber });
+      console.log(response.data);
     } catch (error: any) {
       throw new Error(error);
     }

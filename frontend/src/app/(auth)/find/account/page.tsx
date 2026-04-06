@@ -1,4 +1,3 @@
-// app/login/success/page.tsx
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -19,8 +18,8 @@ export default function LoginSuccess() {
       if (response.success) {
         router.push('/find/account/result');
       }
-    } catch (error: any) {
-      throw new Error(error);
+    } catch (error) {
+      console.error('데이터 로드 실패:', error);
     }
   };
 

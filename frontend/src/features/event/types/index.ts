@@ -1,3 +1,7 @@
 export * from './event';
 export * from './eventDetails';
 export * from './salesInfo';
+export * from './eventOverview';
+export * from './eventRate';
+export * from './eventPrevSave';
+export * from './eventApply';

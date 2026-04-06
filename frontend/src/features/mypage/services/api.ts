@@ -1,9 +1,5 @@
 import axios from 'axios';
-import { ApiResponse } from '@/types/api';
 import { IMypageService } from './interface';
-import { AccountInfo } from '../types/accountInfo';
-import { EventHistory } from '../types/eventHistory';
-import { PaymentHistory } from '../types/paymentHistory';
 
 // Next.js API Route를 호출하기 위한 인스턴스
 const apiClient = axios.create({
@@ -13,31 +9,28 @@ const apiClient = axios.create({
 });
 
 export const mypageApi: IMypageService = {
-  getAccountInfo: async (id) => {
-    const response = await apiClient.get<ApiResponse<AccountInfo>>(
-      '/mypage/accountInfo',
-      {
-        params: { id },
-      },
-    );
+  getAccountInfo: async () => {
+    const response = await apiClient.get('/mypage/accountInfo');
     return response.data;
   },
-  getEventHistory: async (id) => {
-    const response = await apiClient.get<ApiResponse<EventHistory[]>>(
-      `/mypage/eventHistory`,
-      {
-        params: { id },
-      },
-    );
+  getHistoryOverview: async () => {
+    const response = await apiClient.get(`/mypage`);
     return response.data;
   },
-  getPaymentHistory: async (id) => {
-    const response = await apiClient.get<ApiResponse<PaymentHistory[]>>(
-      `/mypage/paymentHistory`,
-      {
-        params: { id },
-      },
-    );
+  getEntriesHistory: async () => {
+    const response = await apiClient.get(`/mypage/entries`);
+    return response.data;
+  },
+  getWaitingHistory: async () => {
+    const response = await apiClient.get(`/mypage/waiting-entries`);
+    return response.data;
+  },
+  getOrderHistory: async () => {
+    const response = await apiClient.get(`/mypage/orders`);
+    return response.data;
+  },
+  getOrderDetailInfo: async (id) => {
+    const response = await apiClient.get(`/mypage/orders/${id}`);
     return response.data;
   },
 };

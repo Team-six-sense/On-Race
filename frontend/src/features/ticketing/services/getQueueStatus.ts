@@ -14,7 +14,7 @@ export const getQueueStatus = async (eventId: string) => {
         totalWaiting: TOTAL,
         expectedWaitTime: Math.ceil(currentPos * 0.8), // 초 단위로 변경 (포맷팅은 UI에서)
         status: currentPos === 0 ? 'passed' : 'waiting',
-        accessToken: currentPos === 0 ? 'SECURE_TOKEN_ABC' : null,
+        passToken: currentPos === 0 ? 'SECURE_TOKEN_ABC' : null,
       });
     }, 500);
   });

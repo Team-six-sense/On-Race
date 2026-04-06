@@ -14,9 +14,10 @@ export default function LoginSuccess() {
   const handleSendPasswordResetLink = async () => {
     try {
       const response = await authService.sendPasswordResetLink({ email });
+      console.log(response);
       alert(response.message);
-    } catch (error: any) {
-      throw new Error(error);
+    } catch (error) {
+      console.error(error);
     }
   };
 

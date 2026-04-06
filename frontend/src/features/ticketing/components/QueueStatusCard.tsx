@@ -45,7 +45,7 @@ export const QueueStatusCard = ({
           </span>
         </div>
 
-        <div className="text-center">
+        <div className="text-center py-2">
           <p className="text-sm text-gray-500 tracking-widest">
             잠시만 기다려 주시면 선택하신 이벤트의 결제 페이지로 연결됩니다.
           </p>

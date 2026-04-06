@@ -1,7 +1,8 @@
-import { AddressListResponse, AddressResponse } from '@/features/address/types';
+import { AddressList, Address } from '@/features/address/types';
 
-export const MOCK_ADDRESS: AddressResponse = {
+export const MOCK_ADDRESS: Address = {
   id: 1,
+  label: '우리집',
   receiverName: '김',
   phone: '010-1234-5678',
   zipcode: '06234',
@@ -12,11 +13,12 @@ export const MOCK_ADDRESS: AddressResponse = {
 };
 
 // 주소 목록 Mock 데이터
-export const MOCK_ADDRESS_LIST: AddressListResponse = {
+export const MOCK_ADDRESS_LIST: AddressList = {
   data: [
     {
       id: 1,
       receiverName: '김',
+      label: '우리집',
       phone: '010-1234-5678',
       zipcode: '06234',
       address1: '서울특별시 강남구 테헤란로 427',
@@ -27,6 +29,7 @@ export const MOCK_ADDRESS_LIST: AddressListResponse = {
     {
       id: 2,
       receiverName: '이',
+      label: '회사',
       phone: '010-9876-5432',
       zipcode: '04524',
       address1: '서울특별시 중구 세종대로 110',
@@ -37,6 +40,7 @@ export const MOCK_ADDRESS_LIST: AddressListResponse = {
     {
       id: 3,
       receiverName: '박',
+      label: '기타',
       phone: '010-5555-4444',
       zipcode: '48058',
       address1: '부산광역시 해운대구 수영강변대로 120',

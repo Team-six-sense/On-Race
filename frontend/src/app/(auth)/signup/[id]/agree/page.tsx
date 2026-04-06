@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/shadcn/label';
 import { Checkbox } from '@/components/ui/checkbox';
 
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
   Modal,
@@ -16,7 +17,8 @@ import {
   ModalTitle,
   ModalTrigger,
 } from '@/components/ui/modal';
-import { useState } from 'react';
+import { authService } from '@/features/auth/services';
+import PassModal from '@/features/auth/components/PassModal';
 
 export default function SignupForm() {
   const router = useRouter();
@@ -27,8 +29,11 @@ export default function SignupForm() {
     email: false,
     sms: false,
   });
-  const [agreeModal, setAgreeModal] = useState(false);
   const [open, setOpen] = useState(false);
+
+  const [agreeModal, setAgreeModal] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
 
   const isRequiredChecked = agreements.terms && agreements.privacy;
 
@@ -37,6 +42,13 @@ export default function SignupForm() {
     handleCheckboxChange('privacy', checked);
     handleCheckboxChange('email', checked);
     handleCheckboxChange('sms', checked);
+  };
+
+  const handleProviderSelect = (provider: string) => {
+    setSelectedProvider(provider);
+    setIsModalOpen(false);
+
+    alert(`${provider}를 선택하셨습니다. 인증 페이지로 이동합니다.`);
   };
 
   const handleCheckboxChange = (
@@ -57,6 +69,18 @@ export default function SignupForm() {
       setAgreeModal(true);
     }
   };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await authService.getTerms();
+      } catch (error) {
+        console.error('데이터 로드 실패:', error);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const handleEvent = () => {
     router.push('/signup/user-info');
@@ -199,7 +223,10 @@ export default function SignupForm() {
                       <Button
                         variant="primary1"
                         rounded="full"
-                        onClick={handleEvent}
+                        onClick={() => {
+                          setOpen(false);
+                          setIsModalOpen(true);
+                        }}
                       >
                         PASS 본인 인증
                       </Button>
@@ -234,7 +261,9 @@ export default function SignupForm() {
                     <Button
                       variant="primary1"
                       rounded="full"
-                      onClick={() => setAgreeModal(false)}
+                      onClick={() => {
+                        setAgreeModal(false);
+                      }}
                     >
                       확인
                     </Button>
@@ -244,6 +273,14 @@ export default function SignupForm() {
             </div>
           </div>
         </div>
+        <PassModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onFinish={() => {
+            setIsModalOpen(false);
+            handleEvent();
+          }}
+        />
       </div>
     </div>
   );

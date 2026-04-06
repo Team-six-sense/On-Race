@@ -1,5 +1,6 @@
-export interface AddressResponse {
-  id: number;
+export interface Address {
+  id?: number;
+  label: string;
   receiverName: string;
   phone: string;
   zipcode: string;
@@ -9,6 +10,6 @@ export interface AddressResponse {
   isDefault: boolean;
 }
 
-export interface AddressListResponse {
-  data: AddressResponse[];
+export interface AddressList {
+  data: Address[];
 }

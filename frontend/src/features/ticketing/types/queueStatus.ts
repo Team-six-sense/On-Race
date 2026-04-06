@@ -1,7 +1,8 @@
-export interface QueueResponse {
+export interface QueueStatus {
+  paceId: number;
   position: number;
   totalWaiting: number;
   expectedWaitTime: number;
   status: 'waiting' | 'passed';
-  accessToken: string | null;
+  passToken: string | null;
 }

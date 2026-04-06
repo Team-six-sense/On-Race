@@ -18,6 +18,8 @@ export default function Header() {
   const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const isHome = pathname === '/';
+  const isLoggedIn =
+    !!session && !!session.accessToken && !session.isUnregistered;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -138,7 +140,7 @@ export default function Header() {
               isHome && !isScrolled ? 'text-white/80' : 'text-gray-600',
             )}
           >
-            {session ? (
+            {isLoggedIn ? (
               <div className="flex items-center gap-4">
                 <span className="text-sm">
                   반갑습니다 {session.user?.name} 님!

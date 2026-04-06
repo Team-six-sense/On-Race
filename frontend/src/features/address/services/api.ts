@@ -1,55 +1,39 @@
 import axios from 'axios';
-import { ApiResponse } from '@/types/api';
 import { IAddressService } from './interface';
-import { AddressResponse, AddressListResponse } from '../types';
 
 // Next.js API Route를 호출하기 위한 인스턴스
 const apiClient = axios.create({
-  // 상대 경로를 사용하면 브라우저에서는 현재 도메인(localhost:3000 등)을 자동으로 사용합니다.
   baseURL: '/api',
   headers: { 'Content-Type': 'application/json' },
 });
 
 export const addressApi: IAddressService = {
   getAddress: async () => {
-    const response =
-      await apiClient.get<ApiResponse<AddressListResponse>>('/address');
+    const response = await apiClient.get('/address');
     return response.data;
   },
-  getAddressById: async (id: string) => {
-    const response = await apiClient.get<ApiResponse<AddressResponse>>(
-      `/address`,
-      {
-        params: { id },
-      },
-    );
+  getDefaultAddress: async () => {
+    const response = await apiClient.get('/address/default');
     return response.data;
   },
-  createAddress: async (data: AddressResponse) => {
-    const response = await apiClient.post<ApiResponse<AddressResponse>>(
-      '/address',
-      data,
-    );
+  getAddressById: async (id) => {
+    const response = await apiClient.get(`/address/${id}`);
     return response.data;
   },
-  updateAddress: async (id: string, data: AddressResponse) => {
-    const response = await apiClient.put<ApiResponse<AddressResponse>>(
-      `/address`,
-      data,
-      {
-        params: { id },
-      },
-    );
+  postAddress: async (data) => {
+    const response = await apiClient.post('/address', data);
     return response.data;
   },
-  deleteAddress: async (id: string) => {
-    const response = await apiClient.delete<ApiResponse<void>>(
-      `/address/${id}`,
-    );
+  updateAddress: async (id, data) => {
+    const response = await apiClient.put(`/address/${id}`, data);
     return response.data;
   },
-  updateDefaultAddress: async (id: string) => {
-    const response = await apiClient.patch<ApiResponse<void>>(`/address/${id}`);
+  deleteAddress: async (id) => {
+    const response = await apiClient.delete(`/address/${id}`);
+    return response.data;
+  },
+  updateDefaultAddress: async (id) => {
+    const response = await apiClient.patch(`/address/${id}/default`);
     return response.data;
   },
 };

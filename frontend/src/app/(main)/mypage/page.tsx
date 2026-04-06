@@ -6,6 +6,7 @@ import {
   PaymentHistoryPage,
   AccountSettings,
 } from '@/features/mypage/components';
+import { cn } from '@/lib/utils';
 import { useState } from 'react';
 
 export default function MyPage() {
@@ -48,7 +49,10 @@ export default function MyPage() {
             <Button
               key={item.id}
               variant="text"
-              className="text-lg justify-start"
+              className={cn(
+                'text-lg justify-start',
+                activeTab === item.id && 'font-bold',
+              )}
               onClick={() => setActiveTab(item.id)}
             >
               {item.label}

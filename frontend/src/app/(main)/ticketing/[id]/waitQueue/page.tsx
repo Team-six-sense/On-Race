@@ -28,9 +28,10 @@ export default function WaitingPage() {
 
   // 자동 이동 로직
   useEffect(() => {
-    if (status?.status === 'passed' && status?.accessToken) {
+    console.log(status);
+    if (status?.status === 'passed' && status?.passToken) {
       // 토큰 저장
-      localStorage.setItem(`token_${eventId}`, status.accessToken);
+      localStorage.setItem(`token_${eventId}`, status.passToken);
 
       // 즉시 이동 (또는 메시지를 위해 1초 지연 가능)
       router.push(`/ticketing/${eventId}/payment`);

@@ -417,13 +417,7 @@ export default function CheckoutPage() {
               </div>
 
               <div>
-                <Button
-                  rounded="full"
-                  onClick={requestPayment}
-                  // onClick={() =>
-                  //   router.push(`/ticketing/${params.id}/completed`)
-                  // }
-                >
+                <Button rounded="full" onClick={requestPayment}>
                   {Number(marathonItem.price).toLocaleString()}원 결제하기
                 </Button>
               </div>

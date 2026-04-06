@@ -10,14 +10,14 @@ import {
 import { cn } from '@/lib/utils';
 import { LuChevronLeft, LuChevronRight } from 'react-icons/lu';
 import { useRouter } from 'next/navigation';
-import { EventHistory } from '../types/eventHistory';
 import { myPageService } from '../services';
+import { EntriesHistory } from '../types';
 
 export const EventHistoryPage = () => {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [searchType, setSearchType] = useState<string>('ALL');
-  const [eventHistory, setEventHistory] = useState<EventHistory[]>([]);
+  const [eventHistory, setEventHistory] = useState<EntriesHistory[]>([]);
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -32,7 +32,7 @@ export const EventHistoryPage = () => {
       if (!mounted) return;
 
       try {
-        const response = await myPageService.getEventHistory(1);
+        const response = await myPageService.getEntriesHistory();
         setEventHistory(response.data);
       } catch (error) {
         console.error('데이터 로드 실패:', error);
@@ -119,19 +119,19 @@ export const EventHistoryPage = () => {
 
       <div className="bg-white rounded-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full table-fixed border-collapse">
             <thead>
               <tr className="bg-gray-100 border-t border-b border-gray-300">
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600 text-center">
+                <th className="w-[17%] px-4 py-4 text-sm font-semibold text-gray-600 text-center">
                   신청일
                 </th>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600">
+                <th className="w-[45%] px-6 py-4 text-sm font-semibold text-gray-600 text-left">
                   신청한 이벤트
                 </th>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600 text-center">
+                <th className="w-[17%] px-4 py-4 text-sm font-semibold text-gray-600 text-center">
                   모집 일정
                 </th>
-                <th className="px-6 py-4 text-sm font-semibold text-gray-600 text-center">
+                <th className="w-[25%] px-4 py-4 text-sm font-semibold text-gray-600 text-center">
                   신청상태
                 </th>
               </tr>

@@ -14,13 +14,11 @@ export default function SocialLoginPage() {
 
     // 인증 성공 시 분기 처리
     if (status === 'authenticated' && session) {
-      const isSignup = true;
-
-      if (isSignup) {
-        // 신규 가입자라면 (예: 추가 정보 입력 페이지)
+      if (session.isUnregistered || !session.accessToken) {
+        // 백엔드에 데이터가 없는 신규 소셜 가입자
         router.replace('/signup/social/agree');
       } else {
-        // 기존 회원이라면 (예: 메인 대시보드)
+        // 이미 가입된 기존 회원
         router.replace('/');
       }
     }
