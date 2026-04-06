@@ -1,0 +1,35 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: t6-on-race-scg-ingress
+  namespace: t6-on-race-prod
+  annotations:
+    # AWS ALB 설정
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    
+    # [수정] AWS 리소스(ALB, Target Group)에 t6- 태그 강제 주입
+    # 이 설정이 있어야 AWS 콘솔에서 리소스 관리가 매우 편리해집니다.
+    alb.ingress.kubernetes.io/tags: Project=t6-on-race,Environment=prod,Team=Infra
+    
+    # 헬스체크 설정 (SCG 표준 포트 및 경로)
+    alb.ingress.kubernetes.io/healthcheck-path: /actuator/health
+    alb.ingress.kubernetes.io/healthcheck-port: '8080'
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: '15'
+    alb.ingress.kubernetes.io/success-codes: '200'
+    
+    # 트래픽 처리 설정 (대규모 유입 대비)
+    alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=60
+spec:
+  # [수정] 경고 메시지 해결: 어노테이션 대신 ingressClassName 사용 (v1 표준)
+  ingressClassName: alb
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: t6-on-race-scg-service
+                port:
+                  number: 8080

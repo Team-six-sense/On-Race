@@ -1,0 +1,95 @@
+# infra/envs/prod/app/helm-values/loki-values.yaml
+
+loki:
+  auth_enabled: false
+  commonConfig:
+    replication_factor: 1
+  schemaConfig:
+    configs:
+      - from: "2024-01-01"
+        store: tsdb
+        object_store: s3
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+  storage:
+    type: s3
+    bucketNames:
+      chunks: "${loki_bucket_name}"
+      ruler: "${loki_bucket_name}"
+      admin: "${loki_bucket_name}"
+    s3:
+      region: ap-northeast-2
+      s3ForcePathStyle: false
+
+  # [중요] ServiceAccount 설정: IRSA 권한 자동 주입
+  serviceAccount:
+    create: true
+    name: loki
+    annotations:
+      eks.amazonaws.com/role-arn: "${loki_role_arn}"
+
+deploymentMode: SingleBinary
+
+read:
+  replicas: 0
+write:
+  replicas: 0
+backend:
+  replicas: 0
+
+# Gateway DNS 에러 해결을 위한 최종 설정
+gateway:
+  enabled: true
+  replicas: 1
+  verboseLogging: true
+  nginxConfig:
+    file: |
+      worker_processes  5;
+      error_log  /dev/stderr;
+      pid        /tmp/nginx.pid;
+      events { worker_connections  4096; }
+      http {
+        # EKS 내부 DNS 서버(CoreDNS)를 통해 'loki' 서비스 이름을 해석합니다.
+        resolver 172.20.0.10 valid=30s;
+        client_max_body_size 100M;
+        server {
+          listen 8080;
+          location / {
+            # 세미콜론 누락 방지 및 loki-gateway 서비스 이름 명시
+            proxy_pass http://loki:3100;
+          }
+        }
+      }
+
+singleBinary:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
+
+# Chunks Cache 메모리 제한 (하향 조정 유지)
+chunksCache:
+  enabled: true
+  allocatedMemory: 512
+  resources:
+    requests:
+      cpu: 100m
+      memory: 1Gi
+    limits:
+      memory: 1Gi
+
+# Results Cache 메모리 제한
+resultsCache:
+  enabled: true
+  allocatedMemory: 512
+  resources:
+    requests:
+      cpu: 100m
+      memory: 1Gi
+    limits:
+      memory: 1Gi

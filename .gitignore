@@ -1,11 +1,35 @@
+# ----------------------------------------------------
+# [Global] OS & Editor & Local Env
+# ----------------------------------------------------
+.DS_Store
+Thumbs.db
+.vscode/
 .idea/
-.idea/
-skills/
-rules/
-.vscode
+*.log
 .env
 
-# Security Scanner Reports
+# ----------------------------------------------------
+# [Infrastructure] Terraform (보안 필수 ⭐)
+# ----------------------------------------------------
+# 1. 임시 작업 폴더 (플러그인 설치 경로)
+**/.terraform/
+
+# 2. State 파일 (절대 커밋 금지 - 해킹 1순위 타겟)
+*.tfstate
+*.tfstate.backup
+
+# 3. 변수 파일 (비밀번호/Key가 들어있을 수 있음)
+*.tfvars
+*.tfvars.json
+
+# 4. Crash 로그
+crash.log
+
+# ----------------------------------------------------
+# [Project Specific & Security Scanner Reports]
+# ----------------------------------------------------
+skills/
+rules/
 *_scan.json
 *_scan.txt
 *_deps.txt

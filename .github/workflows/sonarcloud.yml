@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - develop
+      - deploy/integrated-main # 신규 통합 브랜치 추가
   pull_request:
     types: [opened, synchronize, reopened]
 
@@ -17,16 +18,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for better analysis
+          fetch-depth: 0 
 
-      # Frontend 빌드 (TypeScript - pnpm)
+      # 1. Frontend 빌드 (개발팀 로직 유지)
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '20'
 
       - name: Install pnpm
-        uses: pnpm/action-setup@eae0cfeb286e66ffb5155f1a79b90583a127a68b # v2.4.1
+        uses: pnpm/action-setup@v2
         with:
           version: 9
 
@@ -38,7 +39,7 @@ jobs:
         working-directory: ./frontend
         run: pnpm run build
 
-      # Backend 테스트 및 JaCoCo 커버리지 리포트 생성
+      # 2. Backend 테스트 및 JaCoCo 커버리지 생성 (개발팀 로직 유지)
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
@@ -50,8 +51,20 @@ jobs:
         run: ./gradlew classes :auth:test :auth:jacocoTestReport :main:test :main:jacocoTestReport --no-daemon
         continue-on-error: true
 
-      - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602 # v6
+      # 3. SonarCloud 스캔 (인프라/보안팀 설정 적용)
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.organization=team-six-sense
+            -Dsonar.projectKey=team-six-sense_On-Race
+      
+      # 4. Quality Gate 체크 (인프라/보안팀 설정 적용)
+      - name: Check Quality Gate
+        uses: SonarSource/sonarqube-quality-gate-action@v1
+        timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-

@@ -1,0 +1,46 @@
+name: Build and Push to ECR
+
+on:
+  push:
+    branches: [ "main", "develop", "feat/infra/init-monitoring"]
+  workflow_dispatch: 
+
+env:
+  AWS_REGION: ap-northeast-2
+  ECR_REPOSITORY: t6-on-race-repo
+  IMAGE_TAG: latest
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    # [수정] Dockerfile 내부에서 Gradle 빌드를 직접 수행하므로, 
+    # 러너(Runner)에서의 JDK 설정 및 중복 빌드 단계는 삭제하여 시간을 단축합니다.
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build, tag, and push image to Amazon ECR
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+      run: |
+        # [핵심 수정] --build-arg SERVICE=main 을 주입하여 backend/main 모듈을 빌드합니다.
+        docker build --build-arg SERVICE=main \
+          -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./backend
+        
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG

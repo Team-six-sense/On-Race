@@ -9,6 +9,10 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     runtimeOnly 'com.mysql:mysql-connector-j'
 
+    // [인프라 추가] DATABASE & CACHE
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'com.github.ben-manes.caffeine:caffeine'
+
     // UTILS
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
@@ -19,6 +23,8 @@ dependencies {
 
     // OBSERVABILITY
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    // [인프라 추가] Monitoring & Metrics
+    implementation 'io.micrometer:micrometer-registry-prometheus'
 
     // QUERYDSL
     annotationProcessor 'com.querydsl:querydsl-apt:5.1.0:jakarta'

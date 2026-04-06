@@ -1,0 +1,35 @@
+spring:
+  data:
+    redis:
+      # [Stunnel 연동] Deployment에서 설정한 사이드카(localhost)를 통해 통신
+      host: ${SPRING_REDIS_HOST:localhost}
+      port: ${SPRING_REDIS_PORT:6379}
+      lettuce:
+        pool:
+          # 파드당 커넥션을 10개로 제한 (300 Pods * 10 = 3,000개로 안전권 유지)
+          # Lettuce는 하나의 커넥션으로 다수의 요청을 처리하므로 10개로도 충분합니다.
+          max-active: 10
+          max-idle: 8
+          min-idle: 2
+          # 커넥션 획득 대기 시간 제한 (데드락 방지)
+          max-wait: 1000ms
+
+  datasource:
+    # [RDS Proxy 연동] Base 계층에서 생성한 RDS Proxy 주입
+    url: jdbc:mysql://${DB_ENDPOINT}:3306/onrace?useSSL=true&characterEncoding=UTF-8
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # [KEDA 연동] Prometheus가 TPS 메트릭을 수집할 수 있도록 개방
+        include: prometheus, health
+  metrics:
+    tags:
+      application: on-race-api
+
+tps:
+  limit: ${TPS_LIMIT:100}

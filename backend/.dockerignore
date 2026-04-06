@@ -1,5 +1,9 @@
+.git
 .gradle
-**/.idea
-**/build
+.idea
+**/build/
+**/bin/
 *.log
 .env
+Dockerfile
+**/.DS_Store
