@@ -5,6 +5,8 @@ import {
   ACCESS_TOKEN_RESPONSE,
   FIND_ACCOUNT_RESPONSE,
   LOGIN_RESPONSE,
+  MOCK_TERM_DETAILS,
+  MOCK_TERMS,
   SIGNUP_RESPONSE,
 } from '@/mockups';
 
@@ -15,7 +17,11 @@ export const authMock: IAuthService = {
   logout: async () => wrapMockResponse(),
   findAccount: async (data) => wrapMockResponse(FIND_ACCOUNT_RESPONSE),
   deleteAccount: async () => wrapMockResponse(),
-  checkEmailAddress: async (data) => wrapMockResponse(),
+  checkEmailAddress: async (data) => wrapMockResponse(false),
+
+  // 약관동의 API
+  getTerms: async () => wrapMockResponse(MOCK_TERMS),
+  getTermDetails: async (id) => wrapMockResponse(MOCK_TERM_DETAILS[id]),
 
   // password API
   resetPassword: async (data) => wrapMockResponse(),

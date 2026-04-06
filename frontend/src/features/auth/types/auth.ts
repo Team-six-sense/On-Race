@@ -4,6 +4,7 @@ declare module 'next-auth' {
   interface Session {
     accessToken?: string;
     refreshToken?: string;
+    isUnregistered?: boolean;
     userRole?: string;
   }
 
@@ -19,6 +20,7 @@ declare module 'next-auth/jwt' {
   interface JWT {
     springAccessToken?: string;
     springRefreshToken?: string;
+    isUnregistered?: boolean;
     userRole?: string;
   }
 }
@@ -67,6 +69,21 @@ export interface FindAccountResponse {
 
 export interface CheckEmailAddressRequest {
   email: string;
+}
+
+export interface Term {
+  termVersionId: number;
+  termName: string;
+  required: boolean;
+  version: string;
+}
+
+export interface TermDetails {
+  termVersionId: number;
+  termName: string;
+  required: boolean;
+  version: string;
+  content: string;
 }
 
 export interface resetPasswordRequest {

@@ -7,7 +7,10 @@ import {
 } from '@/mockups';
 
 export const mypageMock: IMypageService = {
-  getAccountInfo: async (id) => wrapMockResponse(MOCK_ACCOUNT_INFO),
-  getEventHistory: async (id) => wrapMockResponse(MOCK_EVENT_HISTORY),
-  getPaymentHistory: async (id) => wrapMockResponse(MOCK_PAYMENT_HISTORY),
+  getAccountInfo: async () => wrapMockResponse(MOCK_ACCOUNT_INFO),
+  getHistoryOverview: async () => wrapMockResponse(),
+  getEntriesHistory: async () => wrapMockResponse(MOCK_EVENT_HISTORY),
+  getWaitingHistory: async () => wrapMockResponse(),
+  getOrderHistory: async () => wrapMockResponse(MOCK_PAYMENT_HISTORY),
+  getOrderDetailInfo: async (id) => wrapMockResponse(),
 };

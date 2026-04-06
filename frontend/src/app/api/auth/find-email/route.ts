@@ -12,6 +12,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
+    console.log(body);
     // 실제 외부 백엔드 서버로 요청 전달
     const response = await backendClient.post('/find-email', body);
 

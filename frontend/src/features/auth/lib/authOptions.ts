@@ -91,6 +91,7 @@ export const authOptions: NextAuthOptions = {
           token.loginType = 'local';
           token.springAccessToken = user.accessToken;
           token.springRefreshToken = user.refreshToken;
+          token.isUnregistered = false;
         } else {
           // 소셜 로그인 유저 전용 데이터 추가
           token.loginType = 'social';
@@ -113,31 +114,12 @@ export const authOptions: NextAuthOptions = {
 
             token.springAccessToken = user.accessToken;
             token.springRefreshToken = user.refreshToken;
+            token.isUnregistered = false;
+          } else {
+            token.springAccessToken = undefined;
+            token.springRefreshToken = undefined;
+            token.isUnregistered = true;
           }
-
-          //  try {
-          //     const response = await fetch(
-          //       `${process.env.SPRING_API_URL}/api/v1/auth/social-login`,
-          //       {
-          //         method: 'POST',
-          //         headers: { 'Content-Type': 'application/json' },
-          //         body: JSON.stringify({
-          //           type: 'social',
-          //           provider: account.provider,
-          //           accessToken: account.access_token,
-          //           email: user.email,
-          //           name: user.name,
-          //         }),
-          //       },
-          //     );
-
-          //     const data = await response.json();
-          //     if (response.ok) {
-          //       token.springAccessToken = data.accessToken;
-          //     }
-          //   } catch (error) {
-          //     console.error('Social Login Sync Error:', error);
-          //   }
         }
       }
 
@@ -149,6 +131,9 @@ export const authOptions: NextAuthOptions = {
 
       session.accessToken = token.springAccessToken;
       session.refreshToken = token.springRefreshToken;
+      session.isUnregistered = token.isUnregistered;
+
+      console.log(session);
 
       return session;
     },

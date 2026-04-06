@@ -69,7 +69,7 @@ export default function Footer() {
                   className={cn(
                     'text-sm font-bold',
                     isHome
-                      ? 'text-white hover:text-font-low'
+                      ? 'text-white hover:text-font-medium'
                       : 'text-black hover:text-gray-500',
                   )}
                 >
@@ -175,7 +175,7 @@ export default function Footer() {
             <Link
               href="/policy/terms"
               className={cn(
-                'text-sm font-bold',
+                'text-sm',
                 isHome
                   ? 'text-white hover:text-font-low'
                   : 'text-black hover:text-gray-500',
@@ -186,7 +186,7 @@ export default function Footer() {
             <Link
               href="/policy/refund"
               className={cn(
-                'text-sm font-bold',
+                'text-sm',
                 isHome
                   ? 'text-white hover:text-font-low'
                   : 'text-black hover:text-gray-500',

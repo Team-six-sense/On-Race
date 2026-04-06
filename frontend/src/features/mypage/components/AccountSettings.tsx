@@ -41,7 +41,8 @@ export function AccountSettings() {
       if (!mounted) return;
 
       try {
-        const response = await myPageService.getAccountInfo(1);
+        const response = await myPageService.getAccountInfo();
+        console.log(response);
         setUserInfo((prev) => ({
           ...prev,
           ...response.data,
@@ -62,7 +63,7 @@ export function AccountSettings() {
   return (
     <div className="min-h-screen bg-white">
       {userInfo && (
-        <div className="space-y-8">
+        <div className="space-y-10">
           <section>
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
@@ -114,7 +115,7 @@ export function AccountSettings() {
                 <span className="w-30 text-base font-medium text-font-medium">
                   본인인증 상태
                 </span>
-                <span className="flex-1 text-base font-medium ">인증대기</span>
+                <span className="flex-1 text-base font-medium ">미인증</span>
               </div>
 
               <div className="flex items-center justify-between p-4 bg-red-50 border border-red-100 text-font-error rounded-sm">

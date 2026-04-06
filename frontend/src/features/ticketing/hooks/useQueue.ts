@@ -3,15 +3,15 @@ import { useQuery } from '@tanstack/react-query';
 
 import { useState } from 'react';
 import { getQueueStatus } from '../services/getQueueStatus';
-import { QueueResponse } from '../types';
+import { QueueStatus } from '../types';
 
 export const useQueue = (eventId: string) => {
   // 사용자가 수동으로 멈췄는지 확인하는 상태
   const [isStoppedByUser, setIsStoppedByUser] = useState(false);
 
-  const query = useQuery<QueueResponse>({
+  const query = useQuery<QueueStatus>({
     queryKey: ['queue', eventId],
-    queryFn: () => getQueueStatus(eventId) as Promise<QueueResponse>,
+    queryFn: () => getQueueStatus(eventId) as Promise<QueueStatus>,
     // 사용자가 멈추지 않았을 때만 폴링 진행
     refetchInterval: (query) => {
       if (isStoppedByUser) return false;

@@ -40,7 +40,7 @@ export function EntryConfirmModal({
   }
 
   const handleApply = () => {
-    router.push(`/ticketing/${params.id}/waitQueue`);
+    router.push(`/ticketing/${params.id}/vqa`);
   };
 
   return (
@@ -59,17 +59,17 @@ export function EntryConfirmModal({
         onClose={() => setIsAgreeModalOpen(false)}
         onConfirm={() => {
           setIsAgreeModalOpen(false);
-          setIsVqaModalOpen(true);
+          handleApply();
         }}
       />
-      <VqaModal
+      {/* <VqaModal
         isOpen={isVqaModalOpen}
         onClose={() => setIsVqaModalOpen(false)}
         onConfirm={() => {
           setIsVqaModalOpen(false);
           handleApply();
         }}
-      />
+      /> */}
     </section>
   );
 }

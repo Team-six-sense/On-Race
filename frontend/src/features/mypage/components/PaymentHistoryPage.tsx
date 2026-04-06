@@ -9,13 +9,13 @@ import { Button } from '@/components/ui/button';
 import { LuChevronLeft, LuChevronRight } from 'react-icons/lu';
 import { cn } from '@/lib/utils';
 import { formatKoreanDate } from '@/features/ticketing/utils/date';
-import { PaymentHistory } from '../types/paymentHistory';
 import { myPageService } from '../services';
+import { OrderHistory } from '../types';
 
 export const PaymentHistoryPage = () => {
   const [mounted, setMounted] = useState(false);
   const [searchType, setSearchType] = useState<string>('ALL');
-  const [paymentHistory, setPaymentHistory] = useState<PaymentHistory[]>([]);
+  const [paymentHistory, setPaymentHistory] = useState<OrderHistory[]>([]);
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -58,7 +58,7 @@ export const PaymentHistoryPage = () => {
       if (!mounted) return;
 
       try {
-        const response = await myPageService.getPaymentHistory(1);
+        const response = await myPageService.getOrderHistory();
         setPaymentHistory(response.data);
       } catch (error) {
         console.error('데이터 로드 실패:', error);
