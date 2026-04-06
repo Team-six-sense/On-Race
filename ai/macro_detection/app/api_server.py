@@ -58,7 +58,7 @@ def write_detect_log_to_file(user_id: str, is_macro: bool, result: dict, total_e
     timestamp = datetime.now().strftime("%Y%m%d")
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     log_filename = f"{timestamp}.log"
-    
+
     log_line = f"[{now}] 탐지 완료 - 사용자 ID: {user_id}, 이벤트 수: {total_events}, 매크로 여부: {is_macro}\n"
     with open(os.path.join(SERVER_LOG_DIR, log_filename), "a", encoding="utf-8") as f:
         if is_macro:
@@ -70,7 +70,6 @@ def write_detect_log_to_file(user_id: str, is_macro: bool, result: dict, total_e
 
 @app.post("/api/v1/detect-macro")
 async def detect_macro(payload: MacroDetectionRequest, background_tasks: BackgroundTasks):
-    print("마우스 매크로 감지 요청 수신")
     stats["total_requests"] += 1
 
     user_id = payload.user_id
