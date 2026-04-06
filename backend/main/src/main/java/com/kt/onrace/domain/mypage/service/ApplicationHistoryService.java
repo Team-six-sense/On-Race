@@ -20,11 +20,13 @@ import com.kt.onrace.domain.event.entity.EventAppType;
 import com.kt.onrace.domain.event.entity.EventCourse;
 import com.kt.onrace.domain.event.entity.Event;
 import com.kt.onrace.domain.event.entity.EventPace;
+import com.kt.onrace.domain.event.service.EventStockService;
 import com.kt.onrace.domain.mypage.dto.MyPageApplicationHistoryFilter;
 import com.kt.onrace.domain.mypage.dto.MyPageApplicationHistoryItemDto;
 import com.kt.onrace.domain.mypage.dto.MyPageEntryItemDto;
 import com.kt.onrace.domain.mypage.dto.MyPageEntryListResponseDto;
 import com.kt.onrace.domain.mypage.dto.MyPageStatusDto;
+import com.kt.onrace.domain.mypage.service.apply.ApplyActionType;
 import com.kt.onrace.domain.mypage.service.apply.ApplyDisplayDecision;
 import com.kt.onrace.domain.mypage.service.apply.ApplyDisplayStatus;
 import com.kt.onrace.domain.mypage.service.apply.ApplyDisplayStatusContext;
@@ -57,6 +59,7 @@ public class ApplicationHistoryService {
 
 	private final JPAQueryFactory queryFactory;
 	private final ApplyDisplayStatusResolver applyDisplayStatusResolver;
+	private final EventStockService eventStockService;
 
 	public List<MyPageApplicationHistoryItemDto> getEntries(
 		Long userId,
@@ -253,13 +256,24 @@ public class ApplicationHistoryService {
 	}
 
 	private ApplyDisplayDecision resolveApplyDisplayDecision(ApplyDisplaySurface surface, Entry currentEntry) {
-		return applyDisplayStatusResolver.resolve(new ApplyDisplayStatusContext(
+		ApplyDisplayDecision decision = applyDisplayStatusResolver.resolve(new ApplyDisplayStatusContext(
 			surface,
 			currentEntry.getEvent().getAppType(),
 			currentEntry.getEvent().getStatus(),
 			resolveApplyUserStatus(currentEntry.getStatus()),
 			resolveApplyResultStatus(currentEntry.getStatus())
 		));
+
+		// 선착순 RESERVED는 DB 상태만으로는 부족하다.
+		// 조회 시점에 Redis reservation 생존 여부를 다시 확인해
+		// 살아 있으면 결제 대기, 만료됐으면 예약 만료로 해석한다.
+		if (currentEntry.getEvent().getAppType() == EventAppType.FIRST_COME
+			&& currentEntry.getStatus() == EntryStatus.RESERVED
+			&& !eventStockService.hasReservation(currentEntry.getEventPace().getId(), currentEntry.getUserId())) {
+			return ApplyDisplayDecision.of(ApplyDisplayStatus.RESERVATION_EXPIRED, ApplyActionType.NONE);
+		}
+
+		return decision;
 	}
 
 	private ApplyUserStatus resolveApplyUserStatus(EntryStatus entryStatus) {
@@ -292,7 +306,9 @@ public class ApplicationHistoryService {
 			case PRE_ENTRY_SAVED, WAITING_TO_APPLY -> "신청 대기";
 			case AVAILABLE_TO_APPLY -> "신청 가능";
 			case ENTRY_CLOSED, ENTRY_UNAVAILABLE -> "신청 불가";
-			case RESERVED, ENTRY_APPLIED -> "신청 완료";
+			case RESERVED -> "결제 대기";
+			case RESERVATION_EXPIRED -> "예약 만료";
+			case ENTRY_APPLIED -> "신청 완료";
 			case LOTTERY_APPLIED -> "응모 완료";
 			case RESULT_PENDING, RESULT_CHECK_REQUIRED -> "발표 대기";
 			case WON -> "당첨";

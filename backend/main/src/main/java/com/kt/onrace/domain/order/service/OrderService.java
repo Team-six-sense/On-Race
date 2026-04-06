@@ -20,6 +20,7 @@ import com.kt.onrace.domain.address.entity.Address;
 import com.kt.onrace.domain.address.repository.AddressRepository;
 import com.kt.onrace.domain.event.entity.Event;
 import com.kt.onrace.domain.event.entity.EventCourse;
+import com.kt.onrace.domain.event.entity.EventAppType;
 import com.kt.onrace.domain.event.entity.EventImage;
 import com.kt.onrace.domain.event.entity.EventImageType;
 import com.kt.onrace.domain.event.entity.EventPace;
@@ -28,6 +29,7 @@ import com.kt.onrace.domain.event.repository.EventCourseRepository;
 import com.kt.onrace.domain.event.repository.EventPaceRepository;
 import com.kt.onrace.domain.event.repository.EventPackageRepository;
 import com.kt.onrace.domain.event.repository.EventRepository;
+import com.kt.onrace.domain.event.service.EventStockService;
 import com.kt.onrace.domain.order.contract.OrderCheckoutEligibility;
 import com.kt.onrace.domain.order.contract.OrderEntryContract;
 import com.kt.onrace.domain.order.dto.CheckoutPrepareRequestDto;
@@ -62,6 +64,7 @@ public class OrderService {
 	private final OrderPackageRepository orderPackageRepository;
 	private final OrderEntryContract orderEntryContract;
 	private final OrderPrepareTokenService orderPrepareTokenService;
+	private final EventStockService eventStockService;
 
 	@Transactional(readOnly = true)
 	public OrderListResponseDto getOrders(String tab, Long userId) {
@@ -308,7 +311,25 @@ public class OrderService {
 			return;
 		}
 
+		// 선착순 pending 주문은 결제 완료 전까지 Redis reservation만 보유한다.
+		// terminal 전이 시 예약 키를 먼저 정리하고, 실제로 살아 있던 예약일 때만 temp stock을 복구한다.
+		if (releaseFirstComeReservation(order)) {
+			return;
+		}
+
 		orderEntryContract.rollbackPendingPayment(order.getEntryId());
+	}
+
+	private boolean releaseFirstComeReservation(Order order) {
+		if (order.getEventAppType() != EventAppType.FIRST_COME || order.getEventPaceId() == null) {
+			return false;
+		}
+
+		if (eventStockService.deleteReservation(order.getEventPaceId(), order.getUserId())) {
+			eventStockService.restoreStock(order.getEventPaceId());
+		}
+
+		return true;
 	}
 
 	private BusinessErrorCode resolveFailureCode(String failureCode) {

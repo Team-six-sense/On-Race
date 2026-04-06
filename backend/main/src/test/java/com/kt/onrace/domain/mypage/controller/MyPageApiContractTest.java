@@ -2,6 +2,7 @@ package com.kt.onrace.domain.mypage.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.ArgumentMatchers.anyLong;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -42,6 +43,7 @@ import com.kt.onrace.domain.event.repository.EventCourseRepository;
 import com.kt.onrace.domain.event.repository.EventImageRepository;
 import com.kt.onrace.domain.event.repository.EventPaceRepository;
 import com.kt.onrace.domain.event.repository.EventRepository;
+import com.kt.onrace.domain.event.service.EventStockService;
 import com.kt.onrace.domain.member.entity.Member;
 import com.kt.onrace.domain.member.repository.MemberRepository;
 import com.kt.onrace.domain.order.entity.Order;
@@ -111,6 +113,9 @@ class MyPageApiContractTest {
 	@MockBean
 	private EntryExpListener entryExpListener;
 
+	@MockBean
+	private EventStockService eventStockService;
+
 	@BeforeEach
 	void setUp() {
 		orderRepository.deleteAll();
@@ -128,6 +133,7 @@ class MyPageApiContractTest {
 		createMember(ORDER_ONLY_USER_ID);
 		createMember(ADDRESS_ONLY_USER_ID);
 		createMember(ACTION_CASE_USER_ID);
+		given(eventStockService.hasReservation(anyLong(), anyLong())).willReturn(false);
 		stubAuthAccount(MIXED_USER_ID, "runner@example.com", "홍길동", "01012345678", "LOCAL", true, "VERIFIED", true);
 		stubAuthAccount(EMPTY_USER_ID, "empty@example.com", "빈사용자", "01000000000", "LOCAL", true, "UNVERIFIED", false);
 		stubAuthAccount(ENTRY_ONLY_USER_ID, "kakao@example.com", "신청사용자", "01011112222", "KAKAO", false, "UNVERIFIED", false);
@@ -388,20 +394,20 @@ class MyPageApiContractTest {
 		JsonNode lotteryEntries = get(ACTION_CASE_USER_ID, "/mypage/entries?filter=LOTTERY");
 		JsonNode firstComeEntries = get(ACTION_CASE_USER_ID, "/mypage/entries?filter=FIRST_COME");
 
-		assertThat(allEntries.path("data")).hasSize(4);
+		assertThat(allEntries.path("data")).hasSize(5);
 		assertThat(textValues(allEntries.path("data"), "entryStatus"))
-			.containsExactlyInAnyOrder("발표 대기", "신청 가능", "신청 완료", "신청 불가");
-		assertThat(textValues(allEntries.path("data"), "title")).hasSize(4);
+			.containsExactlyInAnyOrder("발표 대기", "신청 가능", "결제 대기", "예약 만료", "신청 불가");
+		assertThat(textValues(allEntries.path("data"), "title")).hasSize(5);
 		assertThat(textValues(allEntries.path("data"), "appType"))
-			.containsExactlyInAnyOrder("LOTTERY", "FIRST_COME", "FIRST_COME", "FIRST_COME");
+			.containsExactlyInAnyOrder("LOTTERY", "FIRST_COME", "FIRST_COME", "FIRST_COME", "FIRST_COME");
 
 		assertThat(lotteryEntries.path("data")).hasSize(1);
 		assertThat(textValues(lotteryEntries.path("data"), "entryStatus"))
 			.containsExactly("발표 대기");
 
-		assertThat(firstComeEntries.path("data")).hasSize(3);
+		assertThat(firstComeEntries.path("data")).hasSize(4);
 		assertThat(textValues(firstComeEntries.path("data"), "entryStatus"))
-			.containsExactlyInAnyOrder("신청 가능", "신청 완료", "신청 불가");
+			.containsExactlyInAnyOrder("신청 가능", "결제 대기", "예약 만료", "신청 불가");
 	}
 
 	@Test
@@ -766,6 +772,27 @@ class MyPageApiContractTest {
 			90
 		);
 		createEntry(ACTION_CASE_USER_ID, firstComeReservedBundle, EntryStatus.RESERVED);
+		given(eventStockService.hasReservation(firstComeReservedBundle.pace().getId(), ACTION_CASE_USER_ID)).willReturn(true);
+
+		EventBundle firstComeExpiredBundle = createEventBundle(
+			"상태표 예약 만료 이벤트",
+			EventType.RUNNING,
+			EventAppType.FIRST_COME,
+			now.plusDays(13),
+			now.minusDays(1),
+			now.plusDays(4),
+			null,
+			EventRegion.SEOUL,
+			"뚝섬한강공원",
+			"8K",
+			8000,
+			20000L,
+			"5:55/km",
+			5,
+			55,
+			90
+		);
+		createEntry(ACTION_CASE_USER_ID, firstComeExpiredBundle, EntryStatus.RESERVED);
 
 		EventBundle firstComeClosedBundle = createEventBundle(
 			"상태표 신청 마감 이벤트",
