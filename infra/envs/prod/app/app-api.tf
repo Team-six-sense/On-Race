@@ -93,7 +93,7 @@ resource "kubernetes_deployment_v1" "on_race_api" {
 
         container {
           name  = "api"
-          image = "${data.terraform_remote_state.base.outputs.ecr_repository_url}:latest"
+          image = "${data.terraform_remote_state.base.outputs.ecr_repository_url}:${var.image_tag}"
           
           image_pull_policy = "Always"
           port { container_port = 8080 }

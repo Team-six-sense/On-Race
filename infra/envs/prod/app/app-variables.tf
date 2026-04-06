@@ -18,8 +18,15 @@ variable "environment" {
   default     = "prod"
 }
 
+# 깃허브 액션에서 주입하는 이미지 SHA 값을 담는 변수
+variable "image_tag" {
+  description = "ECR에 푸시된 고유 이미지 태그 (Git SHA)"
+  type        = string
+  default     = "latest" # 수동 실행 시를 위한 기본값
+}
+
 variable "namespace" {
   description = "Kubernetes namespace"
   type        = string
-  default     = "t6-on-race-prod" # 실제 사용 중인 네임스페이스 명칭으로 수정
+  default     = "t6-on-race-prod"
 }
