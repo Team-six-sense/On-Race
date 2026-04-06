@@ -15,11 +15,6 @@ import lombok.Builder;
 @Builder
 public record OrderCheckoutEligibility(
 	Long entryId,
-	EventAppType appType,
-	EntryStatus currentEntryStatus,
-	EntryStatus requiredEntryStatus,
-	LocalDateTime reservedUntil,
-	boolean requiresReservationValidation,
 	boolean canCheckout,
 	String failureCode
 ) {

@@ -62,8 +62,8 @@ public enum BusinessErrorCode implements ErrorCode {
 	// EVENT
 	EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "EVT_001", "이벤트를 찾을 수 없습니다."),
 	EVENT_NOT_IN_STANDBY(HttpStatus.BAD_REQUEST, "EVT_002", "사전정보 저장은 대기중 상태에서만 가능합니다."),
-	EVENT_COURSE_NOT_FOUND(HttpStatus.NOT_FOUND, "EVT_003", "해당 이벤트의 코스를 찾을 수 없습니다."),
-	EVENT_PACE_NOT_FOUND(HttpStatus.NOT_FOUND, "EVT_004", "해당 코스의 페이스를 찾을 수 없습니다."),
+	EVENT_COURSE_NOT_FOUND(HttpStatus.NOT_FOUND, "EVT_003", "이벤트 코스를 찾을 수 없습니다."),
+	EVENT_PACE_NOT_FOUND(HttpStatus.NOT_FOUND, "EVT_004", "이벤트 페이스를 찾을 수 없습니다."),
 	EVENT_PRE_SAVE_NOT_FOUND(HttpStatus.NOT_FOUND, "EVT_005", "사전정보를 찾을 수 없습니다."),
 	EVENT_NOT_IN_PROGRESS(HttpStatus.BAD_REQUEST, "EVT_006", "진행중인 이벤트가 아닙니다."),
 	EVENT_ENDED(HttpStatus.BAD_REQUEST, "EVT_007", "종료된 이벤트입니다."),
@@ -78,17 +78,19 @@ public enum BusinessErrorCode implements ErrorCode {
 
 	// ENTRY
 	ENTRY_NOT_FOUND(HttpStatus.NOT_FOUND, "ENT_001", "신청 정보를 찾을 수 없습니다."),
-	ENTRY_COURSE_NOT_FOUND(HttpStatus.NOT_FOUND, "ENT_002", "해당 이벤트의 코스를 찾을 수 없습니다."),
-	ENTRY_PACE_NOT_FOUND(HttpStatus.NOT_FOUND, "ENT_003", "해당 코스의 페이스를 찾을 수 없습니다."),
-	ENTRY_EVENT_NOT_IN_STANDBY(HttpStatus.BAD_REQUEST, "ENT_004", "대기중 상태에서만 가능합니다."),
+	ENTRY_COURSE_NOT_FOUND(HttpStatus.NOT_FOUND, "ENT_002", "이벤트 코스를 찾을 수 없습니다."),
+	ENTRY_PACE_NOT_FOUND(HttpStatus.NOT_FOUND, "ENT_003", "이벤트 페이스를 찾을 수 없습니다."),
+	ENTRY_EVENT_NOT_IN_STANDBY(HttpStatus.BAD_REQUEST, "ENT_004", "신청일 이전에만 가능합니다."),
 	ENTRY_NOT_IN_PERIOD(HttpStatus.BAD_REQUEST, "ENT_005", "신청 기간이 아닙니다."),
 	ENTRY_ALREADY_APPLIED(HttpStatus.BAD_REQUEST, "ENT_006", "이미 신청한 이벤트입니다."),
 	ENTRY_CANNOT_APPLY(HttpStatus.BAD_REQUEST, "ENT_007", "신청할 수 없는 상태입니다."),
 	ENTRY_SOLD_OUT(HttpStatus.CONFLICT, "ENT_008", "신청이 마감되었습니다."),
-	ENTRY_RESERVATION_EXPIRED(HttpStatus.BAD_REQUEST, "ENT_009", "만료되었습니다. 다시 신청해주세요."),
-	ENTRY_ALREADY_RESERVED(HttpStatus.CONFLICT, "ENT_010", "이미 선점한 이벤트입니다."),
+	ENTRY_RESERVATION_EXPIRED(HttpStatus.BAD_REQUEST, "ENT_009", "신청이 만료되었습니다. 다시 신청해주세요."),
+	ENTRY_ALREADY_RESERVED(HttpStatus.CONFLICT, "ENT_010", "이미 재고가 예약된 이벤트입니다."),
 	ENTRY_EVENT_ALREADY_ENDED(HttpStatus.BAD_REQUEST, "ENT_011", "종료된 이벤트입니다."),
-	ENTRY_QUEUE_PACE_MISMATCH(HttpStatus.BAD_REQUEST, "ENT_012", "대기열 토큰의 페이스와 신청 페이스가 일치하지 않습니다."),
+	ENTRY_QUEUE_PACE_MISMATCH(HttpStatus.BAD_REQUEST, "ENT_012", "신청 정보가 일치하지 않습니다."), // 대기열 토큰 paceId와 request paceId 불일치
+	ENTRY_APP_TYPE_MISMATCH(HttpStatus.BAD_REQUEST, "ENT_013", "신청 정보가 일치하지 않습니다."), // 이벤트의 신청 방식과 일치하지 않습니다.
+	ENTRY_CANNOT_CHECKOUT(HttpStatus.BAD_REQUEST, "ENT_014", "결제를 진행할 수 없는 신청 상태입니다"),
 
 	// STOCK
 	STOCK_NOT_FOUND(HttpStatus.NOT_FOUND, "STK_001", "재고 정보를 찾을 수 없습니다."),
@@ -107,7 +109,7 @@ public enum BusinessErrorCode implements ErrorCode {
 	MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MBR_001", "회원을 찾을 수 없습니다."),
 
 	// QUEUE
-	QUEUE_NOT_ENABLED(HttpStatus.BAD_REQUEST, "QUE_001", "해당 페이스의 대기열이 활성화되지 않았습니다."),
+	QUEUE_NOT_ENABLED(HttpStatus.BAD_REQUEST, "QUE_001", "대기열이 활성화되지 않았습니다."),
 	QUEUE_ALREADY_ENTERED(HttpStatus.CONFLICT, "QUE_002", "이미 대기열에 진입한 사용자입니다."),
 	QUEUE_NOT_FOUND(HttpStatus.NOT_FOUND, "QUE_003", "대기열에서 사용자를 찾을 수 없습니다."),
 

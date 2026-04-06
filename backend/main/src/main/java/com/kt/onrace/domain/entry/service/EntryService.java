@@ -1,5 +1,6 @@
 package com.kt.onrace.domain.entry.service;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -22,6 +23,7 @@ import com.kt.onrace.domain.entry.entity.Entry;
 import com.kt.onrace.domain.entry.entity.EntryStatus;
 import com.kt.onrace.domain.entry.repository.EntryRepository;
 import com.kt.onrace.domain.event.entity.Event;
+import com.kt.onrace.domain.event.entity.EventAppType;
 import com.kt.onrace.domain.event.entity.EventCourse;
 import com.kt.onrace.domain.event.entity.EventPace;
 import com.kt.onrace.domain.event.entity.EventStatus;
@@ -155,7 +157,8 @@ public class EntryService {
 
 	@ServiceLog(slowMs = 2000)
 	@Transactional
-	public EntryApplyResponse apply(Long userId, Long eventId, EntryCoursePaceRequest request, Long queuePaceId) {
+	public EntryApplyResponse apply(Long userId, Long eventId, EntryCoursePaceRequest request,
+			Long queuePaceId, EventAppType expectedAppType) {
 		if (queuePaceId != null) {
 			Preconditions.validate(queuePaceId.equals(request.paceId()), BusinessErrorCode.ENTRY_QUEUE_PACE_MISMATCH);
 		}
@@ -164,6 +167,8 @@ public class EntryService {
 
 		Event event = eventRepository.findByIdAndIsViewTrueAndIsDeletedFalseOrThrow(eventId,
 				BusinessErrorCode.EVENT_NOT_FOUND);
+
+		Preconditions.validate(event.getAppType() == expectedAppType, BusinessErrorCode.ENTRY_APP_TYPE_MISMATCH);
 
 		LocalDateTime now = LocalDateTime.now();
 		Preconditions.validate(event.getEventAt().isAfter(now), BusinessErrorCode.ENTRY_EVENT_ALREADY_ENDED);
@@ -193,6 +198,13 @@ public class EntryService {
 	private EntryApplyResponse applyFirstCome(Long userId, Event event, EventCourse course, EventPace pace) {
 		Entry entry = getCreateEntry(userId, event);
 
+		if (entry.isReserved()) {
+			long remainingMs = eventStockService.getReservationTtl(entry.getEventPace().getId(), userId);
+			if (remainingMs > 0) {
+				return EntryApplyResponse.fromReserved(entry, LocalDateTime.now().plus(Duration.ofMillis(remainingMs)));
+			}
+		}
+
 		long result = eventStockService.tryReserveStock(pace.getId(), userId);
 		Preconditions.validate(result != -2, BusinessErrorCode.ENTRY_ALREADY_RESERVED);
 		Preconditions.validate(result != -1, BusinessErrorCode.ENTRY_SOLD_OUT);
@@ -206,13 +218,9 @@ public class EntryService {
 	private Entry getCreateEntry(Long userId, Event event) {
 		return entryRepository.findByUserIdAndEventId(userId, event.getId())
 				.map(e -> {
-					switch (e.getStatus()) {
-						case APPLIED -> throw new BusinessException(BusinessErrorCode.ENTRY_ALREADY_APPLIED);
-						case RESERVED -> throw new BusinessException(BusinessErrorCode.ENTRY_ALREADY_RESERVED);
-						case PRE_SAVED -> {
-						} // 그대로 반환함
-						default -> throw new BusinessException(BusinessErrorCode.ENTRY_CANNOT_APPLY);
-					}
+					Preconditions.validate(e.getStatus() != EntryStatus.APPLIED, BusinessErrorCode.ENTRY_ALREADY_APPLIED);
+					Preconditions.validate(e.getStatus() == EntryStatus.RESERVED || e.getStatus() == EntryStatus.PRE_SAVED,
+						BusinessErrorCode.ENTRY_CANNOT_APPLY);
 					return e;
 				})
 				.orElseGet(() -> Entry.builder()
@@ -239,24 +247,29 @@ public class EntryService {
 		return EntryStockCheckResponse.tempSoldOut();
 	}
 
-	/**
-	 * 결제 확정 — RESERVED → APPLIED 전환, DB·Redis 확정 재고 증가 및 예약 키 삭제
-	 */
 	@ServiceLog(slowMs = 2000)
 	@Transactional
-	public void confirmReservation(Long userId, Long paceId) {
+	public void confirmReservation(Long userId, Long paceId, EventAppType type) {
 		Entry entry = entryRepository.findByUserIdAndEventPaceId(userId, paceId)
 				.orElseThrow(() -> new BusinessException(BusinessErrorCode.ENTRY_NOT_FOUND));
 
-		Preconditions.validate(entry.isReserved(), BusinessErrorCode.ENTRY_CANNOT_APPLY);
-		Preconditions.validate(eventStockService.hasReservation(paceId, userId),
+
+		if(type == EventAppType.FIRST_COME) {
+			Preconditions.validate(entry.isReserved(), BusinessErrorCode.ENTRY_CANNOT_APPLY);
+			Preconditions.validate(eventStockService.hasReservation(paceId, userId),
 				BusinessErrorCode.ENTRY_RESERVATION_EXPIRED);
 
-		entry.confirmPayment();
+			entry.confirmPayment();
+		}
+
 		eventStockRepository.findByEventPaceIdOrThrow(paceId).confirmStock();
 
-		eventStockService.deleteReservation(paceId, userId);
-		eventStockService.confirmStock(paceId);
+		// 왜? 위의 if로 넣지 않느냐 -> 트랜잭션 커밋이 안된 상태에서 redis는 즉시 실행되고 DB 업데이트는 트랜잭션 커밋 시점에 반영되기
+		// 때문에 DB가 실패할 시 redis는 롤백이 안되므로, DB가 성공적으로 끝난 후 redis를 실행하는 것이 맞음
+		if(type == EventAppType.FIRST_COME) {
+			eventStockService.deleteReservation(paceId, userId);
+			eventStockService.confirmStock(paceId);
+		}
 	}
 
 }
