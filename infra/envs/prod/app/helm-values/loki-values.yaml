@@ -56,7 +56,7 @@ gateway:
         server {
           listen 8080;
           location / {
-            proxy_pass http://loki-single-binary.loki.svc.cluster.local:3100;
+            proxy_pass http://loki:3100;
           }
         }
       }
