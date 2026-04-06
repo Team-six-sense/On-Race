@@ -32,6 +32,8 @@ def run_automated_tests():
     total_humans = 0
     error_count = 0
     
+    user_id = "TEST_USER" # 테스트용 고정 사용자 ID (실제 API에서는 요청마다 달라질 수 있음)
+    
     # 2. 전체 소요 시간 측정을 위한 타이머 시작
     batch_start_time = time.perf_counter()
 
@@ -45,7 +47,7 @@ def run_automated_tests():
 
             # 개별 판별 시간 측정
             start_time = time.perf_counter()
-            response = requests.post(API_URL, json=test_payload)
+            response = requests.post(API_URL, json={"user_id": user_id, "events": test_payload})
             end_time = time.perf_counter()
 
             if response.status_code == 200:

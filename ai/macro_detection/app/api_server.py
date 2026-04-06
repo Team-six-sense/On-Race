@@ -1,4 +1,5 @@
 import os
+import json
 from datetime import datetime
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from pydantic import BaseModel
@@ -47,19 +48,34 @@ class MouseEvent(BaseModel):
     timestamp: float
     eventType: str
 
-def write_detect_log_to_file(is_macro: bool, total_events: int):
+class MacroDetectionRequest(BaseModel):
+    user_id: str
+    events: List[MouseEvent]
+
+def write_detect_log_to_file(user_id: str, is_macro: bool, result: dict, total_events: int, events_data: list):
     os.makedirs(SERVER_LOG_DIR, exist_ok=True)
     # 이벤트 수와 매크로 여부를 하루 단위 로그 파일에 기록 (예: 20260331.log)
     timestamp = datetime.now().strftime("%Y%m%d")
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     log_filename = f"{timestamp}.log"
-    log_line = f"[{datetime.now()}] 탐지 완료 - 이벤트 수: {total_events}, 매크로 여부: {is_macro}\n"
+    
+    log_line = f"[{now}] 탐지 완료 - 사용자 ID: {user_id}, 이벤트 수: {total_events}, 매크로 여부: {is_macro}\n"
     with open(os.path.join(SERVER_LOG_DIR, log_filename), "a", encoding="utf-8") as f:
+        if is_macro:
+            events_str = json.dumps(events_data, ensure_ascii=False)
+            log_line = f"[{now}] 매크로 사용자 - 사용자 ID: {user_id}, 탐지 결과: {result}, 이벤트 수: {total_events}\n이벤트 데이터: {events_str}\n"
+        else:
+            log_line = f"[{now}] 일반 사용자 - 사용자 ID: {user_id}, 탐지 결과: {result}, 이벤트 수: {total_events}\n"
         f.write(log_line)
 
 @app.post("/api/v1/detect-macro")
-async def detect_macro(events: List[MouseEvent], background_tasks: BackgroundTasks):
+async def detect_macro(payload: MacroDetectionRequest, background_tasks: BackgroundTasks):
     print("마우스 매크로 감지 요청 수신")
     stats["total_requests"] += 1
+
+    user_id = payload.user_id
+    events = payload.events
+
     raw_data_list = [event.model_dump() for event in events]
     
     result = detector.predict_macro(raw_data_list)
@@ -72,7 +88,14 @@ async def detect_macro(events: List[MouseEvent], background_tasks: BackgroundTas
             stats["human_detected"] += 1
 
         # 감지 결과와 이벤트 수를 로그 파일에 비동기로 기록
-        background_tasks.add_task(write_detect_log_to_file, is_macro, len(events))
+        background_tasks.add_task(
+            write_detect_log_to_file, 
+            user_id = user_id, 
+            is_macro = is_macro, 
+            result = result,
+            total_events = len(events),
+            events_data = raw_data_list
+        )
 
         return result
     else:
