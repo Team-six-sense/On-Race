@@ -185,6 +185,12 @@ class MyPageApiContractTest {
 		assertThat(overview.path("data").path("address").path("hasAddress").asBoolean()).isTrue();
 		assertThat(overview.path("data").path("waitingEntries").path("items").get(0).path("courseName").asText()).isNotBlank();
 		assertThat(overview.path("data").path("waitingEntries").path("items").get(0).path("paceName").asText()).isNotBlank();
+		assertThat(overview.path("data").path("waitingEntries").path("items").get(0).has("actionType")).isFalse();
+		assertThat(overview.path("data").path("waitingEntries").path("items").get(0).has("actionLabel")).isFalse();
+		assertThat(overview.path("data").path("waitingEntries").path("items").get(0).has("actionEnabled")).isFalse();
+		assertThat(overview.path("data").path("orders").path("items").get(0).has("actionType")).isFalse();
+		assertThat(overview.path("data").path("orders").path("items").get(0).has("actionLabel")).isFalse();
+		assertThat(overview.path("data").path("orders").path("items").get(0).has("actionEnabled")).isFalse();
 
 		assertThat(entries.path("data")).hasSize(1);
 		assertThat(textValues(entries.path("data"), "entryStatus"))
@@ -208,10 +214,11 @@ class MyPageApiContractTest {
 		assertThat(waitingEntries.path("data").path("page").asInt()).isZero();
 		assertThat(waitingEntries.path("data").path("size").asInt()).isEqualTo(20);
 		assertThat(waitingEntries.path("data").path("hasNext").asBoolean()).isFalse();
-		assertThat(waitingEntries.path("data").path("items").get(0).path("actionType").asText()).isEqualTo("EDIT");
-		assertThat(waitingEntries.path("data").path("items").get(0).path("actionLabel").asText()).isEqualTo("사전정보 수정");
 		assertThat(waitingEntries.path("data").path("items").get(0).path("courseName").asText()).isNotBlank();
 		assertThat(waitingEntries.path("data").path("items").get(0).path("paceName").asText()).isNotBlank();
+		assertThat(waitingEntries.path("data").path("items").get(0).has("actionType")).isFalse();
+		assertThat(waitingEntries.path("data").path("items").get(0).has("actionLabel")).isFalse();
+		assertThat(waitingEntries.path("data").path("items").get(0).has("actionEnabled")).isFalse();
 
 		assertThat(orders.path("data")).hasSize(1);
 		assertThat(orders.path("data").get(0).path("id").asText()).isEqualTo("ORD-TEST-0001");
@@ -226,6 +233,9 @@ class MyPageApiContractTest {
 		assertThat(orderDetail.path("data").path("status").asText()).isEqualTo("결제 대기");
 		assertThat(orderDetail.path("data").path("canCancel").asBoolean()).isTrue();
 		assertThat(orderDetail.path("data").path("canRefund").asBoolean()).isFalse();
+		assertThat(orderDetail.path("data").has("actionType")).isFalse();
+		assertThat(orderDetail.path("data").has("actionLabel")).isFalse();
+		assertThat(orderDetail.path("data").has("actionEnabled")).isFalse();
 
 		assertThat(address.path("data").path("hasAddress").asBoolean()).isTrue();
 		assertThat(address.path("data").path("defaultAddress").path("label").asText()).isEqualTo("집");
