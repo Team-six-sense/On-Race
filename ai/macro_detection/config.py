@@ -9,6 +9,7 @@ MODEL_FILE = os.path.join(MODEL_DIR, 'mouse_macro_model.json')  # 모델 파일 
 TEST_DIR = os.path.join(DATA_DIR, 'dataset', 'test')            # 테스트 데이터 디렉토리
 HUMAN_DIR = os.path.join(DATA_DIR, 'dataset', 'human')          # 사용자 데이터 디렉토리
 MACRO_DIR = os.path.join(DATA_DIR, 'dataset', 'macro')          # 매크로 데이터 디렉토리
+TEMP_DIR = os.path.join(DATA_DIR, 'dataset', 'temp')            # 임시 파일 디렉토리
 
 # 로그 파일 경로
 SERVER_LOG_DIR = os.path.join(BASE_DIR, 'app','logs')           # 서버 로그 디렉토리

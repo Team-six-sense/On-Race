@@ -5,6 +5,7 @@ uvicorn
 # Macro Detection Libraries
 xgboost
 pydantic
+scikit-learn
 
 # public
 pandas

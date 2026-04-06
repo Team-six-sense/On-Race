@@ -7,7 +7,7 @@ from typing import List
 import uvicorn
 from contextlib import asynccontextmanager
 
-from config import MODEL_FILE, SERVER_LISTEN_HOST, SERVER_PORT, SERVER_LOG_DIR
+from config import MODEL_FILE, SERVER_LISTEN_HOST, SERVER_PORT, SERVER_LOG_DIR, TEMP_DIR
 from app.macro_detector import MouseMacroDetector 
 
 detector = None
@@ -53,20 +53,26 @@ class MacroDetectionRequest(BaseModel):
     events: List[MouseEvent]
 
 def write_detect_log_to_file(user_id: str, is_macro: bool, result: dict, total_events: int, events_data: list):
+    
+    # 파일 존재 여부 확인 및 로그 디렉토리 생성
     os.makedirs(SERVER_LOG_DIR, exist_ok=True)
+    if 0.3 <= result.get("probability", 0) <= 0.7:
+        os.makedirs(TEMP_DIR, exist_ok=True)
+
     # 이벤트 수와 매크로 여부를 하루 단위 로그 파일에 기록 (예: 20260331.log)
     timestamp = datetime.now().strftime("%Y%m%d")
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     log_filename = f"{timestamp}.log"
 
-    log_line = f"[{now}] 탐지 완료 - 사용자 ID: {user_id}, 이벤트 수: {total_events}, 매크로 여부: {is_macro}\n"
     with open(os.path.join(SERVER_LOG_DIR, log_filename), "a", encoding="utf-8") as f:
-        if is_macro:
-            events_str = json.dumps(events_data, ensure_ascii=False)
-            log_line = f"[{now}] 매크로 사용자 - 사용자 ID: {user_id}, 탐지 결과: {result}, 이벤트 수: {total_events}\n이벤트 데이터: {events_str}\n"
-        else:
-            log_line = f"[{now}] 일반 사용자 - 사용자 ID: {user_id}, 탐지 결과: {result}, 이벤트 수: {total_events}\n"
-        f.write(log_line)
+        f.write(f"[{now}] 탐지 완료 - 사용자 ID: {user_id}, 이벤트 수: {total_events}, 매크로 여부: {is_macro}, 확률: {result.get('probability', 0)}\n")
+
+    # 확률이 30% 이상 70% 이하인 경우, 분석을 위해 임시 폴더에 JSON 파일로 저장
+    if 0.3 <= result.get("probability", 0) <= 0.7:
+        # 파일명 예시: TEST_USER_20260331_153045.json
+        temp_filename = f"{user_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        with open(os.path.join(TEMP_DIR, temp_filename), "w", encoding="utf-8") as f:
+            json.dump(events_data, f, ensure_ascii=False, indent=2)
 
 @app.post("/api/v1/detect-macro")
 async def detect_macro(payload: MacroDetectionRequest, background_tasks: BackgroundTasks):
