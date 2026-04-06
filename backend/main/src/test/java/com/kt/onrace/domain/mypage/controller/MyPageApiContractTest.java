@@ -457,6 +457,69 @@ class MyPageApiContractTest {
 	}
 
 	@Test
+	void failedAndExpiredOrdersAreOwnedByCancelledOrderHistoryNotApplications() throws Exception {
+		LocalDateTime now = LocalDateTime.now();
+
+		EventBundle failedBundle = createEventBundle(
+			"실패 주문 선착순 이벤트",
+			EventType.RUNNING,
+			EventAppType.FIRST_COME,
+			now.plusDays(18),
+			now.minusDays(2),
+			now.plusDays(2),
+			null,
+			EventRegion.SEOUL,
+			"보라매공원",
+			"10K",
+			10000,
+			21000L,
+			"5:35/km",
+			5,
+			35,
+			100
+		);
+		Entry failedEntry = createEntry(EMPTY_USER_ID, failedBundle, EntryStatus.RESERVED);
+		createOrder(EMPTY_USER_ID, failedBundle, failedEntry.getId(), OrderStatus.FAILED, "ORD-FAILED-001");
+
+		EventBundle expiredBundle = createEventBundle(
+			"만료 주문 선착순 이벤트",
+			EventType.RUNNING,
+			EventAppType.FIRST_COME,
+			now.plusDays(19),
+			now.minusDays(2),
+			now.plusDays(2),
+			null,
+			EventRegion.BUSAN,
+			"수영강변",
+			"15K",
+			15000,
+			24000L,
+			"5:45/km",
+			5,
+			45,
+			100
+		);
+		Entry expiredEntry = createEntry(EMPTY_USER_ID, expiredBundle, EntryStatus.RESERVED);
+		createOrder(EMPTY_USER_ID, expiredBundle, expiredEntry.getId(), OrderStatus.EXPIRED, "ORD-EXPIRED-001");
+
+		JsonNode overview = get(EMPTY_USER_ID, "/mypage");
+		JsonNode entries = get(EMPTY_USER_ID, "/mypage/entries");
+		JsonNode waitingEntries = get(EMPTY_USER_ID, "/mypage/waiting-entries");
+		JsonNode cancelledOrders = get(EMPTY_USER_ID, "/mypage/orders?tab=CANCELLED");
+
+		assertThat(overview.path("data").path("entries").path("totalCount").asInt()).isZero();
+		assertThat(overview.path("data").path("waitingEntries").path("totalCount").asInt()).isZero();
+		assertThat(overview.path("data").path("orders").path("totalCount").asInt()).isEqualTo(2);
+		assertThat(entries.path("data")).isEmpty();
+		assertThat(waitingEntries.path("data").path("items")).isEmpty();
+		assertThat(cancelledOrders.path("data")).hasSize(2);
+		assertThat(textValues(cancelledOrders.path("data"), "id"))
+			.containsExactlyInAnyOrder("ORD-FAILED-001", "ORD-EXPIRED-001");
+		assertThat(textValues(cancelledOrders.path("data"), "orderStatus"))
+			.containsExactlyInAnyOrder("결제취소", "결제취소");
+	}
+
+	@Test
 	void waitingEntriesExcludePendingOrdersOwnedByOrderHistory() throws Exception {
 		LocalDateTime now = LocalDateTime.now();
 		EventBundle reservedBundle = createEventBundle(

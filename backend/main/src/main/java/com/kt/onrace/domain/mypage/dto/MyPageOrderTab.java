@@ -33,7 +33,9 @@ public enum MyPageOrderTab {
 			case ALL -> true;
 			case PENDING -> orderStatus == OrderStatus.PENDING;
 			case COMPLETED -> orderStatus == OrderStatus.PAID;
-			case CANCELLED -> orderStatus == OrderStatus.CANCELLED;
+			case CANCELLED -> orderStatus == OrderStatus.CANCELLED
+				|| orderStatus == OrderStatus.EXPIRED
+				|| orderStatus == OrderStatus.FAILED;
 		};
 	}
 }

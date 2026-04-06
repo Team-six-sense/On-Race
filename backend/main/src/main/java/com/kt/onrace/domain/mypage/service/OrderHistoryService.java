@@ -137,7 +137,11 @@ public class OrderHistoryService {
 			case ALL -> null;
 			case PENDING -> order.orderStatus.eq(OrderStatus.PENDING);
 			case COMPLETED -> order.orderStatus.eq(OrderStatus.PAID);
-			case CANCELLED -> order.orderStatus.eq(OrderStatus.CANCELLED);
+			case CANCELLED -> order.orderStatus.in(
+				OrderStatus.CANCELLED,
+				OrderStatus.EXPIRED,
+				OrderStatus.FAILED
+			);
 		};
 	}
 

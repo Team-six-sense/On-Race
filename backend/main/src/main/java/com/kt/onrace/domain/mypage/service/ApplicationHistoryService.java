@@ -54,7 +54,9 @@ public class ApplicationHistoryService {
 	private static final List<OrderStatus> ORDER_OWNED_APPLICATION_STATUSES = List.of(
 		OrderStatus.PENDING,
 		OrderStatus.PAID,
-		OrderStatus.CANCELLED
+		OrderStatus.CANCELLED,
+		OrderStatus.EXPIRED,
+		OrderStatus.FAILED
 	);
 
 	private final JPAQueryFactory queryFactory;
