@@ -31,48 +31,66 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      # 1. Base Layer (IAM, VPC 등) 배포
-      - name: Base Layer Apply
+      # -----------------------------------------------------------
+      # SECTION 1. Base Layer Deployment (IAM, VPC, ECR)
+      # -----------------------------------------------------------
+      - name: 1. Base Layer - Terraform Apply
         working-directory: ./infra/envs/prod/base
         run: |
           terraform init
           terraform apply -auto-approve
 
-      # VQA 개인키 생성 테라폼 App Layer 배포 전에 시크릿 키를 파일로 만들어줍니다.
-      - name: Create VQA Private Key
+      # -----------------------------------------------------------
+      # SECTION 2. Security & Access Management
+      # -----------------------------------------------------------
+      - name: 2. Create VQA Private Key
         run: |
           mkdir -p infra/envs/prod/app/certs
           echo "${{ secrets.VQA_PRIVATE_KEY }}" > infra/envs/prod/app/certs/vqa_private_key.pem
           chmod 600 infra/envs/prod/app/certs/vqa_private_key.pem
 
-      # 2. [핵심 수정] EKS Access Entry 조건부 갱신
-      # 클러스터가 존재할 때만 출입증을 갱신하여 ResourceNotFoundException 에러를 방지합니다.
-      - name: Refresh EKS Access Entry
+      - name: 3. Refresh EKS Access Entry
         run: |
           if aws eks describe-cluster --name ${{ env.CLUSTER_NAME }} --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
-            echo "클러스터가 존재합니다. 출입증을 최신화합니다..."
+            echo "클러스터가 존재합니다. Access Entry를 최신화합니다..."
             aws eks delete-access-entry --cluster-name ${{ env.CLUSTER_NAME }} --principal-arn ${{ secrets.AWS_ROLE_ARN }} || true
             aws eks create-access-entry --cluster-name ${{ env.CLUSTER_NAME }} --principal-arn ${{ secrets.AWS_ROLE_ARN }} --type STANDARD
             aws eks associate-access-policy --cluster-name ${{ env.CLUSTER_NAME }} --principal-arn ${{ secrets.AWS_ROLE_ARN }} --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy --access-scope type=cluster
           else
-            echo "클러스터가 존재하지 않습니다. App Layer 배포 단계에서 클러스터와 권한이 새롭게 생성될 것입니다."
+            echo "클러스터 미존재: App Layer에서 신규 생성 예정입니다."
           fi
 
-      # 3. App Layer (EKS, Helm 차트 등) 통합 배포
-      - name: App Layer - Full Apply
+      # -----------------------------------------------------------
+      # SECTION 3. Pre-Deployment Cleanup (Hanging 방지)
+      # -----------------------------------------------------------
+      - name: 4. Pre-Cleanup (Remove Stuck Resources)
+        run: |
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }} || echo "Cluster not found, skipping..."
+          
+          # 'Terminating' 상태로 멈춘 서비스의 Finalizer 강제 제거 (삭제 지연 방지)
+          kubectl get svc -A -o json | jq -r '.items[] | select(.metadata.deletionTimestamp != null) | "kubectl patch svc \(.metadata.name) -n \(.metadata.namespace) -p \"{\\\"metadata\\\":{\\\"finalizers\\\":null}}\" --type merge"' | sh || true
+          
+          # 기존에 남은 LoadBalancer 타입 서비스 미리 정리
+          kubectl delete svc --all --all-namespaces --field-selector type=LoadBalancer --timeout=60s || true
+
+      # -----------------------------------------------------------
+      # SECTION 4. App Layer Deployment (EKS, Helm, Monitoring)
+      # -----------------------------------------------------------
+      - name: 5. App Layer - Terraform Apply
         working-directory: ./infra/envs/prod/app
         run: |
           terraform init
           terraform apply -auto-approve
 
-      # 4. kubectl 인증 정보 생성
-      - name: Update Kubeconfig for Kubectl
+      - name: 6. Update Kubeconfig for Manifests
         run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }}
 
-      # 5. 테라폼 plan 단계에서 에러를 유발하는 CRD 기반 리소스들을 kubectl로 직접 적용
-      - name: Apply K8s Configs via Kubectl
+      # -----------------------------------------------------------
+      # SECTION 5. Post-Deployment K8s Configs (Karpenter, KEDA)
+      # -----------------------------------------------------------
+      - name: 7. Apply K8s Manifests (Karpenter & KEDA)
         run: |
-          # Karpenter EC2NodeClass 적용
+          # [Karpenter] EC2NodeClass & NodePool
           cat <<EOF | kubectl apply -f -
           apiVersion: karpenter.k8s.aws/v1
           kind: EC2NodeClass
@@ -88,10 +106,7 @@ jobs:
               httpTokens: required
               httpPutResponseHopLimit: 2
               httpEndpoint: enabled
-          EOF
-
-          # Karpenter NodePool 적용
-          cat <<EOF | kubectl apply -f -
+          ---
           apiVersion: karpenter.sh/v1
           kind: NodePool
           metadata:
@@ -115,7 +130,7 @@ jobs:
               consolidateAfter: 1m
           EOF
 
-          # KEDA ScaledObject 적용
+          # [KEDA] ScaledObject for API
           cat <<EOF | kubectl apply -f -
           apiVersion: keda.sh/v1alpha1
           kind: ScaledObject

@@ -21,9 +21,8 @@ resource "helm_release" "argocd" {
     value = "v2.14.20"
   }
 
-  # 기존에 LoadBalancer 등을 사용 중이었다면 아래 설정을 추가하세요
   set {
     name  = "server.service.type"
-    value = "LoadBalancer"
+    value = "ClusterIP" 
   }
 }
