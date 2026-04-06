@@ -23,7 +23,7 @@ data "aws_ami" "al2023" {
 resource "aws_instance" "ai_macro_detector" {
   count         = 2
   ami           = data.aws_ami.al2023.id
-  instance_type = "t3.micro" # [수정] medium -> micro
+  instance_type = "t3.medium"
   #instance_type = "t3.medium"
   
   # 가용 영역 분산을 위해 base의 서브넷 리스트 활용
