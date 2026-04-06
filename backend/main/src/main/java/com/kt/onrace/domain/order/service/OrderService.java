@@ -313,6 +313,9 @@ public class OrderService {
 
 		// 선착순 pending 주문은 결제 완료 전까지 Redis reservation만 보유한다.
 		// terminal 전이 시 예약 키를 먼저 정리하고, 실제로 살아 있던 예약일 때만 temp stock을 복구한다.
+		// 예약 키가 이미 없다면 TTL 만료 리스너가 stock 복구를 담당하는 경로이므로,
+		// 여기서 다시 restore 하면 temp stock을 이중 복구할 수 있다.
+		// FCFS entry 는 RESERVED 상태를 유지해도 EntryService.apply() 가 만료된 예약을 감지해 재신청을 허용한다.
 		if (releaseFirstComeReservation(order)) {
 			return;
 		}

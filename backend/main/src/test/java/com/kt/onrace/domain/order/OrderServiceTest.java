@@ -607,6 +607,42 @@ class OrderServiceTest {
 	}
 
 	@Test
+	@DisplayName("선착순 pending 주문에서 예약 키가 이미 없으면 temp stock을 이중 복구하지 않는다")
+	void cancelPaymentDoesNotDoubleRestoreWhenReservationKeyAlreadyMissing() {
+		Order order = Order.builder()
+			.orderNumber("ORD-FIRST-COME-CANCEL-MISSING-RESERVATION")
+			.userId(7L)
+			.eventCourseId(10L)
+			.eventPaceId(20L)
+			.entryId(1000L)
+			.eventAppType(EventAppType.FIRST_COME)
+			.orderStatus(OrderStatus.PENDING)
+			.itemTotalAmount(60000L)
+			.shippingFee(3000L)
+			.discountAmount(0L)
+			.finalAmount(63000L)
+			.recipientName("홍길동")
+			.addressLabel("우리 집")
+			.recipientPhone("010-1111-2222")
+			.zipCode("04100")
+			.address("서울시 마포구")
+			.detailAddress("301호")
+			.deliveryMemo("문앞에 놓아주세요")
+			.build();
+
+		when(orderRepository.findByOrderNumberAndUserId(eq("ORD-FIRST-COME-CANCEL-MISSING-RESERVATION"), eq(7L)))
+			.thenReturn(Optional.of(order));
+		when(eventStockService.deleteReservation(20L, 7L)).thenReturn(false);
+
+		orderService.cancelPayment("ORD-FIRST-COME-CANCEL-MISSING-RESERVATION", 7L);
+
+		assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.CANCELLED);
+		verify(eventStockService).deleteReservation(20L, 7L);
+		verify(eventStockService, never()).restoreStock(20L);
+		verify(orderEntryContract, never()).rollbackPendingPayment(any());
+	}
+
+	@Test
 	@DisplayName("이미 같은 terminal 상태면 rollback 훅을 다시 호출하지 않는다")
 	void terminalTransitionsAreIdempotent() {
 		Order order = createOrder("ORD-CANCELLED-001", 7L, 10L, 20L, OrderStatus.CANCELLED, 53000L);
