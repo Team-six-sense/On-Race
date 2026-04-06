@@ -313,7 +313,7 @@ public class OrderService {
 
 	private BusinessErrorCode resolveFailureCode(String failureCode) {
 		if (failureCode == null || failureCode.isBlank()) {
-			return BusinessErrorCode.ENTRY_CANNOT_APPLY;
+			return BusinessErrorCode.ENTRY_CANNOT_CHECKOUT;
 		}
 
 		for (BusinessErrorCode errorCode : BusinessErrorCode.values()) {

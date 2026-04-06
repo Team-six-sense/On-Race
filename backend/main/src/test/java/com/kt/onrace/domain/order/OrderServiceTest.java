@@ -379,7 +379,7 @@ class OrderServiceTest {
 			eq(10L), eq(1L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.course());
 		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(
 			eq(20L), eq(10L), eq(BusinessErrorCode.COMMON_INVALID_FORMAT))).thenReturn(fixture.pace());
-		mockCheckoutEligibility(7L, false, BusinessErrorCode.ENTRY_CANNOT_APPLY.getCode());
+		mockCheckoutEligibility(7L, false, BusinessErrorCode.ENTRY_CANNOT_CHECKOUT.getCode());
 
 		assertThatThrownBy(() -> orderService.checkout(
 			new CheckoutRequestDto(
@@ -396,7 +396,7 @@ class OrderServiceTest {
 		))
 			.isInstanceOf(BusinessException.class)
 			.extracting(exception -> ((BusinessException)exception).getErrorCode())
-			.isEqualTo(BusinessErrorCode.ENTRY_CANNOT_APPLY);
+			.isEqualTo(BusinessErrorCode.ENTRY_CANNOT_CHECKOUT);
 	}
 
 	@Test
