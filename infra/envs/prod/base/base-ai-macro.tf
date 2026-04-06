@@ -79,3 +79,9 @@ resource "aws_cloudfront_origin_access_control" "ai_vqa" {
   signing_behavior                  = "always"
   signing_protocol                  = "sigv4"
 }
+
+# SSM 세션 매니저 접속을 위한 핵심 정책 연결
+resource "aws_iam_role_policy_attachment" "ai_ec2_ssm_policy" {
+  role       = aws_iam_role.ai_ec2_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
