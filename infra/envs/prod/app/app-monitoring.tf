@@ -14,12 +14,14 @@ resource "helm_release" "loki" {
   namespace        = "loki"
   create_namespace = true
   
-  timeout          = 1500
+  # [유지] 무한 대기 방지 옵션 (잘 설정됨)
+  wait            = false
+  cleanup_on_fail = true
+  timeout         = 300
 
-  # [핵심] templatefile을 통해 변수들을 실제 값으로 치환하여 주입
   values = [
     templatefile("${path.module}/helm-values/loki-values.yaml", {
-      loki_role_arn   = module.loki.loki_role_arn
+      loki_role_arn    = module.loki.loki_role_arn
       loki_bucket_name = module.loki.loki_bucket_name
     })
   ]
@@ -36,6 +38,11 @@ resource "helm_release" "prometheus" {
   namespace        = "monitoring"
   create_namespace = true
 
+  # [추가] Prometheus 무한 대기 방지
+  wait            = false
+  cleanup_on_fail = true
+  timeout         = 600
+
   set {
     name  = "server.persistentVolume.enabled"
     value = "true"
@@ -49,9 +56,6 @@ resource "helm_release" "prometheus" {
     value = "gp3"
   }
 
-  timeout = 600
-
-  # EBS CSI 드라이버와 gp3 스토리지 클래스가 먼저 준비되도록 강제
   depends_on = [
     module.eks,
     aws_eks_addon.ebs_csi,
@@ -69,11 +73,15 @@ resource "helm_release" "grafana" {
   create_namespace = true
   values           = [file("${path.module}/helm-values/grafana-values.yaml")]
   
+  # [추가] Grafana 무한 대기 방지
+  wait            = false
+  cleanup_on_fail = true
+  timeout         = 300
+
   set {
     name  = "service.type"
-    value = "LoadBalancer"
+    value = "ClusterIP" # [수정] LoadBalancer -> ClusterIP (삭제 지연 방지 및 보안)
   }
 
-  # Loki와 Prometheus가 준비된 후 설치
   depends_on = [aws_eks_addon.ebs_csi, helm_release.loki, helm_release.prometheus]
 }

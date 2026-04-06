@@ -248,11 +248,9 @@ resource "kubernetes_service_v1" "on_race_api" {
     namespace = kubernetes_namespace_v1.app.metadata[0].name
     
     annotations = {
-      "service.beta.kubernetes.io/aws-load-balancer-name"            = "t6-on-race-api-lb"
-      "service.beta.kubernetes.io/aws-load-balancer-type"            = "external"
-      "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type" = "ip"
-      "service.beta.kubernetes.io/aws-load-balancer-scheme"          = "internet-facing"
-      "service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags" = "Project=${var.project_name},Environment=${var.environment}"
+      # [수정] AWS 로드밸런서 관련 모든 설정 삭제 (배포/삭제 시 지연 원인 제거)
+      
+      # [유지] 프로메테우스 모니터링 수집 설정
       "prometheus.io/scrape" = "true"
       "prometheus.io/path"   = "/actuator/prometheus"
       "prometheus.io/port"   = "8080"
@@ -266,11 +264,15 @@ resource "kubernetes_service_v1" "on_race_api" {
       target_port = 8080
       protocol    = "TCP"
     }
-    type = "LoadBalancer"
+    # [수정] 내부 통신 전용으로 확정
+    type = "ClusterIP"
   }
 
-  wait_for_load_balancer = false 
-  depends_on              = [time_sleep.wait_for_lb_controller]
+  # [유지] 삭제 시 'Finalizer' 고착 방지를 위한 안전장치
+  provisioner "local-exec" {
+    when    = destroy
+    command = "kubectl patch svc ${self.metadata[0].name} -n ${self.metadata[0].namespace} -p '{\"metadata\":{\"finalizers\":null}}' --type merge || true"
+  }
 }
 
 # 9. Stunnel ConfigMap
