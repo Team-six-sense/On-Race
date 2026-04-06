@@ -16,29 +16,31 @@ loki:
   storage:
     type: s3
     bucketNames:
-      chunks: "${loki_bucket_name}" # 테라폼에서 주입
+      chunks: "${loki_bucket_name}"
       ruler: "${loki_bucket_name}"
       admin: "${loki_bucket_name}"
     s3:
       region: ap-northeast-2
-      # [수정] AWS ap-northeast-2 리전은 가상 호스트 스타일을 사용하므로 false로 변경
       s3ForcePathStyle: false
 
+  # [중요] ServiceAccount 설정: IRSA 권한 자동 주입
   serviceAccount:
     create: true
     name: loki
     annotations:
-      # 테라폼에서 주입하는 동적 ARN
       eks.amazonaws.com/role-arn: "${loki_role_arn}"
 
 deploymentMode: SingleBinary
 
-read:
-  replicas: 0
-write:
-  replicas: 0
-backend:
-  replicas: 0
+# Gateway DNS 에러 해결을 위한 설정 추가
+gateway:
+  enabled: true
+  replicas: 1
+  verboseLogging: true
+  nginxConfig:
+    # EKS 내부 DNS(CoreDNS) 주소를 명시적으로 지정하여 host not found 에러 방지
+    resolver: 172.20.0.10
+    # 만약 위 IP로도 안되면 kube-dns.kube-system.svc.cluster.local 입력
 
 singleBinary:
   replicas: 1
