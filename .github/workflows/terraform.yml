@@ -38,6 +38,13 @@ jobs:
           terraform init
           terraform apply -auto-approve
 
+      # VQA 개인키 생성 테라폼 App Layer 배포 전에 시크릿 키를 파일로 만들어줍니다.
+      - name: Create VQA Private Key
+        run: |
+          mkdir -p infra/envs/prod/app/certs
+          echo "${{ secrets.VQA_PRIVATE_KEY }}" > infra/envs/prod/app/certs/vqa_private_key.pem
+          chmod 600 infra/envs/prod/app/certs/vqa_private_key.pem
+
       # 2. [핵심 수정] EKS Access Entry 조건부 갱신
       # 클러스터가 존재할 때만 출입증을 갱신하여 ResourceNotFoundException 에러를 방지합니다.
       - name: Refresh EKS Access Entry
