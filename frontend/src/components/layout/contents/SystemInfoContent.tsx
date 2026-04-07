@@ -36,13 +36,13 @@ export default function SystemInfoContent() {
 
   return (
     <section ref={containerRef} className="bg-secondary">
-      <div className="relative flex flex-col items-center max-w-7xl w-full mx-auto p-30">
+      <div className="relative flex flex-col items-center w-full p-30  min-h-fit">
         <div className="absolute inset-0 z-0 pointer-events-none">
           <Image
-            src="/image/systemInfo/bg-pattern.svg"
+            src="/image/systemInfo/bg-pattern2.svg"
             alt="background"
             fill
-            className="object-cover"
+            className="object-contain"
             quality={100}
             priority
           />

@@ -100,7 +100,7 @@ export const EventHistoryPage = () => {
         {appType.map((type) => (
           <Button
             key={type.id}
-            variant={searchType === type.id ? 'primary1' : 'outline'}
+            variant="outline"
             size="fit"
             rounded="full"
             onClick={() => {
@@ -109,7 +109,11 @@ export const EventHistoryPage = () => {
             }}
             className={cn(
               'border',
-              searchType !== type.id && 'border-gray-400',
+              // searchType !== type.id && 'border-gray-400',
+
+              searchType === type.id
+                ? 'border-2 text-black border-black'
+                : 'border text-font-low border-cta-outline',
             )}
           >
             {type.label}

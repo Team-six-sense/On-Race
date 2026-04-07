@@ -10,7 +10,7 @@ const backendClient = axios.create({
 
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ id: number }> },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     // 클라이언트로부터 전달받은 쿼리 파라미터 추출
