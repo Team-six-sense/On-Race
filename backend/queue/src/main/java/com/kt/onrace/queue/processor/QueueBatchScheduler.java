@@ -86,24 +86,7 @@ public class QueueBatchScheduler {
 			int issued = processRetryQueue(retryQueue, paceId, passTtl, batchSize);
 
 			// 2단계: 남은 배치 여유분만큼 대기열에서 처리
-			int remaining = batchSize - issued;
-			if (remaining > 0) {
-				Collection<String> popped = waitingSet.pollFirst(remaining);
-
-				if ((popped == null || popped.isEmpty()) && issued == 0) {
-					removeActivePaceIfEmpty(paceId);
-					return;
-				}
-
-				if (popped != null) {
-					for (String userIdStr : popped) {
-						if (userIdStr == null) {
-							continue;
-						}
-						issuePassToken(userIdStr, paceId, passTtl, retryQueue, 0);
-					}
-				}
-			}
+			issued += processWaitingQueue(waitingSet, paceId, passTtl, retryQueue, batchSize - issued);
 
 			removeActivePaceIfEmpty(paceId);
 		} finally {
@@ -111,6 +94,27 @@ public class QueueBatchScheduler {
 				lock.unlock();
 			}
 		}
+	}
+
+	private int processWaitingQueue(RScoredSortedSet<String> waitingSet, Long paceId, long passTtl,
+		RDeque<String> retryQueue, int count) {
+		if (count <= 0) {
+			return 0;
+		}
+		Collection<String> popped = waitingSet.pollFirst(count);
+		if (popped == null || popped.isEmpty()) {
+			return 0;
+		}
+		int issued = 0;
+		for (String userIdStr : popped) {
+			if (userIdStr == null) {
+				continue;
+			}
+			if (issuePassToken(userIdStr, paceId, passTtl, retryQueue, 0)) {
+				issued++;
+			}
+		}
+		return issued;
 	}
 
 	private int processRetryQueue(RDeque<String> retryQueue, Long paceId, long passTtl, int batchSize) {
