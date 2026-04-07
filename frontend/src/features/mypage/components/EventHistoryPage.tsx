@@ -22,6 +22,7 @@ export const EventHistoryPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  const eventId = 1;
   // 컴포넌트가 마운트된 후에만 렌더링을 허용
   useEffect(() => {
     setMounted(true);
@@ -250,7 +251,7 @@ export const EventHistoryPage = () => {
                             rounded="sm"
                             size="fit"
                             onClick={() => {
-                              router.push('/ticketing/1/payment');
+                              router.push(`/ticketing/${eventId}/payment`);
                             }}
                           >
                             결제하기
@@ -272,7 +273,7 @@ export const EventHistoryPage = () => {
                           rounded="sm"
                           size="fit"
                           onClick={() => {
-                            router.push('/ticketing/1');
+                            router.push(`/ticketing/${eventId}`);
                           }}
                         >
                           사전정보 수정
@@ -298,7 +299,9 @@ export const EventHistoryPage = () => {
                           rounded="sm"
                           size="fit"
                           onClick={() => {
-                            router.push('/ticketing/1/payment/details');
+                            router.push(
+                              `/ticketing/${eventId}/payment/details`,
+                            );
                           }}
                         >
                           결제 내역 보기

@@ -51,7 +51,7 @@ export function EventDetailsInfo({
         </div>
       ) : (
         /* 높이(h-80)와 배경색(bg-gray-100) 추가 */
-        <div className="w-full h-200 flex items-center justify-center text-gray-400 bg-gray-100 rounded-sm">
+        <div className="w-full h-[200px] flex items-center justify-center text-gray-400 bg-gray-100 rounded-sm">
           <MdImage size={100} />
         </div>
       )}
