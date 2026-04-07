@@ -4,7 +4,7 @@ import { CourseDetails } from '@/features/event/types';
 import { useEffect, useState } from 'react';
 
 export function EventParticipationInfo({
-  courses,
+  courses = [],
 }: {
   courses: CourseDetails[];
 }) {

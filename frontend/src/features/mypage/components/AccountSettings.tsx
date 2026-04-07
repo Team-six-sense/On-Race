@@ -7,11 +7,13 @@ import { LuCircleAlert } from 'react-icons/lu';
 import AddressForm from './AddressForm';
 import { myPageService } from '../services';
 import { AccountInfo } from '../types/accountInfo';
+import PassModal from '@/features/auth/components/PassModal';
 
 export function AccountSettings() {
   // 하이드레이션 오류 방지를 위한 마운트 상태 관리
   const [mounted, setMounted] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPassModalOpen, setPassIsModalOpen] = useState(false);
   const [userInfo, setUserInfo] = useState<AccountInfo>();
 
   const [marketingSettings, setMarketingSettings] = useState({
@@ -42,7 +44,6 @@ export function AccountSettings() {
 
       try {
         const response = await myPageService.getAccountInfo();
-        console.log(response);
         setUserInfo((prev) => ({
           ...prev,
           ...response.data,
@@ -126,7 +127,11 @@ export function AccountSettings() {
                   </span>
                 </div>
                 <div className="flex">
-                  <Button variant="destructive" rounded="full">
+                  <Button
+                    variant="destructive"
+                    rounded="full"
+                    onClick={() => setPassIsModalOpen(true)}
+                  >
                     인증하기
                   </Button>
                 </div>
@@ -240,6 +245,13 @@ export function AccountSettings() {
               </div>
             </div>
           </section>
+          <PassModal
+            isOpen={isPassModalOpen}
+            onClose={() => setPassIsModalOpen(false)}
+            onFinish={() => {
+              setPassIsModalOpen(false);
+            }}
+          />
         </div>
       )}
     </div>

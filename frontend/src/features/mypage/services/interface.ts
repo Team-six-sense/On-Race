@@ -14,5 +14,5 @@ export interface IMypageService {
   getEntriesHistory(): Promise<ApiResponse<EntriesHistory[]>>;
   getWaitingHistory(): Promise<ApiResponse<WaitingEntriesHistory>>;
   getOrderHistory(): Promise<ApiResponse<OrderHistory[]>>;
-  getOrderDetailInfo(id: number): Promise<ApiResponse<null>>;
+  getOrderDetailInfo(id: string): Promise<ApiResponse<null>>;
 }

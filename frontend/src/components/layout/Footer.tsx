@@ -70,7 +70,7 @@ export default function Footer() {
                     'text-sm font-bold',
                     isHome
                       ? 'text-white hover:text-font-medium'
-                      : 'text-black hover:text-gray-500',
+                      : 'text-font-medium hover:text-gray-500',
                   )}
                 >
                   사업자 정보 확인

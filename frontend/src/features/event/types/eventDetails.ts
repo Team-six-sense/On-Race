@@ -44,12 +44,18 @@ export interface DetailImg {
   url: string;
   sort: number;
 }
+
+export interface EventDelivery {
+  feePolicy: string;
+  schedule: string;
+}
 export interface EventDetails {
-  id: number;
-  lotteryAnnouncedAt: string;
-  notice: string;
-  courses: CourseDetails[];
-  packages: Package[];
-  thumbnailImg: ThumbnailImg[];
-  detailImg: DetailImg[];
+  id?: number;
+  lotteryAnnouncedAt?: string | null;
+  notice?: string;
+  courses?: CourseDetails[];
+  packages?: Package[];
+  thumbnailImg?: ThumbnailImg[];
+  detailImg?: DetailImg[];
+  delivery?: EventDelivery;
 }

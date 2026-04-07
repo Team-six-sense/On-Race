@@ -38,23 +38,25 @@ export default function MarathonDetailPage() {
   };
   const handleStop = () => {
     stopTracking();
-    const fp = collectFingerprint();
-    // handleDownloadBinary();
+    saveData();
   };
 
-  const handleDownloadBinary = () => {
+  async function bufferToBase64(buffer: ArrayBuffer): Promise<string> {
+    const blob = new Blob([buffer]);
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const res = reader.result as string;
+        resolve(res.split(',')[1]); // base64 부분만 추출
+      };
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  const saveData = () => {
     const currentLogs = isRecording ? [...logs] : logs;
     if (currentLogs.length === 0) return;
 
-    /**
-     * [바이너리 구조 설계]
-     * 1개 로그당 바이트 계산:
-     * - x: 4 bytes (Int32)
-     * - y: 4 bytes (Int32)
-     * - timestamp: 8 bytes (Float64 - 밀리초 단위 정밀도 유지)
-     * - eventType: 1 byte (Uint8 - 0: move, 1: down, 2: up)
-     * 총 합계: 17 bytes per log
-     */
     const RECORD_SIZE = 17;
     const buffer = new ArrayBuffer(currentLogs.length * RECORD_SIZE);
     const view = new DataView(buffer);
@@ -68,24 +70,22 @@ export default function MarathonDetailPage() {
 
     currentLogs.forEach((log, index) => {
       const offset = index * RECORD_SIZE;
-
-      view.setInt32(offset, Math.floor(log.x), true); // x 저장
-      view.setInt32(offset + 4, Math.floor(log.y), true); // y 저장
-      view.setFloat64(offset + 8, log.timestamp, true); // timestamp 저장
-      view.setUint8(offset + 16, typeMap[log.eventType] ?? 255); // eventType 저장
+      view.setInt32(offset, Math.floor(log.x), true);
+      view.setInt32(offset + 4, Math.floor(log.y), true);
+      view.setFloat64(offset + 8, log.timestamp, true);
+      view.setUint8(offset + 16, typeMap[log.eventType] ?? 255);
     });
 
-    // Blob 생성 (application/octet-stream은 일반적인 이진 파일 형식)
-    const blob = new Blob([buffer], { type: 'application/octet-stream' });
-    const url = URL.createObjectURL(blob);
+    // --- 핑거프린트 가져오기 ---
+    const fp = collectFingerprint();
 
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `mouse_data_${new Date().getTime()}.bin`; // 확장자를 .bin으로 변경
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    // --- 데이터를 하나의 객체로 합치기 ---
+    const finalData = {
+      fingerprint: fp,
+      mouseLogs: bufferToBase64(buffer),
+      logCount: currentLogs.length,
+      timestamp: new Date().toISOString(),
+    };
   };
 
   // 컴포넌트가 마운트된 후에만 렌더링을 허용
@@ -100,9 +100,11 @@ export default function MarathonDetailPage() {
 
       try {
         if (event) {
-          const response = await eventService.getEventDetails(
-            Number(params.id),
-          );
+          const eventId = String(params.id);
+          const response = await eventService.getEventById(eventId);
+          console.log('event', event);
+          console.log('details', response.data);
+
           setEventDetails((prev) => ({
             ...prev,
             ...response.data,
@@ -140,7 +142,7 @@ export default function MarathonDetailPage() {
         <div className="flex flex-col lg:flex-row gap-8 ">
           {/* 좌측: 대회 상세 정보 영역 */}
           <div className="flex-1">
-            <EventThumbnail thumbnailImg={eventDetails.thumbnailImg} />
+            <EventThumbnail thumbnailImg={eventDetails?.thumbnailImg ?? []} />
 
             {/* 구분선 */}
             <div className="py-2"></div>
@@ -202,6 +204,7 @@ export default function MarathonDetailPage() {
             <div className="sticky top-5">
               <EventEntryInfo
                 event={event}
+                eventDetails={eventDetails}
                 setIsUserModalOpen={setIsUserModalOpen}
                 onStart={handleStart}
               />

@@ -245,7 +245,14 @@ export const EventHistoryPage = () => {
                             <br />
                             결제를 완료해주세요
                           </p>
-                          <Button variant="primary1" rounded="sm" size="fit">
+                          <Button
+                            variant="primary1"
+                            rounded="sm"
+                            size="fit"
+                            onClick={() => {
+                              router.push('/ticketing/1/payment');
+                            }}
+                          >
                             결제하기
                           </Button>
                         </div>
@@ -260,7 +267,14 @@ export const EventHistoryPage = () => {
                       )}
 
                       {event.entryStatus === '신청 대기' && (
-                        <Button variant="outline" rounded="sm" size="fit">
+                        <Button
+                          variant="outline"
+                          rounded="sm"
+                          size="fit"
+                          onClick={() => {
+                            router.push('/ticketing/1');
+                          }}
+                        >
                           사전정보 수정
                         </Button>
                       )}
@@ -279,7 +293,14 @@ export const EventHistoryPage = () => {
                       )}
 
                       {event.entryStatus === '신청 완료' && (
-                        <Button variant="outline" rounded="sm" size="fit">
+                        <Button
+                          variant="outline"
+                          rounded="sm"
+                          size="fit"
+                          onClick={() => {
+                            router.push('/ticketing/1/payment/details');
+                          }}
+                        >
                           결제 내역 보기
                         </Button>
                       )}

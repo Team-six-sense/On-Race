@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getStatusConfig, getStatusLabel } from '@/types/constants';
-import { Event } from '@/features/event/types';
+import { Event, EventDetails } from '@/features/event/types';
 import { Button } from '@/components/ui/button';
 import { LuChevronLeft, LuShare } from 'react-icons/lu';
 import {
@@ -26,10 +26,12 @@ import { useRouter } from 'next/navigation';
 
 export function EventEntryInfo({
   event,
+  eventDetails,
   setIsUserModalOpen,
   onStart,
 }: {
   event: Event;
+  eventDetails: EventDetails;
   setIsUserModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
   onStart: () => void;
 }) {
@@ -148,7 +150,7 @@ export function EventEntryInfo({
       </div>
 
       {/* 정보 리스트 */}
-      <EntryInfo event={event} />
+      <EntryInfo event={event} delivery={eventDetails?.delivery ?? null} />
 
       {/* 선택 옵션 및 버튼 */}
       <div className="mt-auto space-y-3">

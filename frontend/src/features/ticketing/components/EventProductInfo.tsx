@@ -22,7 +22,6 @@ export function EventProductInfo({
 }) {
   // 하이드레이션 오류 방지를 위한 마운트 상태 관리
   const [mounted, setMounted] = useState<boolean>(false);
-
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
 
   // 컴포넌트가 마운트된 후에만 렌더링을 허용
@@ -39,7 +38,7 @@ export function EventProductInfo({
     <div className="relative mb-6">
       <div className="space-y-10">
         {/* 코스 정보 섹션 */}
-        <EventCourse courses={eventDetails.courses} />
+        <EventCourse courses={eventDetails?.courses ?? []} />
 
         {/* 상세 설명 섹션 */}
         <div className="relative">
@@ -48,7 +47,7 @@ export function EventProductInfo({
               isExpanded ? 'max-h-[10000px]' : 'max-h-[1290px]'
             }`}
           >
-            <EventDetailsInfo detailImgList={eventDetails.detailImg} />
+            <EventDetailsInfo detailImgList={eventDetails?.detailImg ?? []} />
           </div>
 
           {/* 그라데이션 및 버튼 영역 */}
@@ -85,7 +84,7 @@ export function EventProductInfo({
         </div>
 
         {/* 공지사항 섹션 */}
-        <EventNotice notice={eventDetails.notice} />
+        <EventNotice notice={eventDetails?.notice ?? ''} />
 
         <div className="my-8"></div>
 
@@ -98,7 +97,7 @@ export function EventProductInfo({
         <div className="my-8"></div>
 
         {/* 참가/구성 정보 */}
-        <EventParticipationInfo courses={eventDetails.courses} />
+        <EventParticipationInfo courses={eventDetails?.courses ?? []} />
       </div>
     </div>
   );

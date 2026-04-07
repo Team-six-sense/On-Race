@@ -1,12 +1,18 @@
 'use client';
 
-import { Event } from '@/features/event/types';
+import { EventDelivery, Event } from '@/features/event/types';
 import { formatKoreanDate } from '@/features/ticketing/utils/date';
 import { cn } from '@/lib/utils';
 import { getTypeLabel } from '@/types/constants';
 import { useEffect, useState } from 'react';
 
-export function EntryInfo({ event }: { event: Event }) {
+export function EntryInfo({
+  event,
+  delivery,
+}: {
+  event: Event;
+  delivery: EventDelivery | null;
+}) {
   // 하이드레이션 오류 방지를 위한 마운트 상태 관리
   const [mounted, setMounted] = useState(false);
 
@@ -47,9 +53,7 @@ export function EntryInfo({ event }: { event: Event }) {
       <div className="space-y-3 mb-4 text-sm">
         <div className="flex">
           <span className="w-24 text-base font-semibold">장소</span>
-          <span className="flex-1 text-base">
-            {event.venue || '서울 광화문 광장'}
-          </span>
+          <span className="flex-1 text-base">{event.venue}</span>
         </div>
         <div className="flex">
           <span className="w-24 text-base font-semibold">개최일</span>
@@ -85,36 +89,25 @@ export function EntryInfo({ event }: { event: Event }) {
         <div className="flex">
           <span className="w-24 text-base font-semibold">배송정보</span>
           <div className="flex-1 text-base">
-            <p>{event.delivery.schedule}</p>
-            <p className="text-base text-gray-500">
-              {event.delivery.feePolicy}
-            </p>
+            <p>{delivery?.schedule}</p>
+            <p className="text-base text-gray-500">{delivery?.feePolicy}</p>
           </div>
         </div>
         <div className="flex">
           <span className="w-24 text-base font-semibold">모집 기간</span>
           <span className="flex-1 text-base">
-            {formatKoreanDate(event.appStartAt)} ~{' '}
+            {formatKoreanDate(event.appStartAt)} ~
             {formatKoreanDate(event.appEndAt)}
           </span>
         </div>
-        <div className="flex">
-          <span className="w-24 text-base font-semibold">추첨 발표일</span>
-          <span className="flex-1 text-base">
-            {formatKoreanDate(event.resultAt, true)}
-          </span>
-        </div>
-        {/* {event.status !== 'UPCOMING' && (
+        {event.appType === 'LOTTERY' && (
           <div className="flex">
-            <span className="w-28 font-semibold">예상 당첨 확률</span>
-            <div>
-              <p className="flex-1 font-bold text-2xl">nn.n%</p>
-              <p className="flex-1 text-sm text-gray-600">
-                추첨 인원 N명 / 응모자 N명
-              </p>
-            </div>
+            <span className="w-24 text-base font-semibold">추첨 발표일</span>
+            <span className="flex-1 text-base">
+              {formatKoreanDate(event.resultAt, true)}
+            </span>
           </div>
-        )} */}
+        )}
         <div className="flex-1">
           <div className="flex items-center justify-center border border-gray-200 rounded-sm p-4 my-4">
             {/* 카테고리 */}
