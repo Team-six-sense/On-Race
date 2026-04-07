@@ -18,9 +18,7 @@ public class MyPageDisplayStatusResolver {
 		return switch (currentOrder.getOrderStatus()) {
 			case PENDING -> MyPageStatusDto.of("결제 대기", ACTION_DETAIL, "주문 상세보기", true);
 			case PAID -> MyPageStatusDto.of("결제 완료", ACTION_DETAIL, "주문 상세보기", true);
-			case CANCELLED -> MyPageStatusDto.of("주문 취소", ACTION_DETAIL, "주문 상세보기", true);
-			case EXPIRED -> MyPageStatusDto.of("주문 만료", ACTION_DETAIL, "주문 상세보기", true);
-			case FAILED -> MyPageStatusDto.of("주문 실패", ACTION_DETAIL, "주문 상세보기", true);
+			case CANCELLED, EXPIRED, FAILED -> MyPageStatusDto.of("결제취소", ACTION_DETAIL, "주문 상세보기", true);
 		};
 	}
 
