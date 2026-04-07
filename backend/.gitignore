@@ -66,6 +66,7 @@ spring.log
 application-prod.yml
 
 ### API Keys & Secrets ###
+gradle.properties
 *.pem
 *.key
 *.p12
