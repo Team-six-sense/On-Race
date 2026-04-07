@@ -18,7 +18,7 @@ export function EventCourse({ courses = [] }: { courses: CourseDetails[] }) {
   // 현재 선택된 코스의 인덱스 상태 추가
   const [isError, setIsError] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const currentCourse = courses[currentIndex];
+  const currentCourse = courses?.[currentIndex];
 
   useEffect(() => {
     setMounted(true);
