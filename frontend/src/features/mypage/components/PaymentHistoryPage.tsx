@@ -166,20 +166,20 @@ export const PaymentHistoryPage = () => {
         {DATE_FILTER_OPTIONS.map((type) => (
           <Button
             key={type.id}
-            variant={searchType === type.id ? 'primary1' : 'outline'}
+            variant="outline"
             size="fit"
             rounded="full"
             onClick={() => {
               setSearchType(type.id);
             }}
-            className={`
-            ${
+            className={cn(
+              'border',
+              // searchType !== type.id && 'border-gray-400',
+
               searchType === type.id
-                ? '' // 선택되었을 때 스타일
-                : 'border-gray-400' // 비선택 스타일
-            }
-            border
-          `}
+                ? 'border-2 text-black border-black'
+                : 'border text-font-low border-cta-outline',
+            )}
           >
             {type.label}
           </Button>

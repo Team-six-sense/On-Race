@@ -27,9 +27,11 @@ import { useRouter } from 'next/navigation';
 export function EventEntryInfo({
   event,
   setIsUserModalOpen,
+  onStart,
 }: {
   event: Event;
   setIsUserModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  onStart: () => void;
 }) {
   // 하이드레이션 오류 방지를 위한 마운트 상태 관리
   const { status } = useSession();
@@ -116,6 +118,7 @@ export function EventEntryInfo({
     if (event.status === 'READY') {
       alert('사전 정보가 저장되었습니다.');
     } else {
+      onStart();
       setIsUserModalOpen(true);
     }
   };
@@ -150,7 +153,7 @@ export function EventEntryInfo({
       {/* 선택 옵션 및 버튼 */}
       <div className="mt-auto space-y-3">
         {actionCard && (
-          <div className="p-4 space-y-4 border border-gray-200 rounded-sm">
+          <div className="p-4 space-y-4 border border-gray-200 rounded-sm max-h-[500px] overflow-y-auto">
             <div className="flex flex-row items-center">
               <Button
                 variant="ghost"
@@ -203,7 +206,7 @@ export function EventEntryInfo({
 
         {resultCard && (
           <div className="space-y-2">
-            <div className="p-4 space-y-4 border border-gray-200 rounded-sm">
+            <div className="p-4 space-y-4 border border-gray-200 rounded-sm max-h-[500px] overflow-y-auto">
               <div className="flex flex-row items-center">
                 <Button
                   variant="ghost"
@@ -362,7 +365,9 @@ export function EventEntryInfo({
         {!actionCard && !isEntry && (
           <div>
             <Button
-              disabled={isClosed}
+              disabled={
+                event.status === 'DRAW_COMPLETED' || event.status === 'END'
+              }
               variant="primary1"
               rounded="full"
               onClick={handelShowActionCard}

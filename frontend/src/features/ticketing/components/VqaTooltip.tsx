@@ -24,14 +24,14 @@ export function VqaTooltip() {
             매크로 및 비정상적인 신청을 방지하기 위해 간단한 인증 문제가
             출제됩니다.
           </p>
-
           <p>
-            <span className="px-1">•</span>각 문제는 1분 이내에 풀어야 합니다.
+            <span className="px-1">•</span>문제는 1분 이내에 풀어야 하며,
+            새로고침 하는 경우 문제와 제한시간 모두 초기화됩니다.
           </p>
           <p>
             <span className="px-1">•</span>
-            3문제를 모두 실패할 경우 이벤트 신청이 취소되며, 다시 신청해야
-            합니다.
+            문제 풀이를 3회 이상 실패하는 경우 이벤트 신청이 취소되며, 다시
+            신청해야 합니다.
           </p>
           <p>
             <span className="px-1">•</span>
