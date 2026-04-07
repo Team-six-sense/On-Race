@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { MdChevronLeft, MdChevronRight, MdImage } from 'react-icons/md';
 
 export function EventThumbnail({
-  thumbnailImg,
+  thumbnailImg = [],
 }: {
   thumbnailImg: ThumbnailImg[];
 }) {
@@ -14,7 +14,7 @@ export function EventThumbnail({
   const [mounted, setMounted] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  const images = thumbnailImg.map((item) => item.url);
+  const images = thumbnailImg?.map((item) => item.url) ?? [];
   const hasMultipleImages = images.length > 1;
 
   const handlePrev = (e: React.MouseEvent<HTMLButtonElement>) => {

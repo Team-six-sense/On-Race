@@ -11,16 +11,23 @@ import {
   LuArrowLeft,
   LuArrowRight,
 } from 'react-icons/lu';
-import { MdAccessTime } from 'react-icons/md';
+import { MdAccessTime, MdImage } from 'react-icons/md';
 
-export function EventCourse({ courses }: { courses: CourseDetails[] }) {
+export function EventCourse({ courses = [] }: { courses: CourseDetails[] }) {
   const [mounted, setMounted] = useState(false);
   // 현재 선택된 코스의 인덱스 상태 추가
+  const [isError, setIsError] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const currentCourse = courses[currentIndex];
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // 코스가 변경(currentIndex 변경)될 때마다 에러 상태를 초기화해야 합니다.
+  useEffect(() => {
+    setIsError(false);
+  }, [currentIndex, currentCourse.mapImg]);
 
   if (!mounted) {
     return <div className="mb-6 min-h-[100px]" />;
@@ -28,8 +35,6 @@ export function EventCourse({ courses }: { courses: CourseDetails[] }) {
 
   // 코스가 없을 경우 예외 처리
   if (!courses || courses.length === 0) return null;
-
-  const currentCourse = courses[currentIndex];
 
   const handlePrev = () => {
     setCurrentIndex((prev) => (prev === 0 ? courses.length - 1 : prev - 1));
@@ -56,11 +61,19 @@ export function EventCourse({ courses }: { courses: CourseDetails[] }) {
         <div className="flex flex-col md:flex-row gap-4">
           {/* 좌측: 이미지 영역 */}
           <div className="w-full md:w-3/5 h-[300px] overflow-hidden bg-gray-100 rounded-sm">
-            <img
-              src={currentCourse.mapImg}
-              alt={`${currentIndex + 1}번 코스 안내도`}
-              className="w-full h-full object-fill"
-            />
+            {!currentCourse.mapImg || isError ? (
+              <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 bg-gray-50">
+                <MdImage size={100} />
+                <p className="mt-2 text-sm">이미지를 불러올 수 없습니다.</p>
+              </div>
+            ) : (
+              <img
+                src={currentCourse.mapImg}
+                alt={`${currentIndex + 1}번 코스 안내도`}
+                className="w-full h-full object-fill"
+                onError={() => setIsError(true)} // 에러 발생 시 상태 변경
+              />
+            )}
           </div>
 
           {/* 우측: 2x2 카드 그리드 영역 */}

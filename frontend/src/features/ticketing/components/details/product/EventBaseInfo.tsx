@@ -61,8 +61,9 @@ export function EventBaseInfo({ event }: { event: Event }) {
           결과 발표일
         </div>
         <div className="px-4 py-4 text-gray-600 text-sm col-span-2">
-          <p>{formatKoreanDate(event.resultAt)}</p>
-          <p>*주최측 사정에 의해 변경될 수 있습니다.</p>
+          <p>{event.resultAt ? formatKoreanDate(event.resultAt) : '-'}</p>
+          <p>{event.resultAt && '*주최측 사정에 의해 변경될 수 있습니다.'}</p>
+          <p></p>
         </div>
         {/* 행 3-2 */}
         <div className="bg-gray-100 px-4 py-4 text-gray-600 font-medium">
