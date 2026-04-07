@@ -13,6 +13,8 @@ import org.springframework.stereotype.Component;
 
 import com.kt.onrace.common.logging.annotation.SensitiveLog;
 
+import org.springframework.beans.factory.annotation.Qualifier;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -25,6 +27,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AopLoggingHelper {
 
+	@Qualifier("loggingObjectMapper")
 	private final ObjectMapper objectMapper;
 
 	public String extractParameters(ProceedingJoinPoint joinPoint, HttpServletRequest request) {
@@ -52,6 +55,7 @@ public class AopLoggingHelper {
 					continue;
 				}
 
+				addFieldNames(value, declaredNames);
 				allParams.add(name + "=" + formatValue(value));
 			}
 		}
@@ -81,7 +85,6 @@ public class AopLoggingHelper {
 		try {
 			return objectMapper.writeValueAsString(value);
 		} catch (JsonProcessingException e) {
-			// JSON 변환 실패 시 클래스명@해시코드
 			return value.getClass().getSimpleName() + "@" + Integer.toHexString(value.hashCode());
 		}
 	}
@@ -94,6 +97,15 @@ public class AopLoggingHelper {
 			return true;
 		}
 		return false;
+	}
+
+	private void addFieldNames(Object value, Set<String> declaredNames) {
+		if (value == null || isPrimitiveOrWrapper(value) || value instanceof String) {
+			return;
+		}
+		for (java.lang.reflect.Field field : value.getClass().getDeclaredFields()) {
+			declaredNames.add(field.getName());
+		}
 	}
 
 	private boolean isHttpRelated(Object value) {

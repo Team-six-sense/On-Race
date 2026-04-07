@@ -32,6 +32,10 @@ dependencies {
     api 'io.jsonwebtoken:jjwt-api:0.13.0'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.13.0'
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.13.0'
+
+    // MONITORING
+    api 'io.micrometer:micrometer-registry-prometheus'
+    api 'net.logstash.logback:logstash-logback-encoder:8.0'
 }
 
 bootJar {

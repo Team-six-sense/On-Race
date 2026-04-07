@@ -95,3 +95,11 @@ solapi:
 recaptcha:
   secret-key: ${RECAPTCHA_SECRET_KEY:dummy}
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus, metrics
+  metrics:
+    tags:
+      application: ${spring.application.name}
