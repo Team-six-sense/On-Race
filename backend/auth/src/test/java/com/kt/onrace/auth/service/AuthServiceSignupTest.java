@@ -103,7 +103,7 @@ class AuthServiceSignupTest {
 	}
 
 	private SignupRequest buildRequest(List<TermAgreement> agreements) {
-		return new SignupRequest(EMAIL, NAME, PASSWORD, PHONE, agreements);
+		return new SignupRequest(EMAIL, NAME, null, null, PASSWORD, PHONE, agreements);
 	}
 
 	// ── isVerified 단계 실패 ─────────────────────────────────────────────────
@@ -195,7 +195,7 @@ class AuthServiceSignupTest {
 	@Test
 	@DisplayName("회원가입 성공: 검증 통과 후 consumeVerification 호출, 사용자 저장, 약관 동의 기록")
 	void signup_success() {
-		User savedUser = User.createUser(EMAIL, NAME, "encodedPw", PHONE);
+		User savedUser = User.createUser(EMAIL, NAME, "encodedPw", PHONE, null, null);
 		ReflectionTestUtils.setField(savedUser, "id", 1L);
 
 		given(emailVerifyService.isVerified(EMAIL)).willReturn(true);
