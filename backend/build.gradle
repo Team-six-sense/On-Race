@@ -1,6 +1,6 @@
 plugins {
     id 'org.owasp.dependencycheck' version '9.0.9'
-    id 'org.springframework.boot' version '3.5.7' apply(false)
+    id 'org.springframework.boot' version '3.5.12' apply(false)
     id 'io.spring.dependency-management' version '1.1.7' apply(false)
 }
 
@@ -19,6 +19,20 @@ subprojects {
         plugin 'java'
         plugin 'io.spring.dependency-management'
         plugin 'org.owasp.dependencycheck'  // ← 이거 추가!
+    }
+
+    // CVE 패치: Spring Boot BOM 관리 라이브러리 버전 강제 오버라이드
+    ext['netty.version'] = '4.1.132.Final'
+    ext['h2.version'] = '2.2.220'
+    ext['commons-io.version'] = '2.17.0'
+
+    // CVE 패치: Spring Boot BOM 미관리 라이브러리 버전 강제 지정
+    dependencyManagement {
+        dependencies {
+            dependency 'commons-fileupload:commons-fileupload:1.5'
+            dependency 'commons-beanutils:commons-beanutils:1.9.4'
+            dependency 'org.bitbucket.b_c:jose4j:0.9.6'
+        }
     }
 
     java {
