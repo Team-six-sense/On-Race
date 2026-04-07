@@ -1,4 +1,5 @@
 plugins {
+    id 'org.owasp.dependencycheck' version '9.0.9'
     id 'org.springframework.boot' version '3.5.7' apply(false)
     id 'io.spring.dependency-management' version '1.1.7' apply(false)
 }
@@ -17,6 +18,7 @@ subprojects {
     apply {
         plugin 'java'
         plugin 'io.spring.dependency-management'
+        plugin 'org.owasp.dependencycheck'  // ← 이거 추가!
     }
 
     java {
@@ -47,6 +49,15 @@ subprojects {
         reports {
             xml.required = true
             html.required = false
+        }
+    }
+
+    dependencyCheck {
+        format = 'ALL'
+        failBuildOnCVSS = 7
+        suppressionFile = null
+        nvd {
+            apiKey = project.findProperty('nvdApiKey') ?: System.getenv('NVD_API_KEY') ?: ''
         }
     }
 }

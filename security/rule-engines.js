@@ -1,32 +1,60 @@
 /**
  * rule-engine.js
  * 룰 베이스 Bot Detection - 백엔드 판정 엔진
+ * Canvas/WebGL Fingerprint 탐지 로직 추가
  */
-const { checkIP } = require('./cti-checker'); // 추가
+const { checkIP } = require('./cti-checker');
 const {
   THRESHOLDS,
   CRITICAL_AUTOMATION_GROUP,
   CRITICAL_SINGLE_RULES,
   SWIFT_SHADER_COMBOS,
+  FINGERPRINT_RULES,
   RULES,
 } = require('./rules-config');
 
 /**
- * 메인 판정 함수 (Async로 변경)
+ * 메인 판정 함수
  * @param {Object} signals - 수집된 신호
  * @param {string} ip - 사용자 IP 주소
+ * @param {Object} fingerprint - Canvas/WebGL Fingerprint 데이터 (optional)
  */
-async function evaluate(signals, ip) {
+async function evaluate(signals, ip, fingerprint = null) {
   const triggeredRules = [];
+  let totalScore = 0;
 
-  // ── 0단계: CTI 체크 (가장 먼저 실행) ──
-  const cti = await checkIP(ip);
-  if (cti.isMalicious) {
-    return buildResult('BLOCK', 100, ['cti_abuseipdb']);
+  // ─────────────────────────────────────────────
+  // 0단계: CTI 체크 (가장 먼저 실행)
+  // ─────────────────────────────────────────────
+  try {
+    const cti = await checkIP(ip);
+    if (cti.isMalicious) {
+      return buildResult('BLOCK', 100, ['cti_abuseipdb'], { ctiInfo: cti });
+    }
+  } catch (error) {
+    console.error('[CTI Check Error]', error.message);
+    // CTI 실패 시에도 진행 (가용성 우선)
   }
 
   // ─────────────────────────────────────────────
-  // 1단계: Critical 룰 체크 (즉시 BLOCK)
+  // 1단계: Fingerprint 기반 봇 탐지 (Critical)
+  // ─────────────────────────────────────────────
+  if (fingerprint) {
+    const fpResult = checkFingerprint(fingerprint);
+    
+    // 자동화 도구 직접 탐지 시 즉시 BLOCK
+    if (fpResult.isCritical) {
+      triggeredRules.push(...fpResult.triggeredRules);
+      return buildResult('BLOCK', 100, triggeredRules, { fingerprintReasons: fpResult.reasons });
+    }
+    
+    // 일반 의심 점수 누적
+    totalScore += fpResult.score;
+    triggeredRules.push(...fpResult.triggeredRules);
+  }
+
+  // ─────────────────────────────────────────────
+  // 2단계: Critical 룰 체크 (즉시 BLOCK)
   // ─────────────────────────────────────────────
   const automationHit = CRITICAL_AUTOMATION_GROUP.find(ruleId => signals[ruleId]);
   if (automationHit) {
@@ -44,7 +72,7 @@ async function evaluate(signals, ip) {
   }
 
   // ─────────────────────────────────────────────
-  // 2단계: 조합 룰 (SwiftShader)
+  // 3단계: 조합 룰 (SwiftShader)
   // ─────────────────────────────────────────────
   if (signals.swiftShader) {
     triggeredRules.push('swiftShader');
@@ -58,13 +86,14 @@ async function evaluate(signals, ip) {
     if (compositeScore >= SWIFT_SHADER_COMBOS.blockThreshold) {
       return buildResult('BLOCK', compositeScore, triggeredRules);
     }
+    
+    totalScore += compositeScore;
   }
 
   // ─────────────────────────────────────────────
-  // 3단계: 일반 룰 누적 점수 계산
+  // 4단계: 일반 룰 누적 점수 계산
   // ─────────────────────────────────────────────
   const alreadyTracked = new Set(triggeredRules);
-  let totalScore = 0;
 
   for (const rule of RULES) {
     if (signals[rule.id]) {
@@ -75,14 +104,85 @@ async function evaluate(signals, ip) {
     }
   }
 
+  // ─────────────────────────────────────────────
   // 최종 판정
+  // ─────────────────────────────────────────────
   if (totalScore >= THRESHOLDS.BLOCK)     return buildResult('BLOCK',     totalScore, triggeredRules);
   if (totalScore >= THRESHOLDS.CHALLENGE) return buildResult('CHALLENGE', totalScore, triggeredRules);
   return buildResult('ALLOW', totalScore, triggeredRules);
 }
 
-function buildResult(action, score, triggeredRules) {
-  return { action, score, triggeredRules };
+/**
+ * Fingerprint 기반 봇 탐지
+ * @param {Object} fingerprint - Canvas/WebGL Fingerprint 데이터
+ * @returns {Object} { isCritical, score, triggeredRules, reasons }
+ */
+function checkFingerprint(fingerprint) {
+  let score = 0;
+  const triggeredRules = [];
+  const reasons = [];
+  let isCritical = false;
+
+  try {
+    // 1. 자동화 도구 직접 탐지 (Critical) — collector-fingerprint.js 구조 기준
+    if (fingerprint.seleniumArtifact) {
+      score += FINGERPRINT_RULES.selenium.score;
+      triggeredRules.push('fp_selenium');
+      reasons.push('Selenium artifact detected');
+      isCritical = true;
+    }
+
+    if (fingerprint.webdriver === true) {
+      score += FINGERPRINT_RULES.webdriver.score;
+      triggeredRules.push('fp_webdriver');
+      reasons.push('WebDriver flag detected');
+      isCritical = true;
+    }
+
+    // 2. Headless 브라우저 탐지 (renderer는 collector에서 이미 boolean으로 처리됨)
+    if (fingerprint.swiftShader) {
+      score += FINGERPRINT_RULES.headlessRenderer.score;
+      triggeredRules.push('fp_headless_renderer');
+      reasons.push('Headless browser renderer detected (SwiftShader/llvmpipe)');
+    }
+
+    // 3. 플러그인/언어 없음 (headlessFlag = no plugins OR no languages)
+    if (fingerprint.headlessFlag) {
+      score += FINGERPRINT_RULES.noPlugins.score;
+      triggeredRules.push('fp_headless_flag');
+      reasons.push('Headless browser characteristics (no plugins or languages)');
+    }
+
+    // 4. 플러그인 없음 + deviceMemory 미노출 조합
+    if (fingerprint.noPluginsMemory) {
+      score += FINGERPRINT_RULES.noPlugins.score;
+      triggeredRules.push('fp_no_plugins_memory');
+      reasons.push('No plugins and device memory unavailable');
+    }
+
+  } catch (error) {
+    console.error('[Fingerprint Check Error]', error.message);
+    // Fingerprint 체크 실패 시에도 진행 (가용성 우선)
+  }
+
+  return { isCritical, score, triggeredRules, reasons };
 }
 
-module.exports = { evaluate };
+/**
+ * 결과 객체 생성
+ * @param {string} action - ALLOW | CHALLENGE | BLOCK
+ * @param {number} score - 최종 점수
+ * @param {Array} triggeredRules - 발동된 룰 ID 배열
+ * @param {Object} metadata - 추가 정보 (optional)
+ */
+function buildResult(action, score, triggeredRules, metadata = {}) {
+  return {
+    action,
+    score,
+    triggeredRules,
+    timestamp: new Date().toISOString(),
+    ...metadata
+  };
+}
+
+module.exports = { evaluate, checkFingerprint };
