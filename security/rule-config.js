@@ -25,7 +25,30 @@ module.exports = {
     }
   },
 
-  // 3단계: 일반 룰 리스트
+  // 3단계: Fingerprint 전용 룰 설정
+  FINGERPRINT_RULES: {
+    // Critical (자동화 도구 직접 탐지 - 즉시 BLOCK)
+    selenium: { score: 100, description: 'Selenium automation tool detected' },
+    driver: { score: 100, description: 'WebDriver detected' },
+    webdriver: { score: 100, description: 'WebDriver flag detected' },
+    
+    // High suspicious
+    headlessRenderer: { score: 40, description: 'Headless browser renderer (SwiftShader/llvmpipe/Mesa)' },
+    
+    // Medium suspicious
+    noPlugins: { score: 15, description: 'No browser plugins installed' },
+    noLanguages: { score: 10, description: 'No language preferences set' },
+    abnormalHardware: { score: 20, description: 'Abnormal hardware specifications' },
+    
+    // Canvas duplicate (Redis 연동 필요)
+    canvasDuplicate: { 
+      score: 30, 
+      threshold: 5, // 동일 hash 5회 이상 시 의심
+      description: 'Canvas fingerprint duplicate detected' 
+    }
+  },
+
+  // 4단계: 일반 룰 리스트
   RULES: [
     // 그룹 A: Static / Fingerprint
     { id: 'uaStructure', score: 80 },
