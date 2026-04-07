@@ -97,8 +97,12 @@ public class RedisKeyGenerator {
 		return String.format("queue:pass:%d:%d", paceId, userId);
 	}
 
-	public static String queueBatchLock() {
-		return "queue:batch:lock";
+	public static String queueRetry(Long paceId) {
+		return String.format("queue:retry:%d", paceId);
+	}
+
+	public static String queueBatchLock(Long paceId) {
+		return String.format("queue:batch:lock:%d", paceId);
 	}
 
 	public static String queueActivePaces() {
