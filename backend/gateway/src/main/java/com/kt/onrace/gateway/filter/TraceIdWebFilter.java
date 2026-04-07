@@ -32,6 +32,6 @@ public class TraceIdWebFilter implements WebFilter {
 
 		mutatedExchange.getResponse().getHeaders().add("X-Trace-Id", finalTraceId);
 
-		return chain.filter(mutatedExchange);
+		return chain.filter(mutatedExchange).contextWrite(ctx -> ctx.put("traceId", finalTraceId));
 	}
 }

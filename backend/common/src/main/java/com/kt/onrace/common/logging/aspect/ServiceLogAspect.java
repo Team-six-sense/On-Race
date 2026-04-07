@@ -4,7 +4,7 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
 import com.kt.onrace.common.logging.annotation.ServiceLog;
@@ -27,9 +27,7 @@ public class ServiceLogAspect {
 
 	private static final String PREFIX = "[AOP-SERVICE] ";
 	private static final long DEFAULT_SLOW_MS = 1000;
-
-	@Autowired(required = false)
-	private final MeterRegistry meterRegistry;
+	private final ObjectProvider<MeterRegistry> meterRegistryProvider;
 
 	@Around("@within(serviceLog) || @annotation(serviceLog)")
 	Object logging(ProceedingJoinPoint joinPoint, ServiceLog serviceLog) throws Throwable {
@@ -38,6 +36,7 @@ public class ServiceLogAspect {
 
 		long startTime = System.currentTimeMillis();
 
+		MeterRegistry meterRegistry = meterRegistryProvider.getIfAvailable();
 		Timer.Sample sample = meterRegistry != null ? Timer.start(meterRegistry) : null;
 
 		try {
@@ -56,7 +55,7 @@ public class ServiceLogAspect {
 
 			throw e;
 		} finally {
-			if (sample != null) {
+			if (sample != null && meterRegistry != null) {
 				sample.stop(Timer.builder("service.execution")
 					.tag("class", joinPoint.getTarget().getClass().getSimpleName())
 					.tag("method", signature.getName())

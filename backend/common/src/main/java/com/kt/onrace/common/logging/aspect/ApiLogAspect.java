@@ -6,7 +6,7 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -37,9 +37,7 @@ public class ApiLogAspect {
 
 	private static final String PREFIX = "[AOP-API] ";
 	private final AopLoggingHelper loggingHelper;
-
-	@Autowired(required = false) // MeterRegistry는 선택적으로 주입, 없으면 null이 될 수 있음
-	private final MeterRegistry meterRegistry;
+	private final ObjectProvider<MeterRegistry> meterRegistryProvider;
 
 	//@Around("@within(org.springframework.web.bind.annotation.RestController)")
 	@Around("@within(apiLog) || @annotation(apiLog)")
@@ -56,6 +54,7 @@ public class ApiLogAspect {
 
 		long startTime = System.currentTimeMillis();
 
+		MeterRegistry meterRegistry = meterRegistryProvider.getIfAvailable();
 		Timer.Sample sample = meterRegistry != null ? Timer.start(meterRegistry) : null;
 
 		try {
@@ -75,7 +74,7 @@ public class ApiLogAspect {
 
 			throw e;
 		} finally {
-			if (sample != null) {
+			if (sample != null && meterRegistry != null) {
 				sample.stop(Timer.builder("api.execution")
 					.tag("class", joinPoint.getTarget().getClass().getSimpleName())
 					.tag("method", signature.getName())
