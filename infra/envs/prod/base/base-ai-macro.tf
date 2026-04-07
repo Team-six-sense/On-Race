@@ -85,3 +85,9 @@ resource "aws_iam_role_policy_attachment" "ai_ec2_ssm_policy" {
   role       = aws_iam_role.ai_ec2_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
+
+# 생성한 제어 정책을 AI 팀 그룹에 연결
+resource "aws_iam_group_policy_attachment" "ai_team_ec2_control_attach" {
+  group      = aws_iam_group.ai_team.name
+  policy_arn = aws_iam_policy.macro_team_ec2_control.arn
+}

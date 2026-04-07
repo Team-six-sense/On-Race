@@ -271,7 +271,7 @@ resource "kubernetes_service_v1" "on_race_api" {
   # [유지] 삭제 시 'Finalizer' 고착 방지를 위한 안전장치
   provisioner "local-exec" {
     when    = destroy
-    command = "kubectl patch svc ${self.metadata[0].name} -n ${self.metadata[0].namespace} -p '{\"metadata\":{\"finalizers\":null}}' --type merge || true"
+    command = "kubectl patch svc t6-on-race-api -n t6-on-race-prod -p \"{\\\"metadata\\\":{\\\"finalizers\\\":null}}\" --type merge"
   }
 }
 

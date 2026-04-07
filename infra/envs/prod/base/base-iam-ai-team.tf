@@ -24,3 +24,30 @@ resource "aws_iam_group_policy_attachment" "ai_team_ec2_view" {
   group      = aws_iam_group.ai_team.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess"
 }
+
+# 매크로 팀이 특정 EC2를 중지/시작할 수 있는 정책
+resource "aws_iam_policy" "macro_team_ec2_control" {
+  name        = "T6-MacroTeam-EC2-Control"
+  description = "매크로 탐지용 EC2 인스턴스 제어 권한"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = [
+          "ec2:StartInstances",
+          "ec2:StopInstances",
+          "ec2:DescribeInstances"
+        ]
+        # 모든 인스턴스가 아닌 매크로 팀의 인스턴스로 대상을 한정하는 것이 안전합니다.
+        Resource = "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:instance/*"
+        Condition = {
+          StringEquals = {
+            "aws:ResourceTag/Team": "Macro" 
+          }
+        }
+      }
+    ]
+  })
+}

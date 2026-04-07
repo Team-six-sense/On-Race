@@ -172,9 +172,12 @@ resource "aws_iam_policy" "ecr_push_policy" {
         Resource = "*"
       },
       {
-        # 2. EC2 조회 권한: 인스턴스 및 태그 정보 확인용
+        # 2. EC2 생성/관리 및 IAM 역할 부여 권한 (App 계층 인프라 생성용)
         Effect   = "Allow"
-        Action   = ["ec2:DescribeInstances", "ec2:DescribeTags"]
+        Action   = [
+          "ec2:*",          # EC2 인스턴스 및 보안 그룹 생성/수정/삭제
+          "iam:PassRole"    # EC2에 IAM 프로파일을 주입하기 위해 반드시 필요
+        ]
         Resource = "*"
       },
       {

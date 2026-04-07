@@ -35,5 +35,7 @@ resource "aws_instance" "ai_macro_detector" {
 
   tags = { 
     Name = "${var.project_name}-ai-macro-${count.index == 0 ? "a" : "b"}" 
+    # [핵심 추가] IAM 정책(Condition)과 매칭시키기 위해 반드시 필요합니다.
+    Team = "Macro"
   }
 }
