@@ -25,3 +25,12 @@ queue:
   interval-ms: ${QUEUE_INTERVAL_MS:3000}
   pass-ttl-seconds: ${QUEUE_PASS_TTL_SECONDS:600}
   token-secret: ${QUEUE_TOKEN_SECRET}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus, metrics
+  metrics:
+    tags:
+      application: ${spring.application.name}

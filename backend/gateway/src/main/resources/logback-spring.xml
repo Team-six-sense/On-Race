@@ -24,20 +24,9 @@
         <logger name="com.kt.onrace" level="DEBUG" additivity="false">
             <appender-ref ref="CONSOLE"/>
         </logger>
-        <!-- main 전용: Hibernate SQL -->
-        <logger name="org.hibernate.SQL" level="DEBUG"/>
-        <logger name="org.hibernate.type.descriptor.sql.BasicBinder" level="TRACE"/>
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
         </root>
     </springProfile>
-
-    <!-- 로그 전역 세팅 -->
-    <!-- <root level="${LOG_LEVEL}">
-         &lt;!&ndash; 위에 설정한 콘솔 설정 추가 &ndash;&gt;
-         <appender-ref ref="CONSOLE"/>
-         &lt;!&ndash; 위에 설정한 파일 설정 추가 &ndash;&gt;
-         <appender-ref ref="FILE"/>
-     </root>-->
 
 </configuration>

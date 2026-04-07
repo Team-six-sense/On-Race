@@ -32,6 +32,7 @@ spring:
                   - Authorization
                   - X-Request-Id
                   - X-Queue-Enabled
+                  - X-Trace-Id
                 allow-credentials: true
                 max-age: 3600
           routes:
@@ -135,3 +136,12 @@ jwt:
   secret: ${JWT_SECRET}
   access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:300000}
   refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:43200000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus, metrics
+  metrics:
+    tags:
+      application: ${spring.application.name}

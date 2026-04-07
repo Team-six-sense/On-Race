@@ -1,0 +1,32 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'gateway'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['gateway:GATEWAY_SERVER_PORT']
+        labels:
+          application: 'gateway'
+
+  - job_name: 'auth'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['auth:AUTH_SERVER_PORT']
+        labels:
+          application: 'auth'
+
+  - job_name: 'main'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['main:MAIN_SERVER_PORT']
+        labels:
+          application: 'main'
+
+  - job_name: 'queue'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['queue:QUEUE_SERVER_PORT']
+        labels:
+          application: 'queue'
