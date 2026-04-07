@@ -54,7 +54,7 @@ subprojects {
 
     dependencyCheck {
         format = 'ALL'
-        failBuildOnCVSS = 0
+        failBuildOnCVSS = 7
         suppressionFile = null
         nvd {
             apiKey = project.findProperty('nvdApiKey') ?: System.getenv('NVD_API_KEY') ?: ''

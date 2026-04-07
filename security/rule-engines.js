@@ -124,21 +124,14 @@ function checkFingerprint(fingerprint) {
   let isCritical = false;
 
   try {
-    // 1. 자동화 도구 직접 탐지 (Critical)
-    if (fingerprint.artifacts?.selenium) {
+    // 1. 자동화 도구 직접 탐지 (Critical) — collector-fingerprint.js 구조 기준
+    if (fingerprint.seleniumArtifact) {
       score += FINGERPRINT_RULES.selenium.score;
       triggeredRules.push('fp_selenium');
-      reasons.push('Selenium detected');
+      reasons.push('Selenium artifact detected');
       isCritical = true;
     }
-    
-    if (fingerprint.artifacts?.driver) {
-      score += FINGERPRINT_RULES.driver.score;
-      triggeredRules.push('fp_driver');
-      reasons.push('WebDriver detected');
-      isCritical = true;
-    }
-    
+
     if (fingerprint.webdriver === true) {
       score += FINGERPRINT_RULES.webdriver.score;
       triggeredRules.push('fp_webdriver');
@@ -146,58 +139,25 @@ function checkFingerprint(fingerprint) {
       isCritical = true;
     }
 
-    // 2. Headless 브라우저 탐지
-    const renderer = fingerprint.graphics?.renderer || '';
-    const headlessPatterns = ['SwiftShader', 'llvmpipe', 'Mesa', 'ANGLE (Google'];
-    
-    if (headlessPatterns.some(pattern => renderer.includes(pattern))) {
+    // 2. Headless 브라우저 탐지 (renderer는 collector에서 이미 boolean으로 처리됨)
+    if (fingerprint.swiftShader) {
       score += FINGERPRINT_RULES.headlessRenderer.score;
       triggeredRules.push('fp_headless_renderer');
-      reasons.push(`Headless browser suspected (${renderer.substring(0, 50)})`);
+      reasons.push('Headless browser renderer detected (SwiftShader/llvmpipe)');
     }
 
-    // 3. 플러그인 개수 이상치
-    const pluginsCount = fingerprint.browser?.pluginsLength ?? -1;
-    if (pluginsCount === 0) {
+    // 3. 플러그인/언어 없음 (headlessFlag = no plugins OR no languages)
+    if (fingerprint.headlessFlag) {
       score += FINGERPRINT_RULES.noPlugins.score;
-      triggeredRules.push('fp_no_plugins');
-      reasons.push('No browser plugins');
+      triggeredRules.push('fp_headless_flag');
+      reasons.push('Headless browser characteristics (no plugins or languages)');
     }
 
-    // 4. 언어 설정 부재
-    const languages = fingerprint.browser?.languages || [];
-    if (languages.length === 0) {
-      score += FINGERPRINT_RULES.noLanguages.score;
-      triggeredRules.push('fp_no_languages');
-      reasons.push('No language preferences');
-    }
-
-    // 5. Canvas hash 체크 (향후 Redis 연동 시 중복 체크 가능)
-    const canvasHash = fingerprint.graphics?.canvas;
-    if (canvasHash) {
-      // TODO: Redis에서 중복 체크
-      // const duplicateCount = await redis.get(`canvas:${canvasHash}`);
-      // if (duplicateCount > FINGERPRINT_RULES.canvasDuplicate.threshold) {
-      //   score += FINGERPRINT_RULES.canvasDuplicate.score;
-      //   triggeredRules.push('fp_canvas_duplicate');
-      //   reasons.push(`Canvas hash duplicate (count: ${duplicateCount})`);
-      // }
-    }
-
-    // 6. 하드웨어 정보 이상치
-    const cores = fingerprint.hardware?.cores || 0;
-    const memory = fingerprint.hardware?.memory || 0;
-    
-    if (cores > 64 || cores < 1) {
-      score += FINGERPRINT_RULES.abnormalHardware.score;
-      triggeredRules.push('fp_abnormal_cores');
-      reasons.push(`Abnormal CPU cores: ${cores}`);
-    }
-    
-    if (memory > 128 || memory < 1) {
-      score += FINGERPRINT_RULES.abnormalHardware.score;
-      triggeredRules.push('fp_abnormal_memory');
-      reasons.push(`Abnormal memory: ${memory}GB`);
+    // 4. 플러그인 없음 + deviceMemory 미노출 조합
+    if (fingerprint.noPluginsMemory) {
+      score += FINGERPRINT_RULES.noPlugins.score;
+      triggeredRules.push('fp_no_plugins_memory');
+      reasons.push('No plugins and device memory unavailable');
     }
 
   } catch (error) {
