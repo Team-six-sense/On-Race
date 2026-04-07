@@ -7,9 +7,9 @@ module "eks" {
   vpc_id          = data.terraform_remote_state.base.outputs.vpc_id
   subnet_ids      = data.terraform_remote_state.base.outputs.private_subnets
   
-  instance_types  = ["t3.small"] # [수정] medium -> small
-  min_size        = 1            # [수정] 2 -> 1 (비작동 시간 최소 유지)
-  max_size        = 3
+  instance_types  = ["t3.medium"] # [수정] medium -> small
+  min_size        = 3            # [수정] 2 -> 1 (비작동 시간 최소 유지)
+  max_size        = 5
   /*
   # instance_types  = ["m5.large"] 
   instance_types  = ["t3.medium"] 

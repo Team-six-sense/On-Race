@@ -113,7 +113,7 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           # [VQA] CloudFront Signed URL 관련 환경 변수
           env {
             name  = "CLOUDFRONT_KEY_ID"
-            value = "K2POEQMPBW4Z72"
+            value = aws_cloudfront_public_key.vqa_key_v2.id
           }
           env {
             name  = "CLOUDFRONT_DOMAIN"

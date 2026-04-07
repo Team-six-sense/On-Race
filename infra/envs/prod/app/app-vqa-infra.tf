@@ -1,12 +1,18 @@
-# 1. CloudFront Signed URL용 공개키 및 키 그룹
-resource "aws_cloudfront_public_key" "vqa_key" {
-  name        = "${var.project_name}-vqa-public-key"
-  encoded_key = file("${path.module}/certs/vqa_public_key.pem")
+# 1. 리소스 식별자(vqa_key -> vqa_key_v2)와 AWS 등록 이름(-v2 추가) 변경
+resource "aws_cloudfront_public_key" "vqa_key_v2" {
+  name        = "${var.project_name}-vqa-public-key-v2"
+  encoded_key = trimspace(file("${path.module}/certs/vqa_public_key.pem"))
+
+  lifecycle {
+    # 한 번 생성된 후에는 encoded_key 변경으로 인한 강제 교체를 방지
+    ignore_changes = [encoded_key]
+  }
 }
 
+# 2. 키 그룹이 새로 만든 vqa_key_v2를 바라보게 수정
 resource "aws_cloudfront_key_group" "vqa_key_group" {
   name  = "${var.project_name}-vqa-key-group"
-  items = [aws_cloudfront_public_key.vqa_key.id]
+  items = [aws_cloudfront_public_key.vqa_key_v2.id] # 참조 변경
 }
 
 # 2. S3 버킷 정책 (Base 레이어의 Output 참조)

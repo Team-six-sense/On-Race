@@ -35,5 +35,6 @@ resource "aws_instance" "ai_macro_detector" {
 
   tags = { 
     Name = "${var.project_name}-ai-macro-${count.index == 0 ? "a" : "b"}" 
+    Team = "Macro"
   }
 }

@@ -43,6 +43,12 @@ backend:
 gateway:
   enabled: true
   replicas: 1
+  extraVolumes:
+    - name: nginx-cache
+      emptyDir: {}
+  extraVolumeMounts:
+    - name: nginx-cache
+      mountPath: /var/cache/nginx
   verboseLogging: true
   nginxConfig:
     file: |
