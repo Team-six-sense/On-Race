@@ -82,7 +82,7 @@ class AuthServiceLoginTest {
 
 	@BeforeEach
 	void setUp() {
-		testUser = User.createUser("test@test.com", "테스터", "encodedPw", "01012345678");
+		testUser = User.createUser("test@test.com", "테스터", "encodedPw", "01012345678", null, null);
 		ReflectionTestUtils.setField(testUser, "id", 1L);
 	}
 

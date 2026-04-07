@@ -1,5 +1,7 @@
 package com.kt.onrace.auth.service;
 
+import java.time.LocalDate;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -7,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.kt.onrace.auth.config.AppProperties;
 import com.kt.onrace.auth.dto.AccountMeResponse;
 import com.kt.onrace.auth.entity.AuthProvider;
+import com.kt.onrace.auth.entity.Gender;
 import com.kt.onrace.auth.entity.User;
 import com.kt.onrace.auth.entity.VerificationStatus;
 import com.kt.onrace.auth.repository.UserRepository;
@@ -63,6 +66,18 @@ public class AccountService {
 	public void updateMarketingConsent(Long userId, boolean marketingConsent) {
 		User user = findActiveUser(userId);
 		user.changeMarketingConsent(marketingConsent);
+	}
+
+	@Transactional
+	public void completePassVerification(Long userId, String name, Gender gender, LocalDate birthdate) {
+		User user = findActiveUser(userId);
+		user.applyPassVerification(name, gender, birthdate);
+	}
+
+	@Transactional
+	public void revokePassVerification(Long userId) {
+		User user = findActiveUser(userId);
+		user.changeVerificationStatus(VerificationStatus.UNVERIFIED);
 	}
 
 	private User findActiveUser(Long userId) {

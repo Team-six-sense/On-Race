@@ -1,5 +1,6 @@
 package com.kt.onrace.auth.controller;
 
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.kt.onrace.auth.dto.AccountMeResponse;
+import com.kt.onrace.auth.dto.PassVerificationCompleteRequest;
 import com.kt.onrace.auth.dto.PasswordChangeRequest;
 import com.kt.onrace.auth.dto.UpdateMarketingConsentRequest;
 import com.kt.onrace.auth.dto.UpdateNameRequest;
@@ -67,6 +69,25 @@ public class AccountController extends SwaggerAssistance {
 		@Valid @RequestBody PasswordChangeRequest request) {
 
 		accountService.requestPasswordChange(userId, request.currentPassword());
+		return ApiResponse.success();
+	}
+
+	@Operation(summary = "PASS 본인인증 완료", description = "PASS 인증 후 이름, 성별, 생년월일을 저장하고 인증 상태를 VERIFIED로 변경")
+	@PostMapping("/pass/complete")
+	public ApiResponse<Void> completePassVerification(
+		@RequestHeader("X-User-Id") Long userId,
+		@Valid @RequestBody PassVerificationCompleteRequest request) {
+
+		accountService.completePassVerification(userId, request.name(), request.gender(), request.birthdate());
+		return ApiResponse.success();
+	}
+
+	@Operation(summary = "PASS 본인인증 해제", description = "인증 상태를 UNVERIFIED로 되돌림")
+	@DeleteMapping("/pass/complete")
+	public ApiResponse<Void> revokePassVerification(
+		@RequestHeader("X-User-Id") Long userId) {
+
+		accountService.revokePassVerification(userId);
 		return ApiResponse.success();
 	}
 }
