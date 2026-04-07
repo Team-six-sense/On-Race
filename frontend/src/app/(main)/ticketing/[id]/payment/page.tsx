@@ -25,7 +25,7 @@ export default function CheckoutPage() {
   const params = useParams();
   const [selectedOption, setSelectedOption] = useState('none');
   const [payment, setPayment] = useState<TossPaymentsPayment | null>(null);
-  const [selectedPayment, setSelectedPayment] = useState('card');
+  const [selectedPayment, setSelectedPayment] = useState('KAKAOPAY');
 
   // 데이터 설정
   const marathonItem = {
@@ -70,33 +70,83 @@ export default function CheckoutPage() {
     fetchPayment();
   }, []);
 
-  const requestPayment = async () => {
+  async function requestPayment(selectedMethod: string) {
     if (!payment) return;
 
+    // 1. 공통 파라미터 (customerName을 완전히 제거하세요)
+    const baseOptions = {
+      amount: {
+        currency: 'KRW',
+        value: marathonItem.price,
+      },
+      orderId: `order-${Math.random().toString(36).slice(2, 11)}`,
+      orderName: marathonItem.title,
+      successUrl: `${window.location.origin}/ticketing/${params.id}/payment/completed`,
+      failUrl: `${window.location.origin}/payment/fail`,
+      // customerEmail: 'customer@example.com', // 만약 이 필드도 에러가 나면 제거하세요.
+    };
+
     try {
-      // 결제창 띄우기
-      await payment.requestPayment({
-        method: 'CARD', // 결제 수단 (CARD, TRANSFER, MOBILE_PHONE 등)
-        amount: {
-          currency: 'KRW',
-          value: marathonItem.price, // 결제 금액
-        },
-        orderId: `order-${Math.random().toString(36).slice(2, 11)}`, // 주문 ID (고유값)
-        orderName: marathonItem.title, // 주문 명
-        successUrl: `${window.location.origin}/ticketing/${params.id}/payment/completed`, // 결제 성공 리다이렉트 URL
-        failUrl: `${window.location.origin}/payment/fail`, // 결제 실패 리다이렉트 URL
-        customerEmail: 'customer@example.com',
-        customerName: '김토스',
-        card: {
-          useEscrow: false,
-          flowMode: 'DEFAULT',
-          useCardPoint: false,
-          useAppCardOnly: false,
-        },
-      });
+      switch (selectedMethod) {
+        case 'CARD':
+          await payment.requestPayment({
+            method: 'CARD',
+            ...baseOptions,
+            card: {
+              flowMode: 'DEFAULT',
+              useEscrow: false,
+            },
+          });
+          break;
+
+        case 'VIRTUAL_ACCOUNT':
+          await payment.requestPayment({
+            method: 'VIRTUAL_ACCOUNT',
+            ...baseOptions,
+            virtualAccount: {
+              // V2에서는 가상계좌 입금주 이름을 여기에 넣습니다.
+              customerName: '김토스',
+              validHours: 24,
+              cashReceipt: { type: '소득공제' },
+            },
+          } as any);
+          break;
+
+        case 'TRANSFER':
+          await payment.requestPayment({
+            method: 'TRANSFER',
+            ...baseOptions,
+            transfer: {
+              cashReceipt: { type: '소득공제' },
+            },
+          });
+          break;
+
+        case 'MOBILE_PHONE':
+          await payment.requestPayment({
+            method: 'MOBILE_PHONE',
+            ...baseOptions,
+          });
+          break;
+
+        case 'KAKAOPAY':
+          await payment.requestPayment({
+            method: 'CARD',
+            ...baseOptions,
+            card: {
+              flowMode: 'DIRECT',
+              easyPay: 'KAKAOPAY',
+            },
+          });
+          break;
+      }
     } catch (error) {
-      console.error('Payment request failed:', error);
+      console.error('결제 요청 실패:', error);
     }
+  }
+
+  const handlePayment = () => {
+    requestPayment(selectedPayment);
   };
 
   // 공통 섹션 컴포넌트 (좌측 헤더 | 우측 내용)
@@ -293,15 +343,15 @@ export default function CheckoutPage() {
             <FormSection title="결제 수단">
               <div className="flex items-center">
                 <RadioGroup
-                  // value={selectedValue}
-                  // onValueChange={setSelectedValue}
+                  value={selectedPayment}
+                  onValueChange={setSelectedPayment}
                   className="gap-2"
                 >
                   {[
-                    { id: '1', label: '카카오페이' },
-                    { id: '2', label: '신용/체크카드' },
-                    { id: '3', label: '무통장입금' },
-                    { id: '4', label: '휴대폰결제' },
+                    { id: 'KAKAOPAY', label: '카카오페이' },
+                    { id: 'CARD', label: '신용/체크카드' },
+                    // { id: 'VIRTUAL_ACCOUNT', label: '무통장입금' },
+                    { id: 'MOBILE_PHONE', label: '휴대폰결제' },
                   ].map((item) => (
                     <label
                       key={item.id}
@@ -417,7 +467,7 @@ export default function CheckoutPage() {
               </div>
 
               <div>
-                <Button rounded="full" onClick={requestPayment}>
+                <Button rounded="full" onClick={handlePayment}>
                   {Number(marathonItem.price).toLocaleString()}원 결제하기
                 </Button>
               </div>

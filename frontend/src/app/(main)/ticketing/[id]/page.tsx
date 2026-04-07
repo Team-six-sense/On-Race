@@ -15,6 +15,8 @@ import { useEventStore } from '@/features/event/store/useEventStore';
 import { EventDetails } from '@/features/event/types';
 import { useParams } from 'next/navigation';
 import { eventService } from '@/features/event/services';
+import { useDetailedTracker } from '@/features/ticketing/hooks/useDetailedTracker';
+import { collectFingerprint } from '@/lib/fingerprint';
 
 export default function MarathonDetailPage() {
   const params = useParams();
@@ -25,6 +27,66 @@ export default function MarathonDetailPage() {
 
   const [activeTab, setActiveTab] = useState('product');
   const [eventDetails, setEventDetails] = useState<EventDetails>();
+
+  const [minDistance, setMinDistance] = useState(10);
+
+  const { isRecording, logs, startTracking, stopTracking, getFinalData } =
+    useDetailedTracker();
+
+  const handleStart = () => {
+    startTracking(minDistance);
+  };
+  const handleStop = () => {
+    stopTracking();
+    const fp = collectFingerprint();
+    // handleDownloadBinary();
+  };
+
+  const handleDownloadBinary = () => {
+    const currentLogs = isRecording ? [...logs] : logs;
+    if (currentLogs.length === 0) return;
+
+    /**
+     * [바이너리 구조 설계]
+     * 1개 로그당 바이트 계산:
+     * - x: 4 bytes (Int32)
+     * - y: 4 bytes (Int32)
+     * - timestamp: 8 bytes (Float64 - 밀리초 단위 정밀도 유지)
+     * - eventType: 1 byte (Uint8 - 0: move, 1: down, 2: up)
+     * 총 합계: 17 bytes per log
+     */
+    const RECORD_SIZE = 17;
+    const buffer = new ArrayBuffer(currentLogs.length * RECORD_SIZE);
+    const view = new DataView(buffer);
+
+    // 이벤트 타입 매핑
+    const typeMap: Record<string, number> = {
+      pointermove: 0,
+      pointerdown: 1,
+      pointerup: 2,
+    };
+
+    currentLogs.forEach((log, index) => {
+      const offset = index * RECORD_SIZE;
+
+      view.setInt32(offset, Math.floor(log.x), true); // x 저장
+      view.setInt32(offset + 4, Math.floor(log.y), true); // y 저장
+      view.setFloat64(offset + 8, log.timestamp, true); // timestamp 저장
+      view.setUint8(offset + 16, typeMap[log.eventType] ?? 255); // eventType 저장
+    });
+
+    // Blob 생성 (application/octet-stream은 일반적인 이진 파일 형식)
+    const blob = new Blob([buffer], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `mouse_data_${new Date().getTime()}.bin`; // 확장자를 .bin으로 변경
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   // 컴포넌트가 마운트된 후에만 렌더링을 허용
   useEffect(() => {
@@ -141,6 +203,7 @@ export default function MarathonDetailPage() {
               <EventEntryInfo
                 event={event}
                 setIsUserModalOpen={setIsUserModalOpen}
+                onStart={handleStart}
               />
             </div>
           </div>
@@ -149,6 +212,7 @@ export default function MarathonDetailPage() {
           <EntryConfirmModal
             isUserModalOpen={isUserModalOpen}
             setIsUserModalOpen={setIsUserModalOpen}
+            onStop={handleStop}
           />
         </div>
       )}

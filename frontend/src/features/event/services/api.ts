@@ -68,7 +68,7 @@ export const eventApi: IEventService = {
   },
   applyEventFirstCome: async (id, data) => {
     const response = await apiClient.post(
-      `/events/${id}/entries/apply/lottery`,
+      `/events/${id}/entries/apply/first-come`,
       data,
     );
     return response.data;

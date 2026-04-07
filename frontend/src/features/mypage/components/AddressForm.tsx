@@ -103,31 +103,43 @@ export default function AddressForm({ onClose }: { onClose?: () => void }) {
         <div className="flex gap-2 mb-3">
           <Button
             type="button"
-            variant={nicknameType === 'HOME' ? 'primary1' : 'outline'}
+            variant="outline"
             size="fit"
             rounded="full"
             onClick={() => handleChipClick('HOME', '우리집')}
-            className={cn(nicknameType !== 'HOME' && 'border-gray-400')}
+            className={cn(
+              nicknameType === 'HOME'
+                ? 'border-2 text-black border-black'
+                : 'border text-font-low border-cta-outline',
+            )}
           >
             우리집
           </Button>
           <Button
             type="button"
-            variant={nicknameType === 'OFFICE' ? 'primary1' : 'outline'}
+            variant="outline"
             size="fit"
             rounded="full"
             onClick={() => handleChipClick('OFFICE', '회사')}
-            className={cn(nicknameType !== 'OFFICE' && 'border-gray-400')}
+            className={cn(
+              nicknameType === 'OFFICE'
+                ? 'border-2 text-black border-black'
+                : 'border text-font-low border-cta-outline',
+            )}
           >
             회사
           </Button>
           <Button
             type="button"
-            variant={nicknameType === 'MANUAL' ? 'primary1' : 'outline'}
+            variant="outline"
             size="fit"
             rounded="full"
             onClick={() => handleChipClick('MANUAL', '')}
-            className={cn(nicknameType !== 'MANUAL' && 'border-gray-400')}
+            className={cn(
+              nicknameType === 'MANUAL'
+                ? 'border-2 text-black border-black'
+                : 'border text-font-low border-cta-outline',
+            )}
           >
             직접입력
           </Button>

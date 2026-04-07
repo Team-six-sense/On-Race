@@ -32,7 +32,7 @@ interface TermAgreement {
 
 export interface SignupRequest {
   email: string;
-  name: string;
+  name?: string;
   password: string;
   phoneNumber: string;
   termAgreements: TermAgreement[];
