@@ -16,6 +16,9 @@ module "vpc" {
   single_nat_gateway = var.single_nat_gateway
 }
 
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
 # 2. DB 암호 자동 생성 및 관리 (하드코딩 완전 제거)
 resource "random_password" "db_password" {
   length           = 16
