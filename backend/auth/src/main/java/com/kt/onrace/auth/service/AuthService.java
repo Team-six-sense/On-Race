@@ -109,7 +109,9 @@ public class AuthService {
 				request.email(),
 				request.name(),
 				encodedPassword,
-				request.phoneNumber());
+				request.phoneNumber(),
+				request.gender(),
+				request.birthdate());
 
 		User saved = userRepository.save(user);
 
