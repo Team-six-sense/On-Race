@@ -83,7 +83,7 @@ public class QueueBatchScheduler {
 			long passTtl = queueProperties.getPassTtlSeconds();
 
 			// 1단계: 재시도 큐 우선 처리
-			int issued = processRetryQueue(retryQueue, paceId, passTtl);
+			int issued = processRetryQueue(retryQueue, paceId, passTtl, batchSize);
 
 			// 2단계: 남은 배치 여유분만큼 대기열에서 처리
 			int remaining = batchSize - issued;
@@ -113,12 +113,12 @@ public class QueueBatchScheduler {
 		}
 	}
 
-	private int processRetryQueue(RDeque<String> retryQueue, Long paceId, long passTtl) {
+	private int processRetryQueue(RDeque<String> retryQueue, Long paceId, long passTtl, int batchSize) {
 		int issued = 0;
 
 		String entry;
 
-		while ((entry = retryQueue.pollFirst()) != null) {
+		while (issued < batchSize && (entry = retryQueue.pollFirst()) != null) {
 			String userId = parseUserId(entry);
 			int retryCount = parseRetryCount(entry);
 
