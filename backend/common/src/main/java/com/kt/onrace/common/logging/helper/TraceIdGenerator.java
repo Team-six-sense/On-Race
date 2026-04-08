@@ -8,8 +8,8 @@ import jakarta.servlet.http.HttpServletRequest;
 
 public class TraceIdGenerator {
 
-	private static final String TRACE_ID_HEADER = "X-Trace-Id";
-	private static final String TRACE_ID_MDC_KEY = "traceId";
+	public static final String TRACE_ID_HEADER = "X-Trace-Id";
+	public static final String TRACE_ID_MDC_KEY = "traceId";
 
 	public static void getOrCreateTraceId(HttpServletRequest request) {
 		String traceId = request.getHeader(TRACE_ID_HEADER);
@@ -19,6 +19,10 @@ public class TraceIdGenerator {
 		}
 
 		MDC.put(TRACE_ID_MDC_KEY, traceId);
+	}
+
+	public static String getCurrentTraceId() {
+		return MDC.get(TRACE_ID_MDC_KEY);
 	}
 
 	private static String generateTraceId() {

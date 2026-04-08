@@ -87,6 +87,7 @@ services:
     environment:
       - MAIN_DB_HOST=main-mysql
       - MAIN_REDIS_HOST=main-redis
+      - AUTH_SERVICE_URI=http://auth:${AUTH_SERVER_PORT}
     depends_on:
       - main-mysql
       - main-redis

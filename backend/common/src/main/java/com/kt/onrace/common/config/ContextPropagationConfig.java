@@ -4,6 +4,8 @@ import org.slf4j.MDC;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import com.kt.onrace.common.logging.helper.TraceIdGenerator;
+
 import io.micrometer.context.ContextRegistry;
 import io.micrometer.context.ThreadLocalAccessor;
 
@@ -15,7 +17,7 @@ public class ContextPropagationConfig {
 		ContextRegistry registry = ContextRegistry.getInstance();
 
 		registry.registerThreadLocalAccessor(new ThreadLocalAccessor<String>() {
-			private static final String KEY = "traceId";
+			private static final String KEY = TraceIdGenerator.TRACE_ID_MDC_KEY;
 
 			@Override
 			public Object key() {

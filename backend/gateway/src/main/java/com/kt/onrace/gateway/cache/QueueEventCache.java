@@ -11,9 +11,12 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.ClientRequest;
+import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.kt.onrace.common.logging.helper.TraceIdGenerator;
 import com.kt.onrace.common.util.RedisKeyGenerator;
 import com.kt.onrace.gateway.config.GatewayProperties;
 
@@ -38,6 +41,7 @@ public class QueueEventCache {
 		this.webClient = WebClient.builder()
 			.baseUrl(queueCache.getServiceUri())
 			.defaultHeader("X-Gateway-Token", gatewayProperties.getInternal().getSecret())
+			.filter(traceIdFilter())
 			.build();
 		this.redissonClient = redissonClient;
 	}
@@ -86,6 +90,19 @@ public class QueueEventCache {
 
 	public boolean isQueueEnabled(Long eventId) {
 		return enabledEventIds.contains(eventId);
+	}
+
+	// Reactor Context에서 traceId를 읽어 X-Trace-Id 헤더로 전파하는 WebClient 필터
+	private static ExchangeFilterFunction traceIdFilter() {
+		return (request, next) -> Mono.deferContextual(ctx -> {
+			if (ctx.hasKey(TraceIdGenerator.TRACE_ID_MDC_KEY)) {
+				ClientRequest mutated = ClientRequest.from(request)
+					.header(TraceIdGenerator.TRACE_ID_HEADER, ctx.<String>get(TraceIdGenerator.TRACE_ID_MDC_KEY))
+					.build();
+				return next.exchange(mutated);
+			}
+			return next.exchange(request);
+		});
 	}
 
 	@JsonIgnoreProperties(ignoreUnknown = true)
