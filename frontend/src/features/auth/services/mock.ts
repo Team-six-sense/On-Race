@@ -21,7 +21,7 @@ export const authMock: IAuthService = {
 
   // 약관동의 API
   getTerms: async () => wrapMockResponse(MOCK_TERMS),
-  getTermDetails: async (id) => wrapMockResponse(MOCK_TERM_DETAILS[id]),
+  getTermDetails: async (id) => wrapMockResponse(MOCK_TERM_DETAILS[Number(id)]),
 
   // password API
   resetPassword: async (data) => wrapMockResponse(),

@@ -35,7 +35,7 @@ export interface IAuthService {
 
   // 약관 API
   getTerms(): Promise<ApiResponse<Term[]>>;
-  getTermDetails(id: number): Promise<ApiResponse<TermDetails>>;
+  getTermDetails(id: string): Promise<ApiResponse<TermDetails>>;
 
   // 패스워드 API
   resetPassword(data: resetPasswordRequest): Promise<ApiResponse<null>>;

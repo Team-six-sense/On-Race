@@ -34,7 +34,8 @@ export function EventSalesInfo() {
 
       try {
         if (event) {
-          const response = await eventService.getSalesInfo(Number(params.id));
+          const eventId = String(params.id);
+          const response = await eventService.getSalesInfo(eventId);
           setSalesInfo((prev) => ({
             ...prev,
             ...response.data,

@@ -10,6 +10,7 @@ import {
 import { LuChevronLeft, LuCircleCheck, LuX } from 'react-icons/lu';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import Image from 'next/image';
 
 type AuthStep = 'SELECT_AGENCY' | 'INPUT_INFO' | 'WAITING' | 'SUCCESS';
 
@@ -62,18 +63,15 @@ export default function PassModal({
         {/* 상단 헤더 커스텀 제어 */}
         {step !== 'SUCCESS' && (
           <div className="flex items-center justify-between">
-            {step !== 'SELECT_AGENCY' && (
-              <Button
-                variant="ghost"
-                size="fit"
-                onClick={() =>
-                  setStep(step === 'WAITING' ? 'INPUT_INFO' : 'SELECT_AGENCY')
-                }
-              >
-                <LuChevronLeft size={24} />
-              </Button>
-            )}
-            <ModalTitle className="text-lg font-bold">PASS 인증</ModalTitle>
+            <ModalTitle>
+              <Image
+                src="/image/logo/passLogo.svg"
+                alt="PASS 인증"
+                width={100}
+                height={24}
+                priority
+              />
+            </ModalTitle>
             <Button variant="ghost" size="fit" onClick={onClose}>
               <LuX size={24} />
             </Button>
@@ -152,10 +150,15 @@ export default function PassModal({
           {/* STEP 3: 푸시 대기 */}
           {step === 'WAITING' && (
             <div className="text-center animate-in fade-in duration-500">
-              <div className="w-20 h-20 bg-blue-600 rounded-3xl mx-auto flex items-center justify-center mb-8 shadow-xl">
-                <span className="text-white font-black text-xl italic">
-                  PASS
-                </span>
+              <div className="w-20 h-20 mx-auto flex items-center justify-center mb-8 ">
+                <Image
+                  src="/image/logo/passIcon.svg"
+                  alt="PASS 인증"
+                  width={100}
+                  height={24}
+                  priority
+                  className="rounded-xl shadow-xl"
+                />
               </div>
               <h4 className="text-xl font-bold mb-4">
                 {selectedAgency} PASS 앱으로

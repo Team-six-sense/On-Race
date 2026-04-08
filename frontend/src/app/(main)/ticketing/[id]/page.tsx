@@ -15,6 +15,8 @@ import { useEventStore } from '@/features/event/store/useEventStore';
 import { EventDetails } from '@/features/event/types';
 import { useParams } from 'next/navigation';
 import { eventService } from '@/features/event/services';
+import { useDetailedTracker } from '@/features/ticketing/hooks/useDetailedTracker';
+import { collectFingerprint } from '@/lib/fingerprint';
 
 export default function MarathonDetailPage() {
   const params = useParams();
@@ -25,6 +27,66 @@ export default function MarathonDetailPage() {
 
   const [activeTab, setActiveTab] = useState('product');
   const [eventDetails, setEventDetails] = useState<EventDetails>();
+
+  const [minDistance, setMinDistance] = useState(10);
+
+  const { isRecording, logs, startTracking, stopTracking, getFinalData } =
+    useDetailedTracker();
+
+  const handleStart = () => {
+    startTracking(minDistance);
+  };
+  const handleStop = () => {
+    stopTracking();
+    saveData();
+  };
+
+  async function bufferToBase64(buffer: ArrayBuffer): Promise<string> {
+    const blob = new Blob([buffer]);
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const res = reader.result as string;
+        resolve(res.split(',')[1]); // base64 부분만 추출
+      };
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  const saveData = () => {
+    const currentLogs = isRecording ? [...logs] : logs;
+    if (currentLogs.length === 0) return;
+
+    const RECORD_SIZE = 17;
+    const buffer = new ArrayBuffer(currentLogs.length * RECORD_SIZE);
+    const view = new DataView(buffer);
+
+    // 이벤트 타입 매핑
+    const typeMap: Record<string, number> = {
+      pointermove: 0,
+      pointerdown: 1,
+      pointerup: 2,
+    };
+
+    currentLogs.forEach((log, index) => {
+      const offset = index * RECORD_SIZE;
+      view.setInt32(offset, Math.floor(log.x), true);
+      view.setInt32(offset + 4, Math.floor(log.y), true);
+      view.setFloat64(offset + 8, log.timestamp, true);
+      view.setUint8(offset + 16, typeMap[log.eventType] ?? 255);
+    });
+
+    // --- 핑거프린트 가져오기 ---
+    const fp = collectFingerprint();
+
+    // --- 데이터를 하나의 객체로 합치기 ---
+    const finalData = {
+      fingerprint: fp,
+      mouseLogs: bufferToBase64(buffer),
+      logCount: currentLogs.length,
+      timestamp: new Date().toISOString(),
+    };
+  };
 
   // 컴포넌트가 마운트된 후에만 렌더링을 허용
   useEffect(() => {
@@ -38,9 +100,11 @@ export default function MarathonDetailPage() {
 
       try {
         if (event) {
-          const response = await eventService.getEventDetails(
-            Number(params.id),
-          );
+          const eventId = String(params.id);
+          const response = await eventService.getEventById(eventId);
+          console.log('event', event);
+          console.log('details', response.data);
+
           setEventDetails((prev) => ({
             ...prev,
             ...response.data,
@@ -78,7 +142,7 @@ export default function MarathonDetailPage() {
         <div className="flex flex-col lg:flex-row gap-8 ">
           {/* 좌측: 대회 상세 정보 영역 */}
           <div className="flex-1">
-            <EventThumbnail thumbnailImg={eventDetails.thumbnailImg} />
+            <EventThumbnail thumbnailImg={eventDetails?.thumbnailImg ?? []} />
 
             {/* 구분선 */}
             <div className="py-2"></div>
@@ -140,7 +204,9 @@ export default function MarathonDetailPage() {
             <div className="sticky top-5">
               <EventEntryInfo
                 event={event}
+                eventDetails={eventDetails}
                 setIsUserModalOpen={setIsUserModalOpen}
+                onStart={handleStart}
               />
             </div>
           </div>
@@ -149,6 +215,7 @@ export default function MarathonDetailPage() {
           <EntryConfirmModal
             isUserModalOpen={isUserModalOpen}
             setIsUserModalOpen={setIsUserModalOpen}
+            onStop={handleStop}
           />
         </div>
       )}

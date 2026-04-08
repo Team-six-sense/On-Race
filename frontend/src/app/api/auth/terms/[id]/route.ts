@@ -10,7 +10,7 @@ const backendClient = axios.create({
 
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ id: number }> },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;

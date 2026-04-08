@@ -13,7 +13,7 @@ export default function SignupForm() {
   const router = useRouter();
   const [code, setCode] = useState<string>('');
   const isSent = useRef(false);
-  const { name, email, password, phoneNumber } = useSignupStore();
+  const { email, password, phoneNumber } = useSignupStore();
 
   useEffect(() => {
     // 보안 체크: 이메일 정보가 없으면 가입 페이지로 돌려보냄 (직접 URL 접근 차단)
@@ -54,7 +54,6 @@ export default function SignupForm() {
       if (veriftEmailResponse.success) {
         const data = {
           email: email,
-          name: name,
           password: password,
           phoneNumber: phoneNumber,
           termAgreements: [

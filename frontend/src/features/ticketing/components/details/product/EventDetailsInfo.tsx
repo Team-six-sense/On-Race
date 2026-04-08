@@ -2,6 +2,7 @@
 
 import { DetailImg } from '@/features/event/types';
 import { useEffect, useState } from 'react';
+import { MdImage } from 'react-icons/md';
 
 export function EventDetailsInfo({
   detailImgList,
@@ -22,7 +23,9 @@ export function EventDetailsInfo({
     const fetchData = async () => {
       if (!mounted) return;
 
-      setDetailImg(detailImgList[0]);
+      if (detailImgList && detailImgList.length > 0) {
+        setDetailImg(detailImgList[0]);
+      }
     };
 
     fetchData();
@@ -35,20 +38,21 @@ export function EventDetailsInfo({
 
   return (
     <section>
-      {detailImg && (
-        <div>
-          <h2 className="text-xl font-bold mb-4 flex items-center">
-            상세 설명
-          </h2>
-          <div className="relative w-full h-full overflow-hidden bg-gray-100 ">
-            <div className="flex flex-col items-center justify-center w-full h-full bg-gray-200 text-gray-400">
-              <img
-                src={detailImg.url}
-                alt={detailImg.type}
-                className="w-full h-full object-cover"
-              />
-            </div>
+      <h2 className="text-xl font-bold mb-4 flex items-center">상세 설명</h2>
+      {detailImg ? (
+        <div className="relative w-full h-full overflow-hidden bg-gray-100">
+          <div className="flex flex-col items-center justify-center w-full h-full bg-gray-200 text-gray-400">
+            <img
+              src={detailImg.url}
+              alt={detailImg.type}
+              className="w-full h-full object-cover"
+            />
           </div>
+        </div>
+      ) : (
+        /* 높이(h-80)와 배경색(bg-gray-100) 추가 */
+        <div className="w-full h-[200px] flex items-center justify-center text-gray-400 bg-gray-100 rounded-sm">
+          <MdImage size={100} />
         </div>
       )}
     </section>

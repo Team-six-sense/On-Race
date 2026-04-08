@@ -4,14 +4,16 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { UserConfirmModal } from './UserConfirmModal';
 import { AgreeConfirmModal } from './AgreeConfirmModal';
-import { VqaModal } from './VqaModal';
+// import { VqaModal } from './VqaModal';
 
 export function EntryConfirmModal({
   isUserModalOpen,
   setIsUserModalOpen,
+  onStop,
 }: {
   isUserModalOpen: boolean;
   setIsUserModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  onStop: () => void;
 }) {
   // 하이드레이션 오류 방지를 위한 마운트 상태 관리
   const params = useParams();
@@ -19,7 +21,7 @@ export function EntryConfirmModal({
   const [mounted, setMounted] = useState(false);
 
   const [isAgreeModalOpen, setIsAgreeModalOpen] = useState(false);
-  const [isVqaModalOpen, setIsVqaModalOpen] = useState(false);
+  // const [isVqaModalOpen, setIsVqaModalOpen] = useState(false);
 
   const userData = {
     name: '홍길동',
@@ -40,6 +42,7 @@ export function EntryConfirmModal({
   }
 
   const handleApply = () => {
+    onStop();
     router.push(`/ticketing/${params.id}/vqa`);
   };
 

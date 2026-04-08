@@ -22,6 +22,7 @@ export const EventHistoryPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  const eventId = 1;
   // 컴포넌트가 마운트된 후에만 렌더링을 허용
   useEffect(() => {
     setMounted(true);
@@ -100,7 +101,7 @@ export const EventHistoryPage = () => {
         {appType.map((type) => (
           <Button
             key={type.id}
-            variant={searchType === type.id ? 'primary1' : 'outline'}
+            variant="outline"
             size="fit"
             rounded="full"
             onClick={() => {
@@ -109,7 +110,11 @@ export const EventHistoryPage = () => {
             }}
             className={cn(
               'border',
-              searchType !== type.id && 'border-gray-400',
+              // searchType !== type.id && 'border-gray-400',
+
+              searchType === type.id
+                ? 'border-2 text-black border-black'
+                : 'border text-font-low border-cta-outline',
             )}
           >
             {type.label}
@@ -241,7 +246,14 @@ export const EventHistoryPage = () => {
                             <br />
                             결제를 완료해주세요
                           </p>
-                          <Button variant="primary1" rounded="sm" size="fit">
+                          <Button
+                            variant="primary1"
+                            rounded="sm"
+                            size="fit"
+                            onClick={() => {
+                              router.push(`/ticketing/${eventId}/payment`);
+                            }}
+                          >
                             결제하기
                           </Button>
                         </div>
@@ -256,7 +268,14 @@ export const EventHistoryPage = () => {
                       )}
 
                       {event.entryStatus === '신청 대기' && (
-                        <Button variant="outline" rounded="sm" size="fit">
+                        <Button
+                          variant="outline"
+                          rounded="sm"
+                          size="fit"
+                          onClick={() => {
+                            router.push(`/ticketing/${eventId}`);
+                          }}
+                        >
                           사전정보 수정
                         </Button>
                       )}
@@ -275,7 +294,16 @@ export const EventHistoryPage = () => {
                       )}
 
                       {event.entryStatus === '신청 완료' && (
-                        <Button variant="outline" rounded="sm" size="fit">
+                        <Button
+                          variant="outline"
+                          rounded="sm"
+                          size="fit"
+                          onClick={() => {
+                            router.push(
+                              `/ticketing/${eventId}/payment/details`,
+                            );
+                          }}
+                        >
                           결제 내역 보기
                         </Button>
                       )}

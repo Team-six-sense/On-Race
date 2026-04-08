@@ -13,7 +13,6 @@ import { LuEye, LuEyeOff, LuX } from 'react-icons/lu';
 
 export default function SignupForm() {
   const router = useRouter();
-  const [name, setName] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [phoneNumber, setPhoneNumber] = useState<string>('');
 
@@ -57,7 +56,7 @@ export default function SignupForm() {
         code,
       });
       if (verifyResponse.success) {
-        setSignupData(name, email, password, phoneNumber);
+        setSignupData(email, password, phoneNumber);
         router.push('/signup/email-auth');
       }
     } catch (error: any) {
@@ -70,16 +69,6 @@ export default function SignupForm() {
       <div className="flex flex-col w-full max-w-xl p-8 ">
         <div className="text-4xl font-bold py-4">이메일 회원가입</div>
         <div className="text-2xl font-bold py-4">기본 정보 입력</div>
-
-        <div className="flex gap-2 space-y-2 mb-4">
-          <Input
-            variant="primary"
-            label="이름"
-            placeholder="이름을 입력해주세요"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </div>
 
         <p className="text-sm mb-1">이메일 *</p>
         <div className="flex gap-2 space-y-2 mb-4">
