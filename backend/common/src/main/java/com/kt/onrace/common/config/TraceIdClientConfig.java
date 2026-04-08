@@ -8,16 +8,12 @@ import org.springframework.context.annotation.Configuration;
 import com.kt.onrace.common.logging.helper.TraceIdPropagation;
 
 @Configuration
+@ConditionalOnClass(name = "org.springframework.web.client.RestClient")
 public class TraceIdClientConfig {
 
-	@Configuration
-	@ConditionalOnClass(name = "org.springframework.web.client.RestClient")
-	static class RestClientTraceConfig {
-
-		@Bean
-		RestClientCustomizer traceIdRestClientCustomizer() {
-			return builder -> builder.requestInterceptor(
-				TraceIdPropagation.restClientInterceptor());
-		}
+	@Bean
+	RestClientCustomizer traceIdRestClientCustomizer() {
+		return builder -> builder.requestInterceptor(
+			TraceIdPropagation.restClientInterceptor());
 	}
 }
