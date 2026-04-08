@@ -25,6 +25,7 @@ subprojects {
     ext['netty.version'] = '4.1.132.Final'
     ext['h2.version'] = '2.2.220'
     ext['commons-io.version'] = '2.17.0'
+    ext['kotlin.version'] = '2.3.0'
 
     // CVE 패치: Spring Boot BOM 미관리 라이브러리 버전 강제 지정
     dependencyManagement {
