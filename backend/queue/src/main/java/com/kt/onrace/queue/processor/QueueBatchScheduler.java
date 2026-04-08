@@ -17,9 +17,11 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import com.kt.onrace.common.util.RedisKeyGenerator;
+import com.kt.onrace.queue.config.QueueMetrics;
 import com.kt.onrace.queue.config.QueueProperties;
 import com.kt.onrace.queue.security.QueueTokenGenerator;
 
+import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -31,6 +33,7 @@ public class QueueBatchScheduler {
 	private final RedissonClient redissonClient;
 	private final QueueProperties queueProperties;
 	private final QueueTokenGenerator queueTokenGenerator;
+	private final QueueMetrics queueMetrics;
 
 	private static final long LOCK_LEASE_SECONDS = 30;
 	private static final int MAX_RETRY_COUNT = 3;
@@ -46,16 +49,22 @@ public class QueueBatchScheduler {
 
 	@Scheduled(fixedDelayString = "${queue.interval-ms}")
 	public void processBatch() {
-		RSet<String> activePaces = redissonClient.getSet(RedisKeyGenerator.queueActivePaces(), StringCodec.INSTANCE);
-		Set<String> paceIds = activePaces.readAll();
+		Timer.Sample sample = queueMetrics.startBatchTimer();
 
-		for (String paceIdStr : paceIds) {
-			try {
-				Long paceId = Long.parseLong(paceIdStr);
-				processPaceQueue(paceId);
-			} catch (Exception e) {
-				log.error("배치 처리 오류 - paceId={}, error={}", paceIdStr, e.getMessage());
+		try {
+			RSet<String> activePaces = redissonClient.getSet(RedisKeyGenerator.queueActivePaces(), StringCodec.INSTANCE);
+			Set<String> paceIds = activePaces.readAll();
+
+			for (String paceIdStr : paceIds) {
+				try {
+					Long paceId = Long.parseLong(paceIdStr);
+					processPaceQueue(paceId);
+				} catch (Exception e) {
+					log.error("배치 처리 오류 - paceId={}, error={}", paceIdStr, e.getMessage());
+				}
 			}
+		} finally {
+			queueMetrics.stopBatchTimer(sample);
 		}
 	}
 
@@ -87,6 +96,14 @@ public class QueueBatchScheduler {
 
 			// 2단계: 남은 배치 여유분만큼 대기열에서 처리
 			issued += processWaitingQueue(waitingSet, paceId, passTtl, retryQueue, batchSize - issued);
+
+			// 메트릭 기록
+			queueMetrics.recordPass(paceId, issued);
+			queueMetrics.updateWaitingSize(paceId, waitingSet.size());
+
+			if (issued > 0) {
+				log.info("[QUEUE] 배치 처리 완료 paceId={}, issued={}, waiting={}", paceId, issued, waitingSet.size());
+			}
 
 			removeActivePaceIfEmpty(paceId);
 		} finally {
@@ -145,6 +162,7 @@ public class QueueBatchScheduler {
 			String passToken = queueTokenGenerator.generatePassToken(userId, paceId);
 			RBucket<String> passBucket = redissonClient.getBucket(passKey, StringCodec.INSTANCE);
 			passBucket.set(passToken, passTtl, TimeUnit.SECONDS);
+			log.info("[QUEUE] 통과 토큰 발급 userId={}, paceId={}", userId, paceId);
 			return true;
 		} catch (Exception e) {
 			int nextRetry = retryCount + 1;
