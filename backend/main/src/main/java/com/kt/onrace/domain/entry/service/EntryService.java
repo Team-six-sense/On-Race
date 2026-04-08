@@ -85,6 +85,8 @@ public class EntryService {
 
 		entryRepository.save(entry);
 
+		log.info("[ENTRY] 사전정보 저장 userId={}, eventId={}, courseId={}, paceId={}", userId, eventId, request.courseId(), request.paceId());
+
 		return EntryPreSaveResponse.from(entry);
 	}
 
@@ -152,6 +154,8 @@ public class EntryService {
 
 		entryRepository.deleteByUserIdAndEventId(userId, eventId);
 
+		log.info("[ENTRY] 사전정보 삭제 userId={}, eventId={}, entryId={}", userId, eventId, entry.getId());
+
 		return entry.getId();
 	}
 
@@ -181,6 +185,9 @@ public class EntryService {
 		EventPace pace = eventPaceRepository.findByIdAndEventCourseIdOrThrow(request.paceId(), request.courseId(),
 				BusinessErrorCode.ENTRY_PACE_NOT_FOUND);
 
+		log.info("[ENTRY] 신청 시작 userId={}, eventId={}, appType={}, courseId={}, paceId={}",
+			userId, eventId, expectedAppType, request.courseId(), request.paceId());
+
 		return switch (event.getAppType()) {
 			case LOTTERY -> applyLottery(userId, event, course, pace);
 			case FIRST_COME -> applyFirstCome(userId, event, course, pace);
@@ -191,6 +198,8 @@ public class EntryService {
 		Entry entry = getCreateEntry(userId, event);
 		entry.apply(course, pace);
 		entryRepository.save(entry);
+
+		log.info("[ENTRY] 추첨 신청 완료 userId={}, eventId={}, entryId={}", userId, event.getId(), entry.getId());
 
 		return EntryApplyResponse.from(entry);
 	}
@@ -206,8 +215,17 @@ public class EntryService {
 		}
 
 		long result = eventStockService.tryReserveStock(pace.getId(), userId);
+
+		if (result == -2) {
+			log.info("[ENTRY] 중복 선점 시도 userId={}, paceId={}", userId, pace.getId());
+		} else if (result == -1) {
+			log.info("[ENTRY] 선착순 매진 userId={}, paceId={}", userId, pace.getId());
+		}
+
 		Preconditions.validate(result != -2, BusinessErrorCode.ENTRY_ALREADY_RESERVED);
 		Preconditions.validate(result != -1, BusinessErrorCode.ENTRY_SOLD_OUT);
+
+		log.info("[ENTRY] 선착순 선점 성공 userId={}, paceId={}, remaining={}", userId, pace.getId(), result);
 
 		entry.reserve(course, pace);
 		entryRepository.save(entry);
@@ -234,16 +252,20 @@ public class EntryService {
 		long available = eventStockService.getTempStock(paceId);
 
 		if(available > 0) {
-			return EntryStockCheckResponse.available(available);
+			EntryStockCheckResponse result = EntryStockCheckResponse.available(available);
+			log.debug("[STOCK] 재고 조회 paceId={}, status={}, available={}", paceId, result.stockStatus(), result.remainingStock());
+			return result;
 		}
 
 		long total = eventStockService.getTotalStock(paceId);
 		long confirmed = eventStockService.getConfirmStock(paceId);
 
 		if(confirmed >= total) {
+			log.debug("[STOCK] 재고 조회 paceId={}, status=SOLD_OUT, available=0", paceId);
 			return EntryStockCheckResponse.soldOut();
 		}
 
+		log.debug("[STOCK] 재고 조회 paceId={}, status=TEMP_SOLD_OUT, available=0", paceId);
 		return EntryStockCheckResponse.tempSoldOut();
 	}
 
@@ -263,6 +285,8 @@ public class EntryService {
 		}
 
 		eventStockRepository.findByEventPaceIdOrThrow(paceId).confirmStock();
+
+		log.info("[ENTRY] 결제 확정 userId={}, paceId={}, appType={}", userId, paceId, type);
 
 		// 왜? 위의 if로 넣지 않느냐 -> 트랜잭션 커밋이 안된 상태에서 redis는 즉시 실행되고 DB 업데이트는 트랜잭션 커밋 시점에 반영되기
 		// 때문에 DB가 실패할 시 redis는 롤백이 안되므로, DB가 성공적으로 끝난 후 redis를 실행하는 것이 맞음
