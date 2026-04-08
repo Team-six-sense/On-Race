@@ -1,15 +1,14 @@
 name: Build and Push to ECR
 
 on:
-  workflow_run:
-    workflows: ["SonarCloud Security Scan"]
-    types: [completed]
+  push:
+    branches:
+      - deploy/integrated-main
   workflow_dispatch:
 
 env:
   AWS_REGION: ap-northeast-2
   ECR_REPOSITORY: t6-on-race-repo
-  # [수정] 태그에 Git 커밋 해시(SHA)를 추가하여 롤백이 가능하도록 합니다.
   IMAGE_TAG: ${{ github.sha }}
 
 permissions:
@@ -19,15 +18,16 @@ permissions:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    # [핵심 수정] 모든 서비스를 병렬로 빌드하기 위한 매트릭스 설정
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [main, auth, gateway, queue]
 
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
-      with:
-        ref: ${{ github.event.workflow_run.head_branch || github.ref }}
 
-    # [추가] Docker Buildx 설정 (캐싱을 위해 필수)
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
@@ -41,19 +41,84 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
 
-    # [핵심 수정] 공식 액션을 사용하여 캐싱과 멀티 태깅 적용
     - name: Build and Push image
       uses: docker/build-push-action@v5
       with:
         context: ./backend
-        # [주의] Dockerfile이 backend/Dockerfile에 위치해야 함
         file: ./backend/Dockerfile
         push: true
+        # [핵심 수정] 빌드 인자로 현재 매트릭스의 서비스명을 전달
         build-args: |
-          SERVICE=main
+          SERVICE=${{ matrix.service }}
+        # [핵심 수정] 서비스별 고유 태그 부여 (예: t6-on-race-repo:main-latest)
         tags: |
-          ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
-          ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
-        # [추가] GitHub Actions 캐시 기능을 사용하여 빌드 속도 극대화
+          ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ matrix.service }}-latest
+          ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ matrix.service }}-${{ env.IMAGE_TAG }}
+        # GitHub Actions 전용 캐시를 사용하여 빌드 속도 최적화
         cache-from: type=gha
         cache-to: type=gha,mode=max
+
+    - name: Summary
+      run: |
+        echo "Successfully built and pushed ${{ matrix.service }} image."
+        echo "Tag: ${{ matrix.service }}-${{ env.IMAGE_TAG }}"
+
+# name: Build and Push to ECR
+
+# on:
+#   workflow_run:
+#     workflows: ["SonarCloud Security Scan"]
+#     types: [completed]
+#   workflow_dispatch:
+
+# env:
+#   AWS_REGION: ap-northeast-2
+#   ECR_REPOSITORY: t6-on-race-repo
+#   # [수정] 태그에 Git 커밋 해시(SHA)를 추가하여 롤백이 가능하도록 합니다.
+#   IMAGE_TAG: ${{ github.sha }}
+
+# permissions:
+#   id-token: write
+#   contents: read
+
+# jobs:
+#   build-and-push:
+#     runs-on: ubuntu-latest
+#     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+
+#     steps:
+#     - name: Checkout Code
+#       uses: actions/checkout@v4
+#       with:
+#         ref: ${{ github.event.workflow_run.head_branch || github.ref }}
+
+#     # [추가] Docker Buildx 설정 (캐싱을 위해 필수)
+#     - name: Set up Docker Buildx
+#       uses: docker/setup-buildx-action@v3
+
+#     - name: Configure AWS credentials
+#       uses: aws-actions/configure-aws-credentials@v4
+#       with:
+#         role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+#         aws-region: ${{ env.AWS_REGION }}
+
+#     - name: Login to Amazon ECR
+#       id: login-ecr
+#       uses: aws-actions/amazon-ecr-login@v2
+
+#     # [핵심 수정] 공식 액션을 사용하여 캐싱과 멀티 태깅 적용
+#     - name: Build and Push image
+#       uses: docker/build-push-action@v5
+#       with:
+#         context: ./backend
+#         # [주의] Dockerfile이 backend/Dockerfile에 위치해야 함
+#         file: ./backend/Dockerfile
+#         push: true
+#         build-args: |
+#           SERVICE=main
+#         tags: |
+#           ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+#           ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+#         # [추가] GitHub Actions 캐시 기능을 사용하여 빌드 속도 극대화
+#         cache-from: type=gha
+#         cache-to: type=gha,mode=max

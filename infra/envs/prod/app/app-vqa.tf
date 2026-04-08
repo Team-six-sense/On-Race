@@ -42,7 +42,7 @@ resource "kubernetes_deployment_v1" "on_race_vqa" {
 
         container {
           name  = "vqa-api"
-          image = "274130523831.dkr.ecr.ap-northeast-2.amazonaws.com/on-race-vqa:latest"
+          image = "274130523831.dkr.ecr.ap-northeast-2.amazonaws.com/on-race-vqa:vqa-${var.image_tag}"
           
           port { container_port = 8000 }
 

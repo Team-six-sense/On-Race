@@ -7,6 +7,7 @@ env:
 
 on:
   workflow_run:
+    # [체크] build-and-push.yml의 name 설정과 반드시 일치해야 합니다.
     workflows: ["Build and Push to ECR"]
     types: [completed]
   workflow_dispatch:
@@ -14,7 +15,7 @@ on:
 jobs:
   terraform:
     runs-on: ubuntu-latest
-    # 직전 빌드가 성공했거나, 수동으로 실행했을 때만 작동
+    # [핵심] 빌드 워크플로가 '성공'했을 때만 실행되도록 제어
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     
     permissions:
@@ -25,6 +26,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
+          # 빌드를 유발한 해당 커밋의 코드를 가져옵니다.
           ref: ${{ github.event.workflow_run.head_branch || github.ref }}
 
       - name: Configure AWS Credentials
@@ -38,7 +40,7 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       # -----------------------------------------------------------
-      # 1. Base Layer (VPC, ECR 등)
+      # 1. Base Layer (VPC, ECR 등 인프라 기초)
       # -----------------------------------------------------------
       - name: 1. Base Layer - Terraform Apply
         working-directory: ./infra/envs/prod/base
@@ -58,39 +60,33 @@ jobs:
       - name: 3. Refresh EKS Access Entry
         run: |
           if aws eks describe-cluster --name ${{ env.CLUSTER_NAME }} --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
-            echo "Access Entry 최신화 중..."
+            aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }}
             aws eks delete-access-entry --cluster-name ${{ env.CLUSTER_NAME }} --principal-arn ${{ secrets.AWS_ROLE_ARN }} || true
             aws eks create-access-entry --cluster-name ${{ env.CLUSTER_NAME }} --principal-arn ${{ secrets.AWS_ROLE_ARN }} --type STANDARD
             aws eks associate-access-policy --cluster-name ${{ env.CLUSTER_NAME }} --principal-arn ${{ secrets.AWS_ROLE_ARN }} --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy --access-scope type=cluster
           fi
 
-      - name: 4. Pre-Cleanup (Remove Stuck Resources)
-        run: |
-          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }} || echo "Cluster not found"
-          # Terminating 상태인 서비스 강제 정리
-          kubectl get svc -A -o json | jq -r '.items[] | select(.metadata.deletionTimestamp != null) | "kubectl patch svc \(.metadata.name) -n \(.metadata.namespace) -p \"{\\\"metadata\\\":{\\\"finalizers\\\":null}}\" --type merge"' | sh || true
-          kubectl delete svc --all --all-namespaces --field-selector type=LoadBalancer --timeout=60s || true
-
       # -----------------------------------------------------------
-      # 5. App Layer - 핵심 배포 (이미지 태그 주입 ⭐)
+      # 5. App Layer - 서비스 배포 (이미지 태그 주입)
       # -----------------------------------------------------------
       - name: 5. App Layer - Terraform Apply
         working-directory: ./infra/envs/prod/app
         run: |
           terraform init -reconfigure
-          # [중요] 빌드된 이미지의 SHA 값을 테라폼 변수로 전달합니다.
+          # [핵심] 빌드 시 사용된 SHA 값을 image_tag 변수로 전달
+          # .tf 파일 내에서 image = "...:main-${var.image_tag}" 형태로 구현되어야 함
           terraform apply -auto-approve -var="image_tag=${{ github.sha }}"
 
       # -----------------------------------------------------------
-      # 6. Post-Deployment (K8s Add-ons)
+      # 6. Post-Deployment (K8s Manifests)
       # -----------------------------------------------------------
       - name: 6. Update Kubeconfig for Manifests
         run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }}
 
       - name: 7. Apply K8s Manifests (Karpenter & KEDA)
+        # 쉘 스크립트 내 EOF 문법 오류 방지를 위해 대시(-) 없이 실행 권장
         run: |
-          # [Karpenter] Node Class & Pool
-          cat <<EOF | kubectl apply -f -
+          kubectl apply -f - <<EOF
           apiVersion: karpenter.k8s.aws/v1
           kind: EC2NodeClass
           metadata:
@@ -129,8 +125,7 @@ jobs:
               consolidateAfter: 1m
           EOF
 
-          # [KEDA] Auto Scaler
-          cat <<EOF | kubectl apply -f -
+          kubectl apply -f - <<EOF
           apiVersion: keda.sh/v1alpha1
           kind: ScaledObject
           metadata:
@@ -149,3 +144,155 @@ jobs:
                   threshold: "50"
                   query: "sum(rate(onrace_tps_requests_total{result=\"allowed\"}[1m]))"
           EOF
+
+# name: "On-Race-Infra-CD"
+
+# env:
+#   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+#   AWS_REGION: ap-northeast-2
+#   CLUSTER_NAME: t6-on-race-prod-cluster
+
+# on:
+#   workflow_run:
+#     workflows: ["Build and Push to ECR"]
+#     types: [completed]
+#   workflow_dispatch:
+
+# jobs:
+#   terraform:
+#     runs-on: ubuntu-latest
+#     # 직전 빌드가 성공했거나, 수동으로 실행했을 때만 작동
+#     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    
+#     permissions:
+#       id-token: write
+#       contents: read
+    
+#     steps:
+#       - name: Checkout Code
+#         uses: actions/checkout@v4
+#         with:
+#           ref: ${{ github.event.workflow_run.head_branch || github.ref }}
+
+#       - name: Configure AWS Credentials
+#         uses: aws-actions/configure-aws-credentials@v4
+#         with:
+#           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+#           aws-region: ${{ env.AWS_REGION }}
+#           role-duration-seconds: 14400
+
+#       - name: Setup Terraform
+#         uses: hashicorp/setup-terraform@v3
+
+#       # -----------------------------------------------------------
+#       # 1. Base Layer (VPC, ECR 등)
+#       # -----------------------------------------------------------
+#       - name: 1. Base Layer - Terraform Apply
+#         working-directory: ./infra/envs/prod/base
+#         run: |
+#           terraform init -reconfigure
+#           terraform apply -auto-approve
+
+#       # -----------------------------------------------------------
+#       # 2. App Layer 환경 준비 (Certs & Access)
+#       # -----------------------------------------------------------
+#       - name: 2. Create VQA Private Key
+#         run: |
+#           mkdir -p infra/envs/prod/app/certs
+#           echo "${{ secrets.VQA_PRIVATE_KEY }}" > infra/envs/prod/app/certs/vqa_private_key.pem
+#           chmod 600 infra/envs/prod/app/certs/vqa_private_key.pem
+
+#       - name: 3. Refresh EKS Access Entry
+#         run: |
+#           if aws eks describe-cluster --name ${{ env.CLUSTER_NAME }} --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
+#             echo "Access Entry 최신화 중..."
+#             aws eks delete-access-entry --cluster-name ${{ env.CLUSTER_NAME }} --principal-arn ${{ secrets.AWS_ROLE_ARN }} || true
+#             aws eks create-access-entry --cluster-name ${{ env.CLUSTER_NAME }} --principal-arn ${{ secrets.AWS_ROLE_ARN }} --type STANDARD
+#             aws eks associate-access-policy --cluster-name ${{ env.CLUSTER_NAME }} --principal-arn ${{ secrets.AWS_ROLE_ARN }} --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy --access-scope type=cluster
+#           fi
+
+#       - name: 4. Pre-Cleanup (Remove Stuck Resources)
+#         run: |
+#           aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }} || echo "Cluster not found"
+#           # Terminating 상태인 서비스 강제 정리
+#           kubectl get svc -A -o json | jq -r '.items[] | select(.metadata.deletionTimestamp != null) | "kubectl patch svc \(.metadata.name) -n \(.metadata.namespace) -p \"{\\\"metadata\\\":{\\\"finalizers\\\":null}}\" --type merge"' | sh || true
+#           kubectl delete svc --all --all-namespaces --field-selector type=LoadBalancer --timeout=60s || true
+
+#       # -----------------------------------------------------------
+#       # 5. App Layer - 핵심 배포 (이미지 태그 주입 ⭐)
+#       # -----------------------------------------------------------
+#       - name: 5. App Layer - Terraform Apply
+#         working-directory: ./infra/envs/prod/app
+#         run: |
+#           terraform init -reconfigure
+#           # [중요] 빌드된 이미지의 SHA 값을 테라폼 변수로 전달합니다.
+#           terraform apply -auto-approve -var="image_tag=${{ github.sha }}"
+
+#       # -----------------------------------------------------------
+#       # 6. Post-Deployment (K8s Add-ons)
+#       # -----------------------------------------------------------
+#       - name: 6. Update Kubeconfig for Manifests
+#         run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }}
+
+#       - name: 7. Apply K8s Manifests (Karpenter & KEDA)
+#         run: |
+#           # [Karpenter] Node Class & Pool
+#           cat <<EOF | kubectl apply -f -
+#           apiVersion: karpenter.k8s.aws/v1
+#           kind: EC2NodeClass
+#           metadata:
+#             name: default
+#           spec:
+#             amiFamily: AL2023
+#             role: t6-on-race-karpenter-node-role
+#             subnetSelectorTerms: [{ tags: { "karpenter.sh/discovery": "${{ env.CLUSTER_NAME }}" } }]
+#             securityGroupSelectorTerms: [{ tags: { "karpenter.sh/discovery": "${{ env.CLUSTER_NAME }}" } }]
+#             amiSelectorTerms: [{ alias: "al2023@latest" }]
+#             metadataOptions:
+#               httpTokens: required
+#               httpPutResponseHopLimit: 2
+#               httpEndpoint: enabled
+#           ---
+#           apiVersion: karpenter.sh/v1
+#           kind: NodePool
+#           metadata:
+#             name: default
+#           spec:
+#             template:
+#               spec:
+#                 nodeClassRef:
+#                   group: karpenter.k8s.aws
+#                   kind: EC2NodeClass
+#                   name: default
+#                 requirements:
+#                   - key: karpenter.sh/capacity-type
+#                     operator: In
+#                     values: ["spot"]
+#                   - key: kubernetes.io/arch
+#                     operator: In
+#                     values: ["amd64"]
+#             disruption:
+#               consolidationPolicy: WhenEmptyOrUnderutilized
+#               consolidateAfter: 1m
+#           EOF
+
+#           # [KEDA] Auto Scaler
+#           cat <<EOF | kubectl apply -f -
+#           apiVersion: keda.sh/v1alpha1
+#           kind: ScaledObject
+#           metadata:
+#             name: on-race-api-scaler
+#             namespace: t6-on-race-prod
+#           spec:
+#             scaleTargetRef:
+#               name: on-race-api
+#             minReplicaCount: 2
+#             maxReplicaCount: 300
+#             triggers:
+#               - type: prometheus
+#                 metadata:
+#                   serverAddress: http://t6-on-race-prometheus-server.monitoring.svc.cluster.local:80
+#                   metricName: onrace_tps_requests_total
+#                   threshold: "50"
+#                   query: "sum(rate(onrace_tps_requests_total{result=\"allowed\"}[1m]))"
+#           EOF
