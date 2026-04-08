@@ -13,7 +13,8 @@ module "vpc" {
   database_subnets = var.database_subnets
 
   # 운영 환경 안정성을 위해 가용영역별 NAT Gateway 생성을 권장하나, 현재는 비용 절감(Single) 유지
-  single_nat_gateway = var.single_nat_gateway
+  #single_nat_gateway = var.single_nat_gateway
+  single_nat_gateway = false # AZ별로 NAT Gateway를 생성하여 통신 경로 이중화
 }
 
 # 2. DB 암호 자동 생성 및 관리 (하드코딩 완전 제거)
@@ -57,15 +58,16 @@ module "data" {
   # 비밀번호 직접 주입과 ARN 주입을 병행하여 모듈 내부의 유연성 확보
   db_password       = random_password.db_password.result
   db_secret_arn     = aws_secretsmanager_secret.db_secret.arn
-
+  
+  /*
   redis_node_type            = "cache.t4g.micro" # [수정] 대폭 하향
   automatic_failover_enabled = false             # [수정] 단일 노드 운영을 위해 false
   num_cache_clusters         = 1                 # [수정] 2 -> 1
-  /*
-  redis_node_type            = "cache.t4g.medium"
+  */
+  redis_node_type            = "cache.t4g.micro" # medium -> micro 변경(비용 문제)
   automatic_failover_enabled = true
   num_cache_clusters         = 2
-  */
+  
 }
 
 # 4. SQS 대기열 모듈 호출 (KEDA 스케일링 소스)

@@ -130,7 +130,7 @@ resource "aws_route_table_association" "database" {
 # 10. VPC Interface & Gateway Endpoints
 locals {
   # KMS 복호화 타임아웃 방지를 위해 kms 추가
-  endpoint_services = ["sqs", "sts", "logs", "monitoring", "ecr.dkr", "ecr.api", "kms"]
+  endpoint_services = ["sqs", "sts", "logs", "monitoring", "ecr.dkr", "ecr.api", "secretsmanager", "kms"]
 }
 
 resource "aws_vpc_endpoint" "interface" {

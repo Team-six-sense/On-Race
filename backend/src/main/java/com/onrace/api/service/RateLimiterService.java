@@ -44,25 +44,25 @@ public class RateLimiterService {
     }
 
     public boolean isAllowed(String groupId) {
-        // 2. 로컬 캐시에서 먼저 조회 (없을 경우에만 Redis 접근)
-        int currentLimit = tpsConfigCache.get(CONFIG_KEY, key -> {
-            log.debug("[RateLimiter] Redis에서 최신 설정값 조회 수행");
-            String dynamicLimitStr = redisTemplate.opsForValue().get(key);
-            if (dynamicLimitStr != null) {
+        // [수정 1] 로컬 캐시 조회 시 예외 처리 완결 (HTTP 500 방지)
+        int currentLimit;
+        try {
+            currentLimit = tpsConfigCache.get(CONFIG_KEY, key -> {
                 try {
-                    return Integer.parseInt(dynamicLimitStr);
-                } catch (NumberFormatException e) {
-                    log.warn("[RateLimiter] 설정값 형식 오류: {}. 기본값 사용", dynamicLimitStr);
+                    String dynamicLimitStr = redisTemplate.opsForValue().get(key);
+                    return (dynamicLimitStr != null) ? Integer.parseInt(dynamicLimitStr) : defaultTpsLimit;
+                } catch (Exception e) {
+                    log.warn("[RateLimiter] Redis 설정값 로드 실패. 기본값({}) 사용: {}", defaultTpsLimit, e.getMessage());
+                    return defaultTpsLimit;
                 }
-            }
-            return defaultTpsLimit;
-        });
+            });
+        } catch (Exception e) {
+            currentLimit = defaultTpsLimit;
+        }
 
         try {
-            // 3. 현재 초 단위 키 생성
             String key = "tps:" + groupId + ":" + (System.currentTimeMillis() / 1000);
 
-            // 4. Lua 스크립트 실행
             Object result = redisTemplate.execute(tpsLimitScript, 
                     Collections.singletonList(key), 
                     String.valueOf(currentLimit), "2");
@@ -73,9 +73,10 @@ public class RateLimiterService {
             return allowed;
 
         } catch (Exception e) {
-            log.error("[RateLimiter] Redis 장애 발생 - 유입 제어 일시 해제 (Group: {})", groupId, e);
+            // [수정 2] DB 연쇄 장애(Cascading Failure) 방지를 위해 Fail-Closed 정책 적용
+            log.error("[RateLimiter] Redis 장애 발생 - 인프라 보호를 위해 유입 전면 차단 (Group: {})", groupId, e);
             recordMetric(groupId, "error"); 
-            return true; 
+            return false; 
         }
     }
 

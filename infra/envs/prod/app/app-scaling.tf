@@ -115,33 +115,23 @@ resource "kubernetes_manifest" "on_race_tps_scaler" {
 
       triggers = [
         {
-          type = "cron"
-          metadata = {
-            timezone        = "Asia/Seoul"
-            # [수정] 티켓팅 1시간 전(20:10)부터 100대 확보 유지
-            start           = "10 20 * * *" 
-            end             = "10 21 * * *" 
-            desiredReplicas = "100"
-          }
-        },
-        {
           type = "prometheus"
           metadata = {
             serverAddress = "http://t6-on-race-prometheus-server.monitoring.svc.cluster.local:80"
             metricName    = "onrace_tps_requests_total"
-            threshold     = "50" # 파드당 50 TPS 기준 (300대 시 총 35,000 TPS 수용)
+            threshold     = "50" 
             query         = "sum(rate(onrace_tps_requests_total{result=\"allowed\"}[1m]))"
           }
-        },
+        }, # 콤마 확인
         {
           type = "aws-sqs-queue"
           metadata = {
             queueURL      = data.terraform_remote_state.base.outputs.queue_url
             awsRegion     = var.aws_region
-            queueLength   = "10" # 대기열 10개당 파드 1대 추가
+            queueLength   = "10" 
             identityOwner = "operator"
           }
-        }
+        } # 여기 뒤에 콤마가 없는 상태에서 주석이 시작되어야 합니다.
       ]
     }
   }

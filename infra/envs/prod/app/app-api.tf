@@ -44,12 +44,12 @@ locals {
 
 # 5. 보안 그룹 규칙: EKS 노드 -> RDS Proxy / Redis 접속 허용
 resource "aws_security_group_rule" "eks_to_rds_proxy" {
-  type                     = "ingress"
-  from_port                = 3306
-  to_port                  = 3306
-  protocol                 = "tcp"
-  security_group_id        = data.terraform_remote_state.base.outputs.rds_proxy_sg_id
-  source_security_group_id = module.eks.node_security_group_id
+  type              = "ingress"
+  from_port         = 3306
+  to_port           = 3306
+  protocol          = "tcp"
+  security_group_id = data.terraform_remote_state.base.outputs.rds_proxy_sg_id
+  cidr_blocks       = [data.terraform_remote_state.base.outputs.vpc_cidr] # [수정] 보안 그룹 ID 대신 VPC CIDR 대역 사용
 }
 
 resource "aws_security_group_rule" "eks_to_redis" {
@@ -60,8 +60,8 @@ resource "aws_security_group_rule" "eks_to_redis" {
   security_group_id        = data.terraform_remote_state.base.outputs.redis_sg_id
   source_security_group_id = module.eks.node_security_group_id
 }
-
-# 7. 메인 API Deployment (Java 21 최적화 및 AI 연동)
+  
+# 7. 메인 API Deployment (Java 21 최적화 및 RDS Proxy 연동)
 resource "kubernetes_deployment_v1" "on_race_api" {
   metadata {
     name      = "on-race-api"
@@ -84,13 +84,6 @@ resource "kubernetes_deployment_v1" "on_race_api" {
       spec {
         service_account_name = kubernetes_service_account_v1.api_sa.metadata[0].name
 
-        # AI 서버 기동 전까지 API 기동을 대기시키는 초기화 컨테이너
-        init_container {
-          name  = "wait-for-ai-macro"
-          image = "public.ecr.aws/docker/library/busybox:latest"
-          command = ["sh", "-c", "until nc -z ${aws_instance.ai_macro_detector[0].private_ip} 8000; do echo 'Waiting for AI Macro EC2...'; sleep 3; done"]
-        }
-
         container {
           name  = "api"
           image = "${data.terraform_remote_state.base.outputs.ecr_repository_url}:${var.image_tag}"
@@ -98,33 +91,18 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           image_pull_policy = "Always"
           port { container_port = 8080 }
 
-          # [운영 설정] Spring Boot 프로파일 지정
           env {
             name  = "SPRING_PROFILES_ACTIVE"
             value = "prod"
           }
 
-          # [Java 21 최적화] JVM 옵션에 운영 프로파일 명시적 추가
+          # [진단 반영] JVM 시스템 프로퍼티를 통한 JDBC URL 강제 주입
           env {
             name  = "JAVA_TOOL_OPTIONS"
-            value = "-Dspring.profiles.active=prod -XX:InitialRAMPercentage=75.0 -XX:MaxRAMPercentage=75.0 -XX:MinRAMPercentage=75.0"
+            value = "-Dspring.datasource.url=jdbc:mysql://${data.terraform_remote_state.base.outputs.rds_proxy_endpoint}:3306/onrace?sslMode=REQUIRED&useSSL=true&verifyServerCertificate=false&allowPublicKeyRetrieval=true -Dspring.profiles.active=prod -XX:InitialRAMPercentage=75.0 -XX:MaxRAMPercentage=75.0 -XX:MinRAMPercentage=75.0"
           }
 
-          # [VQA] CloudFront Signed URL 관련 환경 변수
-          env {
-            name  = "CLOUDFRONT_KEY_ID"
-            value = aws_cloudfront_public_key.vqa_key_v2.id
-          }
-          env {
-            name  = "CLOUDFRONT_DOMAIN"
-            value = "https://cdn.on-race.com"
-          }
-          env {
-            name  = "PRIVATE_KEY_PATH"
-            value = "/app/certs/vqa_private_key.pem"
-          }
-
-          # 인프라 연결 설정 (DB, SQS, Redis)
+          # [진단 반영] YAML 요구 변수 (${DB_ENDPOINT} 등)
           env {
             name  = "DB_ENDPOINT"
             value = data.terraform_remote_state.base.outputs.rds_proxy_endpoint
@@ -137,21 +115,50 @@ resource "kubernetes_deployment_v1" "on_race_api" {
             name  = "DB_PASSWORD"
             value = local.db_creds.password
           }
+
+          # [진단 반영] 앱 코드/로그 요구 변수 (${MAIN_DB_HOST} 등)
           env {
-            name  = "SQS_QUEUE_URL"
-            value = data.terraform_remote_state.base.outputs.queue_url
+            name  = "MAIN_DB_HOST"
+            value = data.terraform_remote_state.base.outputs.rds_proxy_endpoint
           }
           env {
+            name  = "MAIN_DB_PORT"
+            value = "3306"
+          }
+          env {
+            name  = "MAIN_DB_USERNAME"
+            value = local.db_creds.username
+          }
+          env {
+            name  = "MAIN_DB_PASSWORD"
+            value = local.db_creds.password
+          }
+
+          # [문법 수정] 세미콜론 제거 및 줄바꿈 적용
+          env {
             name  = "SPRING_REDIS_HOST"
-            value = "127.0.0.1" # Stunnel 사이드카를 통한 루프백 통신
+            value = "127.0.0.1"
           }
           env {
             name  = "SPRING_REDIS_PORT"
             value = "6379"
           }
           env {
+            name  = "SQS_QUEUE_URL"
+            value = data.terraform_remote_state.base.outputs.queue_url
+          }
+          env {
             name  = "AI_MODEL_URL"
-            value = "http://${aws_instance.ai_macro_detector[0].private_ip}:8000"
+            value = "http://ai-model.on-race.local:8000"
+          }
+
+          env {
+            name  = "CLOUDFRONT_KEY_ID"
+            value = aws_cloudfront_public_key.vqa_key_v2.id
+          }
+          env {
+            name  = "CLOUDFRONT_DOMAIN"
+            value = "https://cdn.on-race.com"
           }
 
           volume_mount {
@@ -160,12 +167,20 @@ resource "kubernetes_deployment_v1" "on_race_api" {
             read_only  = true
           }
 
+          env {
+            name  = "SPRING_DATA_REDIS_SENTINEL_MASTER"
+            value = "mymaster"
+          }
+          env {
+            name  = "SPRING_DATA_REDIS_SENTINEL_NODES"
+            value = "127.0.0.1:6379"
+          }
+
           resources {
-            requests = { cpu = "500m", memory = "1.5Gi" }
+            requests = { cpu = "250m", memory = "800Mi" } # 500m -> 250m으로 하향
             limits   = { cpu = "1200m", memory = "2Gi" }
           }
 
-          # [수정] Startup Probe: 포트를 8000에서 실제 앱 포트인 8080으로 교정
           startup_probe {
             tcp_socket { port = 8080 } 
             initial_delay_seconds = 10
@@ -190,23 +205,27 @@ resource "kubernetes_deployment_v1" "on_race_api" {
             initial_delay_seconds = 60
             period_seconds        = 15
           }
+        }
 
-          lifecycle {
-            pre_stop {
-              exec { command = ["sh", "-c", "sleep 10"] }
-            }
+        topology_spread_constraint {
+          max_skew           = 1
+          topology_key       = "topology.kubernetes.io/zone" # AZ 기준 분산
+          when_unsatisfiable = "DoNotSchedule"
+          label_selector {
+            match_labels = { app = "on-race-api" }
           }
         }
 
-        # Redis TLS 보안 통신을 위한 Stunnel 사이드카
+        # Redis TLS 보안 통신 사이드카
         container {
           name  = "stunnel"
           image = "dweomer/stunnel:latest"
           port  { container_port = 6379 }
-
+          
+          # [핵심 수정 3] Stunnel 필수 환경 변수 보강
           env {
             name  = "STUNNEL_SERVICE"
-            value = "redis-tls"
+            value = "redis-stunnel"
           }
           env {
             name  = "STUNNEL_ACCEPT"
@@ -215,11 +234,6 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           env {
             name  = "STUNNEL_CONNECT"
             value = "${data.terraform_remote_state.base.outputs.redis_endpoint}:6379"
-          }
-
-          resources {
-            requests = { cpu = "50m", memory = "64Mi" }
-            limits   = { cpu = "100m", memory = "128Mi" }
           }
           volume_mount {
             name       = "stunnel-conf"
@@ -275,10 +289,17 @@ resource "kubernetes_service_v1" "on_race_api" {
   }
 
   # [유지] 삭제 시 'Finalizer' 고착 방지를 위한 안전장치
-  provisioner "local-exec" {
+  /*provisioner "local-exec" {
     when    = destroy
-    command = "kubectl patch svc ${self.metadata[0].name} -n ${self.metadata[0].namespace} -p '{\"metadata\":{\"finalizers\":null}}' --type merge || true"
-  }
+    # Heredoc 방식을 사용하여 따옴표 꼬임을 방지합니다.
+    command = <<EOT
+      $patchJson = '{"metadata":{"finalizers":null}}'
+      kubectl patch svc t6-on-race-api -n t6-on-race-prod -p $patchJson --type merge
+    EOT
+
+    # 윈도우 환경에서 변수 처리를 위해 PowerShell 필수 지정
+    interpreter = ["PowerShell", "-Command"]
+  }*/
 }
 
 # 9. Stunnel ConfigMap
@@ -288,12 +309,27 @@ resource "kubernetes_config_map_v1" "redis_stunnel_conf" {
     namespace = kubernetes_namespace_v1.app.metadata[0].name
   }
   data = {
-    "stunnel.conf" = <<EOF
+    "stunnel.conf" = <<-EOF
 foreground = yes
+delay = yes
 [redis-tls]
 client = yes
 accept = 127.0.0.1:6379
 connect = ${data.terraform_remote_state.base.outputs.redis_endpoint}:6379
 EOF
+  }
+}
+
+# 10. API 가용성 보장 정책
+resource "kubernetes_pod_disruption_budget_v1" "api_pdb" {
+  metadata {
+    name      = "on-race-api-pdb"
+    namespace = kubernetes_namespace_v1.app.metadata[0].name
+  }
+  spec {
+    min_available = 1  # 어떤 상황에서도 최소 파드 1개는 가동 상태를 유지함
+    selector {
+      match_labels = { app = "on-race-api" }
+    }
   }
 }

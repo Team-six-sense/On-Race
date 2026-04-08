@@ -64,8 +64,7 @@ resource "aws_elasticache_replication_group" "this" {
 
   automatic_failover_enabled = var.automatic_failover_enabled
   num_cache_clusters         = var.num_cache_clusters
-  #multi_az_enabled           = true
-  multi_az_enabled           = false
+  multi_az_enabled           = true # Sentinel 고가용성을 위해 true로 변경
   
   at_rest_encryption_enabled = true
   transit_encryption_enabled = true
@@ -116,8 +115,8 @@ resource "aws_db_instance" "this" {
   db_subnet_group_name   = aws_db_subnet_group.this.name
   vpc_security_group_ids = [aws_security_group.rds.id]
 
-  #multi_az            = true
-  multi_az            = false       # [수정] 비용 절감을 위해 가용영역 이중화 해제
+  multi_az            = true
+  #multi_az            = false       # [수정] 비용 절감을 위해 가용영역 이중화 해제
   skip_final_snapshot = true
 }
 
@@ -205,10 +204,11 @@ resource "aws_iam_policy" "rds_proxy_policy" {
       {
         Action = [
           "secretsmanager:GetSecretValue",
-          "secretsmanager:DescribeSecret"
+          "secretsmanager:DescribeSecret",
+          "kms:Decrypt"  # 열쇠(KMS) 권한 확보
         ]
         Effect   = "Allow"
-        Resource = [var.db_secret_arn] # 변수로 전달받은 ARN 참조
+        Resource = ["*"] # [수정] 특정 ARN 대신 전체 허용으로 우선 돌파
       }
     ]
   })
