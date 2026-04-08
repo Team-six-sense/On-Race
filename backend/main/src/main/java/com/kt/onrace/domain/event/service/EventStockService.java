@@ -63,8 +63,8 @@ public class EventStockService {
 
 		stockMetrics.recordReserveResult(paceId, result);
 
-		log.info("[STOCK] 재고 선점 paceId={}, userId={}, result={}", paceId, userId,
-			result >= 0 ? "성공(남은:" + result + ")" : result == -1 ? "매진" : "중복");
+		String resultDesc = result >= 0 ? "성공(남은:" + result + ")" : result == -1 ? "매진" : "중복";
+		log.info("[STOCK] 재고 선점 paceId={}, userId={}, result={}", paceId, userId, resultDesc);
 
 		return result;
 	}

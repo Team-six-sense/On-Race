@@ -16,6 +16,8 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class QueueMetrics {
 
+	private static final String TAG_PACE_ID = "paceId";
+
 	private final MeterRegistry registry;
 	private final ConcurrentHashMap<Long, AtomicLong> waitingSizeMap = new ConcurrentHashMap<>();
 
@@ -28,7 +30,7 @@ public class QueueMetrics {
 	public void recordEnter(Long paceId) {
 		if (registry == null) return;
 		Counter.builder("queue.enter.total")
-			.tag("paceId", String.valueOf(paceId))
+			.tag(TAG_PACE_ID, String.valueOf(paceId))
 			.register(registry)
 			.increment();
 	}
@@ -37,7 +39,7 @@ public class QueueMetrics {
 	public void recordPass(Long paceId, int count) {
 		if (registry == null || count <= 0) return;
 		Counter.builder("queue.pass.total")
-			.tag("paceId", String.valueOf(paceId))
+			.tag(TAG_PACE_ID, String.valueOf(paceId))
 			.register(registry)
 			.increment(count);
 	}
@@ -60,7 +62,7 @@ public class QueueMetrics {
 		AtomicLong gauge = waitingSizeMap.computeIfAbsent(paceId, id -> {
 			AtomicLong value = new AtomicLong(0);
 			Gauge.builder("queue.waiting.size", value, AtomicLong::doubleValue)
-				.tag("paceId", String.valueOf(id))
+				.tag(TAG_PACE_ID, String.valueOf(id))
 				.register(registry);
 			return value;
 		});

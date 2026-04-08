@@ -217,9 +217,9 @@ public class EntryService {
 		long result = eventStockService.tryReserveStock(pace.getId(), userId);
 
 		if (result == -2) {
-			log.warn("[ENTRY] 중복 선점 시도 userId={}, paceId={}", userId, pace.getId());
+			log.info("[ENTRY] 중복 선점 시도 userId={}, paceId={}", userId, pace.getId());
 		} else if (result == -1) {
-			log.warn("[ENTRY] 선착순 매진 userId={}, paceId={}", userId, pace.getId());
+			log.info("[ENTRY] 선착순 매진 userId={}, paceId={}", userId, pace.getId());
 		}
 
 		Preconditions.validate(result != -2, BusinessErrorCode.ENTRY_ALREADY_RESERVED);
@@ -253,7 +253,7 @@ public class EntryService {
 
 		if(available > 0) {
 			EntryStockCheckResponse result = EntryStockCheckResponse.available(available);
-			log.info("[STOCK] 재고 조회 paceId={}, status={}, available={}", paceId, result.stockStatus(), result.remainingStock());
+			log.debug("[STOCK] 재고 조회 paceId={}, status={}, available={}", paceId, result.stockStatus(), result.remainingStock());
 			return result;
 		}
 
@@ -261,11 +261,11 @@ public class EntryService {
 		long confirmed = eventStockService.getConfirmStock(paceId);
 
 		if(confirmed >= total) {
-			log.info("[STOCK] 재고 조회 paceId={}, status=SOLD_OUT, available=0", paceId);
+			log.debug("[STOCK] 재고 조회 paceId={}, status=SOLD_OUT, available=0", paceId);
 			return EntryStockCheckResponse.soldOut();
 		}
 
-		log.info("[STOCK] 재고 조회 paceId={}, status=TEMP_SOLD_OUT, available=0", paceId);
+		log.debug("[STOCK] 재고 조회 paceId={}, status=TEMP_SOLD_OUT, available=0", paceId);
 		return EntryStockCheckResponse.tempSoldOut();
 	}
 
