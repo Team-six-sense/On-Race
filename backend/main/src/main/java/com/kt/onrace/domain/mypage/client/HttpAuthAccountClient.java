@@ -24,10 +24,12 @@ public class HttpAuthAccountClient implements AuthAccountClient {
 
 	public HttpAuthAccountClient(
 		RestClient.Builder restClientBuilder,
-		@Value("${api.url.auth}") String authServiceUrl
+		@Value("${api.url.auth}") String authServiceUrl,
+		@Value("${gateway.internal.secret}") String gatewaySecret
 	) {
 		this.restClient = restClientBuilder
 			.baseUrl(authServiceUrl)
+			.defaultHeader("X-Gateway-Token", gatewaySecret)
 			.build();
 	}
 
