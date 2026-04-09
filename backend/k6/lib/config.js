@@ -19,7 +19,7 @@ export const USER_PASSWORD = __ENV.USER_PASSWORD || 'Test1234!@';
 
 // === 로그인 설정 ===
 export const LOGIN_TIMEOUT    = __ENV.LOGIN_TIMEOUT || '120s';
-export const LOGIN_BATCH_SIZE = parseInt(__ENV.LOGIN_BATCH_SIZE || '50');
+export const LOGIN_BATCH_SIZE = parseInt(__ENV.LOGIN_BATCH_SIZE || '2');  // Auth 서비스가 로그인당 DB 커넥션 2개 사용 (login + loginHistory)
 
 // === 페이스 배분 (70% HOT, 30% 기타) ===
 export const HOT_PACE_RATIO = parseFloat(__ENV.HOT_PACE_RATIO || '0.7');
