@@ -42,7 +42,10 @@ resource "kubernetes_deployment_v1" "on_race_vqa" {
 
         container {
           name  = "vqa-api"
-          image = "274130523831.dkr.ecr.ap-northeast-2.amazonaws.com/on-race-vqa:vqa-${var.image_tag}"
+          image = "${data.terraform_remote_state.base.outputs.vqa_ecr_repository_url}:latest"
+
+          # [추가] :latest 태그 덮어쓰기 배포 시 새 이미지 다운로드 강제
+          image_pull_policy = "Always"
           
           port { container_port = 8000 }
 
@@ -118,5 +121,24 @@ resource "kubernetes_pod_disruption_budget_v1" "vqa_pdb" {
     selector {
       match_labels = { app = "on-race-vqa" }
     }
+  }
+}
+
+# AI 팀원이 EKS에 접근할 수 있도록 클러스터 레벨 권한 부여
+resource "aws_eks_access_entry" "ai_team_eks_access" {
+  cluster_name  = module.eks.cluster_name
+  principal_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/on-race-ai-dev1"
+  type          = "STANDARD"
+}
+
+# AI 팀원에게 VQA가 있는 네임스페이스 한정으로 파드 편집/재시작 권한 부여
+resource "aws_eks_access_policy_association" "ai_team_eks_policy_assoc" {
+  cluster_name  = module.eks.cluster_name
+  principal_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/on-race-ai-dev1"
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSEditPolicy"
+
+  access_scope {
+    type       = "namespace"
+    namespaces = [kubernetes_namespace_v1.app.metadata[0].name] # t6-on-race-prod 자동 참조
   }
 }

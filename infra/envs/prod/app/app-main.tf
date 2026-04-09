@@ -4,7 +4,7 @@
 data "terraform_remote_state" "base" {
   backend = "s3"
   config = {
-    bucket = "t6-on-race-terraform-state-prod"
+    bucket = "t6-on-race-tfstate-916228846377-ap-northeast-2-an"
     key    = "prod/base/terraform.tfstate"
     region = "ap-northeast-2"
   }

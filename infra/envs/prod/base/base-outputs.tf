@@ -113,3 +113,8 @@ output "ai_vqa_oac_id" {
   description = "AI VQA CloudFront OAC ID"
   value       = aws_cloudfront_origin_access_control.ai_vqa.id
 }
+
+output "vqa_ecr_repository_url" {
+  description = "VQA ECR 리포지토리 URL"
+  value       = aws_ecr_repository.vqa_repo.repository_url
+}

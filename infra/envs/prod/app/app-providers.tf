@@ -7,7 +7,7 @@ terraform {
     time       = { source = "hashicorp/time", version = "~> 0.9.1" }
   }
   backend "s3" {
-    bucket       = "t6-on-race-terraform-state-prod"
+    bucket       = "t6-on-race-tfstate-916228846377-ap-northeast-2-an"
     key          = "prod/app/terraform.tfstate"
     region       = "ap-northeast-2"
     encrypt      = true

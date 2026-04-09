@@ -30,6 +30,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: t6-on-race-scg-service
+                name: t6-on-race-scg
                 port:
                   number: 8080

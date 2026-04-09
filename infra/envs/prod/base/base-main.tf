@@ -1,4 +1,9 @@
-# 1. VPC 모듈 호출 (700개 이상의 파드 수용을 위한 네트워크 기초)
+# 0. RDS 서비스 연결 역할 (신규 계정 RDS Proxy 생성 에러 해결)
+resource "aws_iam_service_linked_role" "rds" {
+  aws_service_name = "rds.amazonaws.com"
+}
+
+# 1. VPC 모듈 호출
 module "vpc" {
   source = "../../../modules/vpc"
 
@@ -7,24 +12,20 @@ module "vpc" {
   vpc_cidr     = var.vpc_cidr
   azs          = var.azs
 
-  # 700~1000개 파드 확장을 위해 /22(1,024개 IP) 이상의 대역 주입 권장
   private_subnets  = var.private_subnets
   public_subnets   = var.public_subnets
   database_subnets = var.database_subnets
 
-  # 운영 환경 안정성을 위해 가용영역별 NAT Gateway 생성을 권장하나, 현재는 비용 절감(Single) 유지
-  #single_nat_gateway = var.single_nat_gateway
-  single_nat_gateway = false # AZ별로 NAT Gateway를 생성하여 통신 경로 이중화
+  single_nat_gateway = false 
 }
 
-# 2. DB 암호 자동 생성 및 관리 (하드코딩 완전 제거)
+# 2. DB 암호 자동 생성 및 Secrets Manager 설정
 resource "random_password" "db_password" {
   length           = 16
   special          = true
   override_special = "!#$%&*()-_=+[]{}<>:?"
 }
 
-# Secret Manager 설정
 resource "aws_secretsmanager_secret" "db_secret" {
   name                    = "${var.project_name}-${var.environment}-db-password-v4"
   description             = "On-Race RDS Root Password Managed by Terraform"
@@ -46,7 +47,7 @@ resource "aws_secretsmanager_secret_version" "db_secret_val" {
   })
 }
 
-# 3. 데이터 계층 모듈 호출 (Secret ARN 주입 확인)
+# 3. 데이터 계층 모듈 (RDS Proxy 의존성 위해 depends_on 권장)
 module "data" {
   source = "../../../modules/data"
 
@@ -54,38 +55,30 @@ module "data" {
   environment       = var.environment
   vpc_id            = module.vpc.vpc_id
   database_subnets  = module.vpc.database_subnets
-
-  # 비밀번호 직접 주입과 ARN 주입을 병행하여 모듈 내부의 유연성 확보
   db_password       = random_password.db_password.result
   db_secret_arn     = aws_secretsmanager_secret.db_secret.arn
   
-  /*
-  redis_node_type            = "cache.t4g.micro" # [수정] 대폭 하향
-  automatic_failover_enabled = false             # [수정] 단일 노드 운영을 위해 false
-  num_cache_clusters         = 1                 # [수정] 2 -> 1
-  */
-  redis_node_type            = "cache.t4g.micro" # medium -> micro 변경(비용 문제)
+  redis_node_type            = "cache.t4g.micro"
   automatic_failover_enabled = true
   num_cache_clusters         = 2
-  
+
+  depends_on = [aws_iam_service_linked_role.rds]
 }
 
-# 4. SQS 대기열 모듈 호출 (KEDA 스케일링 소스)
+# 4. SQS 대기열
 module "queue" {
   source = "../../../modules/queue"
 
   project_name = var.project_name
   environment  = var.environment
-
-  queue_name = "${var.project_name}-waiting-queue.fifo"
-  fifo_queue = true
-
+  queue_name   = "${var.project_name}-waiting-queue.fifo"
+  fifo_queue   = true
   visibility_timeout_seconds = 60
 }
 
-# 5. AI VQA 전용 S3 버킷 및 수명 주기 설정
+# 5. AI VQA S3 버킷 (계정 ID 추가하여 이름 중복 방지)
 resource "aws_s3_bucket" "ai_vqa_data" {
-  bucket = "t6-on-race-ai-vqa-data-prod"
+  bucket = "t6-on-race-ai-vqa-data-916228846377" # 계정 ID 추가
 
   tags = {
     Project = var.project_name
@@ -94,7 +87,6 @@ resource "aws_s3_bucket" "ai_vqa_data" {
   }
 }
 
-# [App에서 이동] S3 퍼블릭 액세스 완전 차단
 resource "aws_s3_bucket_public_access_block" "ai_vqa_block" {
   bucket = aws_s3_bucket.ai_vqa_data.id
 
@@ -111,9 +103,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "ai_vqa_lifecycle" {
     id     = "vqa-temp-cleanup"
     status = "Enabled"
     filter { prefix = "vqa/temp/" }
-    expiration {
-      days = 35
-    }
+    expiration { days = 35 }
   }
 }
 
@@ -128,22 +118,25 @@ resource "aws_ecr_repository" "app_repo" {
   }
 }
 
-# 7. GitHub Actions용 OIDC Provider (Data 소스)
-data "aws_iam_openid_connect_provider" "github" {
-  url = "https://token.actions.githubusercontent.com"
+# 7. GitHub Actions용 OIDC Provider (data에서 resource로 변경)
+resource "aws_iam_openid_connect_provider" "github" {
+  url             = "https://token.actions.githubusercontent.com"
+  client_id_list  = ["sts.amazonaws.com"]
+  thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1", "1c58a3a8518e8759bf075b76b750d4f2df264fcd"]
 }
 
 # 8. GitHub Actions 전용 IAM 역할
 resource "aws_iam_role" "github_actions_ecr_role" {
-  name = "${var.project_name}-github-actions-role"
+  name                 = "${var.project_name}-github-actions-role"
   max_session_duration = 14400
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Action = "sts:AssumeRoleWithWebIdentity"
       Effect = "Allow"
       Principal = {
-        Federated = data.aws_iam_openid_connect_provider.github.arn
+        Federated = aws_iam_openid_connect_provider.github.arn
       }
       Condition = {
         StringLike = {
@@ -157,57 +150,36 @@ resource "aws_iam_role" "github_actions_ecr_role" {
   })
 }
 
-# 9. GitHub Actions 통합 관리 정책 (EKS, EC2, S3, ECR 권한 포함)
+# 9. GitHub Actions 정책 (S3 ARN 업데이트)
 resource "aws_iam_policy" "ecr_push_policy" {
   name = "${var.project_name}-github-actions-policy"
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        # 1. EKS 권한: DescribeCluster가 있어야 Terraform Provider가 EKS에 접속 가능합니다.
         Effect = "Allow"
-        Action = [
-          "eks:DescribeCluster",
-          "eks:ListClusters",
-          "eks:AccessKubernetesApi"
-        ]
+        Action = ["eks:DescribeCluster", "eks:ListClusters", "eks:AccessKubernetesApi"]
         Resource = "*"
       },
       {
-        # 2. EC2 조회 권한: 인스턴스 및 태그 정보 확인용
         Effect   = "Allow"
         Action   = ["ec2:DescribeInstances", "ec2:DescribeTags"]
         Resource = "*"
       },
       {
-        # 3. S3 권한: Terraform Remote State 백엔드 관리용
         Effect = "Allow"
-        Action = [
-          "s3:PutObject",
-          "s3:GetObject",
-          "s3:ListBucket",
-          "s3:DeleteObject"
-        ]
+        Action = ["s3:PutObject", "s3:GetObject", "s3:ListBucket", "s3:DeleteObject"]
         Resource = [
-          "arn:aws:s3:::t6-on-race-terraform-state-prod",
-          "arn:aws:s3:::t6-on-race-terraform-state-prod/*"
+          "arn:aws:s3:::t6-on-race-tfstate-916228846377-ap-northeast-2-an",
+          "arn:aws:s3:::t6-on-race-tfstate-916228846377-ap-northeast-2-an/*"
         ]
       },
       {
-        # 4. ECR 권한: 이미지 푸시 및 관리용
         Effect = "Allow"
-        Action = [
-          "ecr:GetAuthorizationToken",
-          "ecr:BatchCheckLayerAvailability",
-          "ecr:PutImage",
-          "ecr:InitiateLayerUpload",
-          "ecr:UploadLayerPart",
-          "ecr:CompleteLayerUpload"
-        ]
+        Action = ["ecr:GetAuthorizationToken", "ecr:BatchCheckLayerAvailability", "ecr:PutImage", "ecr:InitiateLayerUpload", "ecr:UploadLayerPart", "ecr:CompleteLayerUpload"]
         Resource = aws_ecr_repository.app_repo.arn
       },
       {
-        # 5. STS 권한: 현재 인증된 사용자 정보 확인 (Terraform 실행 시 필요)
         Effect   = "Allow"
         Action   = ["sts:GetCallerIdentity"]
         Resource = "*"
@@ -216,12 +188,7 @@ resource "aws_iam_policy" "ecr_push_policy" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "github_actions_attach" {
-  role       = aws_iam_role.github_actions_ecr_role.name
-  policy_arn = aws_iam_policy.ecr_push_policy.arn
-}
-
-# [추가] 10. Terraform Backend(S3, DynamoDB) 접근 권한 정책
+# 10. Terraform Backend (S3/DynamoDB) 접근 권한 정책 (ARN 수정)
 resource "aws_iam_policy" "terraform_state_policy" {
   name        = "${var.project_name}-tfstate-policy"
   description = "Allow GitHub Actions to manage Terraform state in S3 and DynamoDB"
@@ -231,43 +198,34 @@ resource "aws_iam_policy" "terraform_state_policy" {
     Statement = [
       {
         Effect = "Allow"
-        Action = [
-          "s3:ListBucket",
-          "s3:GetBucketLocation"
-        ]
-        Resource = "arn:aws:s3:::t6-on-race-terraform-state-prod"
+        Action = ["s3:ListBucket", "s3:GetBucketLocation"]
+        Resource = "arn:aws:s3:::t6-on-race-tfstate-916228846377-ap-northeast-2-an"
       },
       {
         Effect = "Allow"
-        Action = [
-          "s3:GetObject",
-          "s3:PutObject",
-          "s3:DeleteObject"
-        ]
-        Resource = "arn:aws:s3:::t6-on-race-terraform-state-prod/prod/*"
+        Action = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+        Resource = "arn:aws:s3:::t6-on-race-tfstate-916228846377-ap-northeast-2-an/prod/*"
       },
       {
-        # DynamoDB를 사용한 State Locking을 사용 중이라면 추가 (권장)
         Effect = "Allow"
-        Action = [
-          "dynamodb:DescribeTable",
-          "dynamodb:GetItem",
-          "dynamodb:PutItem",
-          "dynamodb:DeleteItem"
-        ]
-        Resource = "arn:aws:dynamodb:ap-northeast-2:*:table/t6-on-race-terraform-lock-prod"
+        Action = ["dynamodb:DescribeTable", "dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:DeleteItem"]
+        Resource = "arn:aws:dynamodb:ap-northeast-2:*:table/t6-on-race-tfstate-lock"
       }
     ]
   })
 }
 
-# 정책 연결 추가
+# 정책 연결
+resource "aws_iam_role_policy_attachment" "github_actions_attach" {
+  role       = aws_iam_role.github_actions_ecr_role.name
+  policy_arn = aws_iam_policy.ecr_push_policy.arn
+}
+
 resource "aws_iam_role_policy_attachment" "github_actions_state_attach" {
   role       = aws_iam_role.github_actions_ecr_role.name
   policy_arn = aws_iam_policy.terraform_state_policy.arn
 }
 
-# GitHub Actions 역할이 "모든 인프라"를 주무를 수 있게 마스터 권한을 줍니다.
 resource "aws_iam_role_policy_attachment" "github_actions_admin_attach" {
   role       = aws_iam_role.github_actions_ecr_role.name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
