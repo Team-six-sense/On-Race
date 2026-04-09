@@ -17,16 +17,16 @@ jobs:
         uses: anchore/scan-action@v3
         id: scan
         with:
-          # 우리가 패치한 ArgoCD v3.3.6 이미지를 우선 점검합니다.
           image: "quay.io/argoproj/argocd:v3.3.6"
-          # 처음에는 결과를 보기 위해 false로 설정하고, 0개가 확인되면 true로 바꾸세요.
-          fail-build: false 
+          fail-build: false
           severity-cutoff: critical
-          output-format: table
+          # 파일을 생성하기 위해 sarif 형식으로 변경 (이러면 리포트 업로드가 가능해집니다)
+          output-format: sarif
 
       - name: Upload Security Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: infrastructure-security-report
+          # 위 단계에서 생성된 sarif 파일 경로를 참조합니다.
           path: ${{ steps.scan.outputs.sarif }}
