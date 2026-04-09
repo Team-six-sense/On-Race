@@ -22,6 +22,8 @@ MODEL_PATH = os.path.join(MODEL_DIR, MODEL_FILENAME)            # 모델 파일 
 TRAIN_DATA_FILENAME = 'initial_training_data.json'              # 학습 데이터 파일명
 TRAIN_DATA_PATH = os.path.join(DATA_DIR, TRAIN_DATA_FILENAME)   # 학습 데이터 파일 경로
 
+COLLECT_MACRO_DATA = False                                      # 매크로 데이터 수집 여부 (True: 수집, False: 수집 안 함(기본값))
+COLLECT_HUMAN_DATA = False                                      # 사용자 데이터 수집 여부 (True: 수집, False: 수집 안 함(기본값))
 MACRO_THRESHOLD = 0.80                                          # 매크로 판별 임계값 (0.0 ~ 1.0 사이)
 
 # API 서버 설정

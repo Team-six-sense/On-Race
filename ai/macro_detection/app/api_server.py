@@ -7,7 +7,7 @@ from typing import List
 import uvicorn
 from contextlib import asynccontextmanager
 
-from config import MODEL_FILE, SERVER_LISTEN_HOST, SERVER_PORT, SERVER_LOG_DIR, TEMP_DIR
+from config import MODEL_FILE, SERVER_LISTEN_HOST, SERVER_PORT, SERVER_LOG_DIR, TEMP_DIR, COLLECT_HUMAN_DATA, COLLECT_MACRO_DATA, HUMAN_DIR, MACRO_DIR
 from app.macro_detector import MouseMacroDetector 
 
 detector = None
@@ -66,6 +66,20 @@ def write_detect_log_to_file(user_id: str, is_macro: bool, result: dict, total_e
 
     with open(os.path.join(SERVER_LOG_DIR, log_filename), "a", encoding="utf-8") as f:
         f.write(f"[{now}] 탐지 완료 - 사용자 ID: {user_id}, 이벤트 수: {total_events}, 매크로 여부: {is_macro}, 확률: {result.get('probability', 0)}\n")
+
+    if COLLECT_HUMAN_DATA and 0.0 <= result.get("probability", 0) < 0.05:
+        # 매크로 여부와 상관없이 모든 요청에 대해 이벤트 데이터를 임시 폴더에 JSON 파일로 저장
+        # 파일명 예시: dataset/human/TEST_USER_20260331_153045.json
+        temp_filename = f"{user_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        with open(os.path.join(HUMAN_DIR, temp_filename), "w", encoding="utf-8") as f:
+            json.dump(events_data, f, ensure_ascii=False, indent=2)
+
+    if COLLECT_MACRO_DATA and 0.95 < result.get("probability", 0) <= 1.0:
+        # 매크로 여부와 상관없이 모든 요청에 대해 이벤트 데이터를 임시 폴더에 JSON 파일로 저장
+        # 파일명 예시: dataset/macro/TEST_USER_20260331_153045.json
+        temp_filename = f"{user_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        with open(os.path.join(MACRO_DIR, temp_filename), "w", encoding="utf-8") as f:
+            json.dump(events_data, f, ensure_ascii=False, indent=2)
 
     # 확률이 30% 이상 70% 이하인 경우, 분석을 위해 임시 폴더에 JSON 파일로 저장
     if 0.3 <= result.get("probability", 0) <= 0.7:
