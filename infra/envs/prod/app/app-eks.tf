@@ -7,15 +7,13 @@ module "eks" {
   vpc_id          = data.terraform_remote_state.base.outputs.vpc_id
   subnet_ids      = data.terraform_remote_state.base.outputs.private_subnets
   
-  instance_types  = ["m5.large"] # [수정] medium -> small
-  min_size        = 3            # [수정] 2 -> 1 (비작동 시간 최소 유지)
-  max_size        = 5
-  /*
-  # instance_types  = ["m5.large"] 
-  instance_types  = ["t3.large"] 
-  min_size        = 2
-  max_size        = 5
-  */
+  # m5.large는 유지 (범용 성능 확보)
+  instance_types  = ["m5.large"] 
+  
+  # [수정] 3 -> 4 또는 5로 증설
+  # 현재 Insufficient CPU 이슈를 해결하기 위해 최소 노드를 늘려 빈 공간을 만듭니다.
+  min_size        = 4  
+  max_size        = 6  # 최소가 늘어난 만큼 최대치도 여유 있게 조정
 }
 
 # 2. [에러 해결 1] LB Controller용 IAM 역할
