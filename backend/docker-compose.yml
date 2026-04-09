@@ -7,20 +7,38 @@ services:
       MYSQL_DATABASE: ${MAIN_DB_NAME}
     ports:
       - '${MAIN_DB_PORT}:3306'
+    # ── AWS RDS 스펙 시뮬레이션 (deploy.resources) ──
+    # docker compose up 시 --compatibility 또는 Docker Compose v2 필요
+    # 기본 개발: 제한 없음 (호스트 리소스 공유)
+    # ┌──────────────────┬────────┬────────┬──────────┬──────────────────┐
+    # │ RDS 인스턴스      │ vCPU   │ RAM    │ max_conn │ buffer_pool      │
+    # ├──────────────────┼────────┼────────┼──────────┼──────────────────┤
+    # │ db.t3.micro      │ 2      │ 1 GB   │ 66       │ 256M             │
+    # │ db.t3.small      │ 2      │ 2 GB   │ 150      │ 512M             │
+    # │ db.t3.medium     │ 2      │ 4 GB   │ 312      │ 1G               │
+    # │ db.t3.large      │ 2      │ 8 GB   │ 648      │ 4G               │
+    # └──────────────────┴────────┴────────┴──────────┴──────────────────┘
+    deploy:
+      resources:
+        limits:
+          # db.t3.micro: 2 vCPU, 1GB RAM
+          # 기본 개발 값: 제한 없음
+          cpus: '2.0'
+          memory: 1G
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
-      # max_connections: MySQL이 허용하는 최대 동시 연결 수
-      # 범위: 100~10000 | 기준: 모든 앱 인스턴스의 HikariCP pool 합 + 여유분(모니터링, 관리 연결)
-      # 현재: Main(50) + Auth(30) = 80 → 500이면 충분한 여유
-      # [AWS 배포 시] RDS 인스턴스 클래스별 자동 계산됨 (t3.medium: ~312, r5.large: ~1365)
-      - --max_connections=500
-      # innodb_buffer_pool_size: InnoDB 데이터+인덱스 캐시 메모리
-      # 범위: 128M~시스템 메모리의 70% | 기준: 테이블 데이터 크기
-      # 클수록 디스크 I/O 감소 → 쿼리 성능 향상
-      # 로컬 Docker: 512M~2G, 서버: 전체 메모리의 50~70%
-      # 현재 Docker 메모리 31GB, MySQL 사용 ~500MB → 2G 할당 가능 (여유 충분)
-      - --innodb_buffer_pool_size=2G
+      # ── max_connections ──
+      # db.t3.micro (1GB RAM): max_connections ≈ 66 (RAM / 12582880)
+      # 현재: Main(15) + Auth(8) = 23 → 66이면 여유 43
+      # 기본 개발 값: 500 (로컬 Docker, Main=50 + Auth=30)
+      #- --max_connections=500
+      - --max_connections=66
+      # ── innodb_buffer_pool_size ──
+      # db.t3.micro (1GB RAM): 전체 메모리의 25% = 256M (OS/MySQL 오버헤드 고려)
+      # 기본 개발 값: 2G (로컬 Docker, RAM 31GB)
+      #- --innodb_buffer_pool_size=2G
+      - --innodb_buffer_pool_size=256M
     volumes:
       - main-db-data:/var/lib/mysql
     networks:
@@ -31,11 +49,36 @@ services:
     container_name: on-race-main-redis
     ports:
       - '${MAIN_REDIS_PORT}:6379'
+    # ── AWS ElastiCache 스펙 시뮬레이션 ──
+    # ┌──────────────────────┬────────┬────────┬──────────────────────┐
+    # │ ElastiCache 인스턴스  │ vCPU   │ RAM    │ maxmemory 권장       │
+    # ├──────────────────────┼────────┼────────┼──────────────────────┤
+    # │ cache.t4g.micro      │ 2      │ 0.5 GB │ 400m (OS 오버헤드)    │
+    # │ cache.t4g.small      │ 2      │ 1.5 GB │ 1200m               │
+    # │ cache.t4g.medium     │ 2      │ 3.1 GB │ 2500m               │
+    # └──────────────────────┴────────┴────────┴──────────────────────┘
+    deploy:
+      resources:
+        limits:
+          # cache.t4g.micro: 2 vCPU, 0.5GB RAM
+          # 기본 개발 값: 제한 없음
+          cpus: '2.0'
+          memory: 512M
     volumes:
       - main-redis-data:/data
     networks:
       - on-race-network
-    command: redis-server --requirepass ${MAIN_REDIS_PASSWORD} --notify-keyspace-events Ex
+    command: redis-server --requirepass ${MAIN_REDIS_PASSWORD} --notify-keyspace-events Ex --maxmemory 400mb --maxmemory-policy allkeys-lru
+
+  # ── 앱 서비스 리소스 제한 (EKS Pod 스펙 시뮬레이션) ──
+  # ┌──────────────┬────────┬────────┬──────────────────────────────────┐
+  # │ EKS 노드     │ vCPU   │ RAM    │ Pod 배분 예시                    │
+  # ├──────────────┼────────┼────────┼──────────────────────────────────┤
+  # │ t3.micro     │ 2      │ 1 GB   │ 서비스당 0.5 vCPU, 384MB        │
+  # │ t3.small     │ 2      │ 2 GB   │ 서비스당 0.5 vCPU, 768MB        │
+  # │ t3.medium    │ 2      │ 4 GB   │ 서비스당 1.0 vCPU, 1.5GB        │
+  # │ t3.large     │ 2      │ 8 GB   │ 서비스당 1.0 vCPU, 3GB          │
+  # └──────────────┴────────┴────────┴──────────────────────────────────┘
 
   gateway:
     build:
@@ -53,6 +96,12 @@ services:
       - AUTH_SERVICE_URI=http://auth:${AUTH_SERVER_PORT}
       - MAIN_SERVICE_URI=http://main:${MAIN_SERVER_PORT}
       - QUEUE_SERVICE_URI=http://queue:${QUEUE_SERVER_PORT}
+    # 기본 개발 값: 제한 없음
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 384M
     depends_on:
       - main-redis
       - auth
@@ -77,6 +126,12 @@ services:
       - AUTH_DB_HOST=main-mysql
       - AUTH_REDIS_HOST=main-redis
       - MAIN_SERVICE_URI=http://main:${MAIN_SERVER_PORT}
+    # 기본 개발 값: 제한 없음
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 384M
     depends_on:
       - main-mysql
       - main-redis
@@ -99,6 +154,12 @@ services:
       - MAIN_DB_HOST=main-mysql
       - MAIN_REDIS_HOST=main-redis
       - AUTH_SERVICE_URI=http://auth:${AUTH_SERVER_PORT}
+    # 기본 개발 값: 제한 없음
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 384M
     depends_on:
       - main-mysql
       - main-redis
@@ -119,6 +180,12 @@ services:
       - '${QUEUE_SERVER_PORT}:${QUEUE_SERVER_PORT}'
     environment:
       - QUEUE_REDIS_HOST=main-redis
+    # 기본 개발 값: 제한 없음
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 384M
     depends_on:
       - main-redis
     networks:

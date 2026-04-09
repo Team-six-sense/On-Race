@@ -155,7 +155,8 @@ export default function (data) {
   let pollCount = 0;
 
   for (let i = 0; i < QUEUE_MAX_POLL_COUNT; i++) {
-    sleep(QUEUE_POLL_INTERVAL_SEC);
+    // ±20% jitter: 폴링 동시 집중(micro-burst) 방지
+    sleep(QUEUE_POLL_INTERVAL_SEC * (0.8 + Math.random() * 0.4));
     pollCount++;
 
     const statusRes = http.get(
