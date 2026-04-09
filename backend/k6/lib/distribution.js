@@ -35,7 +35,7 @@ export function assignPace(vuIndex, paceMapEntry) {
   // 10-VU 블록 단위 인터리브 배분
   // 예: HOT_PACE_RATIO=0.7 → 매 10명 중 앞 7명 HOT, 뒤 3명 Others
   const RATIO_BASE = 10;
-  const hotSlots = Math.round(HOT_PACE_RATIO * RATIO_BASE);
+  const hotSlots = Math.floor(HOT_PACE_RATIO * RATIO_BASE);
   const posInBlock = (vuIndex - 1) % RATIO_BASE;
   const blockNum = Math.floor((vuIndex - 1) / RATIO_BASE);
 

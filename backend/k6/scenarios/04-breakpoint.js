@@ -16,6 +16,7 @@ import { check, sleep } from 'k6';
 import { Trend, Rate, Counter } from 'k6/metrics';
 import { batchLoginAll, authHeaders } from '../lib/auth.js';
 import { setupTestData } from '../lib/setup.js';
+import { assignPace } from '../lib/distribution.js';
 import { withRetry } from '../lib/retry.js';
 import { errorLog } from '../lib/log.js';
 import { buildSummaryOutput } from '../lib/report.js';
@@ -26,7 +27,6 @@ import {
   BP_STEP_DURATION_SEC, BP_RAMP_SEC,
   BP_ERROR_THRESHOLD, BP_P95_THRESHOLD_MS,
   BP_SCENARIO_FLOW, BP_LOGIN_POOL,
-  HOT_PACE_RATIO,
 } from '../lib/config.js';
 import {
   generateStaircaseStages,
@@ -118,9 +118,7 @@ export function setup() {
     tokens,
     loginCount,
     eventId,
-    hotPaces,
-    otherPaces,
-    totalPaceCount,
+    paceMapEntry: { hot: hotPaces, others: otherPaces },
     flow: BP_SCENARIO_FLOW,
     testStartMs: Date.now(),
   };
@@ -142,17 +140,8 @@ export default function (data) {
 
   const headers = authHeaders(token);
 
-  // 70/30 페이스 배분: VU 번호 기준으로 HOT(70%) / 나머지(30%) 분리
-  const hotCutoff = Math.floor(data.totalPaceCount * HOT_PACE_RATIO);
-  const vuPosition = (__VU - 1) % data.totalPaceCount;
-
-  let pace;
-  if (vuPosition < hotCutoff) {
-    pace = data.hotPaces[vuPosition % data.hotPaces.length];
-  } else {
-    pace = data.otherPaces[(vuPosition - hotCutoff) % data.otherPaces.length];
-  }
-  const { courseId, paceId } = pace;
+  // 70/30 페이스 배분: assignPace 공통 로직 사용 (10-VU 블록 인터리브)
+  const { courseId, paceId } = assignPace(__VU, data.paceMapEntry);
   const eventId = data.eventId;
 
   // 플로우 분기
