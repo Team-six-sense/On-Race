@@ -85,3 +85,23 @@ resource "helm_release" "grafana" {
 
   depends_on = [aws_eks_addon.ebs_csi, helm_release.loki, helm_release.prometheus]
 }
+
+# 5. Promtail 배포 (Loki로 로그를 전송하는 에이전트)
+resource "helm_release" "promtail" {
+  name             = "promtail"
+  repository       = "https://grafana.github.io/helm-charts"
+  chart            = "promtail"
+  namespace        = "monitoring"
+
+  values = [
+    file("${path.module}/helm-values/promtail-config-snippet.yaml")
+  ]
+  
+  # DaemonSet으로 동작하며 모든 노드의 로그를 수집하여 Loki Gateway로 쏩니다.
+  set {
+    name  = "config.clients[0].url"
+    value = "http://loki-gateway.loki.svc.cluster.local/loki/api/v1/push"
+  }
+
+  depends_on = [helm_release.loki]
+}

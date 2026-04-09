@@ -121,8 +121,7 @@ jobs:
                     operator: In
                     values: ["amd64"]
             disruption:
-              consolidationPolicy: WhenEmptyOrUnderutilized
-              consolidateAfter: 1m
+              consolidationPolicy: WhenUnderutilized
           EOF
 
           kubectl apply -f - <<EOF
