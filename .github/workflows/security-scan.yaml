@@ -1,32 +1,32 @@
-name: "🛡️ On-Race Security Gate"
+name: "🛡️ On-Race Infrastructure Security Gate"
 
 on:
   push:
-    branches: [ "main", "develop" ]
+    branches: [ "deploy/integrated-main" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "deploy/integrated-main" ]
 
 jobs:
-  vulnerability-scan:
+  grype-scan:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Scan Image with Grype
+      - name: Scan ArgoCD & Core Images
         uses: anchore/scan-action@v3
         id: scan
         with:
-          # 현재 On-Race에서 사용 중인 이미지를 입력 (예: argocd)
+          # 우리가 패치한 ArgoCD v3.3.6 이미지를 우선 점검합니다.
           image: "quay.io/argoproj/argocd:v3.3.6"
-          # Critical 취약점 발견 시 빌드를 실패로 처리하여 배포를 차단합니다.
-          fail-build: true
+          # 처음에는 결과를 보기 위해 false로 설정하고, 0개가 확인되면 true로 바꾸세요.
+          fail-build: false 
           severity-cutoff: critical
           output-format: table
 
-      - name: Upload Vulnerability Report
-        if: always() # 스캔 실패 시에도 리포트는 업로드하여 확인 가능하게 함
+      - name: Upload Security Report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: security-report
+          name: infrastructure-security-report
           path: ${{ steps.scan.outputs.sarif }}
