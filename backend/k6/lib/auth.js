@@ -107,7 +107,9 @@ export function batchLoginAll(totalUsers) {
         if (retryResponses[j].status === 200) {
           try {
             tokens[String(vuIdx)] = retryResponses[j].json().data.accessToken;
-          } catch (e) { /* skip */ }
+          } catch (e) {
+            console.warn(`[setup] VU ${vuIdx} 토큰 파싱 실패: ${e.message}`);
+          }
         } else {
           console.error(`[setup] 재시도 실패 VU ${vuIdx}: ${retryResponses[j].status}`);
         }

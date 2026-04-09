@@ -59,7 +59,9 @@ export default function (data) {
   // 3. 재고 확인 (paceMap에서 HOT paceId 동적 추출)
   const fcNoQueueId = data.eventIds.FIRST_COME_NO_QUEUE;
   const paceMapEntry = data.paceMap[String(fcNoQueueId)];
-  const hotPaceId = paceMapEntry && paceMapEntry.hot ? paceMapEntry.hot.paceId : null;
+  const hotPaceId = paceMapEntry && paceMapEntry.hot && paceMapEntry.hot.length > 0
+    ? paceMapEntry.hot[0].paceId
+    : null;
 
   if (hotPaceId) {
     const stockRes = http.get(
