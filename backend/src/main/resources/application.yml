@@ -4,6 +4,7 @@ spring:
       # [Stunnel 연동] Deployment에서 설정한 사이드카(localhost)를 통해 통신
       host: ${SPRING_REDIS_HOST:localhost}
       port: ${SPRING_REDIS_PORT:6379}
+      password: ${SPRING_REDIS_PASSWORD}
       lettuce:
         pool:
           # 파드당 커넥션을 10개로 제한 (300 Pods * 10 = 3,000개로 안전권 유지)

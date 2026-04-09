@@ -133,8 +133,13 @@ resource "kubernetes_deployment_v1" "on_race_api" {
             value = "-Dspring.datasource.url=jdbc:mysql://${data.terraform_remote_state.base.outputs.rds_proxy_endpoint}:3306/onrace?sslMode=REQUIRED&useSSL=true&verifyServerCertificate=false&allowPublicKeyRetrieval=true -Dspring.profiles.active=prod -XX:InitialRAMPercentage=75.0 -XX:MaxRAMPercentage=75.0 -XX:MinRAMPercentage=75.0"
           }
           env {
-            name  = "SPRING_REDIS_PASSWORD"
-            value = var.redis_password # base 계층에서 받아온 비밀번호
+            name = "SPRING_REDIS_PASSWORD"
+            value_from {
+              secret_key_ref {
+                name = "redis-auth-secret" # 우리가 아까 생성한 Secret 이름
+                key  = "password"          # Secret 내부에 저장된 키 이름
+              }
+            }
           }
           env {
             name  = "DB_ENDPOINT"
