@@ -51,6 +51,7 @@ public class EntryService {
 	private final MemberRepository memberRepository;
 	private final EventStockService eventStockService;
 	private final EventStockRepository eventStockRepository;
+	private final EntryMetrics entryMetrics;
 
 	@ServiceLog(slowMs = 2000)
 	@Transactional
@@ -198,6 +199,7 @@ public class EntryService {
 		Entry entry = getCreateEntry(userId, event);
 		entry.apply(course, pace);
 		entryRepository.save(entry);
+		entryMetrics.recordApply("LOTTERY", "success");
 
 		log.info("[ENTRY] 추첨 신청 완료 userId={}, eventId={}, entryId={}", userId, event.getId(), entry.getId());
 
@@ -217,14 +219,17 @@ public class EntryService {
 		long result = eventStockService.tryReserveStock(pace.getId(), userId);
 
 		if (result == -2) {
+			entryMetrics.recordApply("FIRST_COME", "duplicate");
 			log.info("[ENTRY] 중복 선점 시도 userId={}, paceId={}", userId, pace.getId());
 		} else if (result == -1) {
+			entryMetrics.recordApply("FIRST_COME", "sold_out");
 			log.info("[ENTRY] 선착순 매진 userId={}, paceId={}", userId, pace.getId());
 		}
 
 		Preconditions.validate(result != -2, BusinessErrorCode.ENTRY_ALREADY_RESERVED);
 		Preconditions.validate(result != -1, BusinessErrorCode.ENTRY_SOLD_OUT);
 
+		entryMetrics.recordApply("FIRST_COME", "success");
 		log.info("[ENTRY] 선착순 선점 성공 userId={}, paceId={}, remaining={}", userId, pace.getId(), result);
 
 		entry.reserve(course, pace);
@@ -286,6 +291,7 @@ public class EntryService {
 
 		eventStockRepository.incrementConfirmedStock(paceId);
 
+		entryMetrics.recordConfirm(type.name());
 		log.info("[ENTRY] 결제 확정 userId={}, paceId={}, appType={}", userId, paceId, type);
 
 		// 왜? 위의 if로 넣지 않느냐 -> 트랜잭션 커밋이 안된 상태에서 redis는 즉시 실행되고 DB 업데이트는 트랜잭션 커밋 시점에 반영되기
