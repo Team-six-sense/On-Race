@@ -1,0 +1,116 @@
+// ========================================================
+// 시나리오 1: 응모신청 부하 테스트
+//
+// 흐름: [setup] 데이터 셋업 → 일괄 로그인 → [VU] 응모신청 (1회)
+// 재시도: 5xx 에러 시 1회 재시도
+// 기대: 전원 신청 성공 (재고 제한 없음)
+// 실행: k6 run -e VU_COUNT=100 k6/scenarios/01-lottery.js
+// ========================================================
+
+import http from 'k6/http';
+import { check, sleep } from 'k6';
+import { Counter } from 'k6/metrics';
+import { batchLoginAll, authHeaders } from '../lib/auth.js';
+import { setupTestData } from '../lib/setup.js';
+import { assignPace } from '../lib/distribution.js';
+import { withRetry } from '../lib/retry.js';
+import { errorLog, resultLog } from '../lib/log.js';
+import {
+  BASE_URL, VU_COUNT,
+  RAMP_UP_SEC, HOLD_SEC, RAMP_DOWN_SEC,
+  SETUP_TIMEOUT_SEC,
+} from '../lib/config.js';
+
+// 커스텀 메트릭
+const applySuccess = new Counter('lottery_apply_success');
+const applyFail    = new Counter('lottery_apply_fail');
+
+export const options = {
+  setupTimeout: `${SETUP_TIMEOUT_SEC}s`,
+  scenarios: {
+    lottery: {
+      executor: 'ramping-vus',
+      startVUs: 0,
+      stages: [
+        { duration: `${RAMP_UP_SEC}s`, target: VU_COUNT },
+        { duration: `${HOLD_SEC}s`, target: VU_COUNT },
+        { duration: `${RAMP_DOWN_SEC}s`, target: 0 },
+      ],
+    },
+  },
+  thresholds: {
+    'http_req_duration{name:lottery_apply}': ['p(95)<3000'],
+    http_req_failed: ['rate<0.01'],
+  },
+};
+
+// ── setup: 데이터 셋업 → 일괄 사전 로그인 ──
+export function setup() {
+  const testData = setupTestData('LOTTERY');
+  const tokens = batchLoginAll(VU_COUNT);
+  return { tokens, eventIds: testData.eventIds, paceMap: testData.paceMap };
+}
+
+export default function (data) {
+  if (__ITER > 0) {
+    sleep(HOLD_SEC);
+    return;
+  }
+
+  const token = data.tokens[String(__VU)];
+  if (!token) {
+    errorLog(__VU, '토큰 미획득, 건너뜀');
+    return;
+  }
+
+  const eventId = data.eventIds.LOTTERY;
+  const { courseId, paceId } = assignPace(__VU, data.paceMap[String(eventId)]);
+  const headers = authHeaders(token);
+
+  // 재고 조회
+  const stockRes = http.get(
+    `${BASE_URL}/main/events/${eventId}/entries/stock-check?paceId=${paceId}`,
+    { headers, tags: { name: 'stock_check' } }
+  );
+  check(stockRes, {
+    'stock-check 200': (r) => r.status === 200,
+  });
+
+  // 토큰 검증 (네거티브 테스트)
+  const noAuthRes = http.post(
+    `${BASE_URL}/main/events/${eventId}/entries/apply/lottery`,
+    JSON.stringify({ courseId, paceId }),
+    {
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer invalid-token' },
+      tags: { name: 'neg_no_auth' },
+      responseCallback: http.expectedStatuses(401),
+    }
+  );
+  check(noAuthRes, { 'invalid JWT → 401': (r) => r.status === 401 });
+
+  // 응모 신청
+  const { res, retries } = withRetry(
+    () => http.post(
+      `${BASE_URL}/main/events/${eventId}/entries/apply/lottery`,
+      JSON.stringify({ courseId, paceId }),
+      { headers, tags: { name: 'lottery_apply' } }
+    ),
+    { maxRetries: 1, backoffSec: 2, name: '응모 신청', vu: __VU }
+  );
+
+  const ok = check(res, {
+    'lottery 200': (r) => r.status === 200,
+    'has entryId': (r) => {
+      try { return r.json().data.entryId != null; }
+      catch (e) { return false; }
+    },
+  });
+
+  if (ok) {
+    applySuccess.add(1);
+    resultLog(__VU, `응모 성공`, retries);
+  } else {
+    applyFail.add(1);
+    errorLog(__VU, `응모 실패 (${res.status})`);
+  }
+}
