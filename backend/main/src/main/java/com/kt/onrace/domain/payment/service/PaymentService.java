@@ -1,7 +1,6 @@
 package com.kt.onrace.domain.payment.service;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
@@ -14,8 +13,6 @@ import com.kt.onrace.domain.order.service.OrderService;
 import com.kt.onrace.domain.payment.client.TossPaymentClient;
 import com.kt.onrace.domain.payment.dto.PaymentConfirmRequestDto;
 import com.kt.onrace.domain.payment.dto.TossPaymentResponseDto;
-import com.kt.onrace.domain.payment.entity.Payment;
-import com.kt.onrace.domain.payment.repository.PaymentRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -24,12 +21,11 @@ import lombok.RequiredArgsConstructor;
 public class PaymentService {
 
 	private final OrderRepository orderRepository;
-	private final PaymentRepository paymentRepository;
 	private final TossPaymentClient tossPaymentClient;
 	private final OrderService orderService;
 	private final MemberRepository memberRepository;
+	private final PaymentCommandService paymentCommandService;
 
-	@Transactional
 	public TossPaymentResponseDto confirmPayment(Long userId, PaymentConfirmRequestDto requestDto) {
 		Member member = memberRepository.findByIdAndIsDeletedFalseOrThrow(userId, BusinessErrorCode.MEMBER_NOT_FOUND);
 
@@ -53,17 +49,7 @@ public class PaymentService {
 			throw e;
 		}
 
-		Payment payment = Payment.builder()
-			.paymentKey(responseDto.paymentKey())
-			.orderNumber(responseDto.orderId())
-			.amount(responseDto.totalAmount())
-			.method(responseDto.method())
-			.status(responseDto.status())
-			.member(member)
-			.build();
-			
-		paymentRepository.save(payment);
-		orderService.confirmPayment(order.getOrderNumber(), userId);
+		paymentCommandService.savePaymentAndConfirmOrder(member, order, responseDto, userId);
 
 		return responseDto;
 	}
