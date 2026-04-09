@@ -1,6 +1,6 @@
 # 1. IMDSv2 홉 제한 수정을 위한 런치 템플릿
 resource "aws_launch_template" "node" {
-  name = "${var.project_name}-node-lt"
+  name_prefix = "${var.project_name}-node-lt-"
 
   metadata_options {
     http_endpoint               = "enabled"

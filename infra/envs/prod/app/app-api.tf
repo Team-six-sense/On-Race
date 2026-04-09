@@ -124,17 +124,18 @@ resource "kubernetes_deployment_v1" "on_race_api" {
             name  = "SPRING_PROFILES_ACTIVE"
             value = "prod"
           }
-
           env {
             name = "VQA_SERVICE_URL"
             value = "http://on-race-vqa-service.t6-on-race-prod.svc.cluster.local:8000"
           }
-
           env {
             name  = "JAVA_TOOL_OPTIONS"
             value = "-Dspring.datasource.url=jdbc:mysql://${data.terraform_remote_state.base.outputs.rds_proxy_endpoint}:3306/onrace?sslMode=REQUIRED&useSSL=true&verifyServerCertificate=false&allowPublicKeyRetrieval=true -Dspring.profiles.active=prod -XX:InitialRAMPercentage=75.0 -XX:MaxRAMPercentage=75.0 -XX:MinRAMPercentage=75.0"
           }
-
+          env {
+            name  = "SPRING_REDIS_PASSWORD"
+            value = var.redis_password # base 계층에서 받아온 비밀번호
+          }
           env {
             name  = "DB_ENDPOINT"
             value = data.terraform_remote_state.base.outputs.rds_proxy_endpoint

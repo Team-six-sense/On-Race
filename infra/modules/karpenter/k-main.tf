@@ -52,12 +52,21 @@ data "aws_iam_policy_document" "karpenter_controller_assume" {
       variable = "${replace(var.oidc_provider_arn, "/^(.*provider/)/", "")}:sub"
       values   = ["system:serviceaccount:karpenter:karpenter"]
     }
+    # [추가] Audience 조건 추가 (보안 강화 및 연결 안정성)
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(var.oidc_provider_arn, "/^(.*provider/)/", "")}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
   }
 }
 
 resource "aws_iam_role" "karpenter_controller" {
   name               = "${var.project_name}-karpenter-controller"
   assume_role_policy = data.aws_iam_policy_document.karpenter_controller_assume.json
+  tags = {
+    "karpenter.sh/discovery" = var.cluster_name
+  }
 }
 
 # 컨트롤러에 EC2 생성/삭제 권한 부여 (실무에서는 최소 권한 정책으로 교체 권장)
