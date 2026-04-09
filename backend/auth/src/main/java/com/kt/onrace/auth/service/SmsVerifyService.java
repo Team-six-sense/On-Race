@@ -98,6 +98,7 @@ public class SmsVerifyService {
 		try {
 			this.messageService.send(message, null);
 		} catch (Exception e) {
+			e.printStackTrace();
 			throw new BusinessException(BusinessErrorCode.COMMON_SYSTEM_ERROR);
 		}
 	}
