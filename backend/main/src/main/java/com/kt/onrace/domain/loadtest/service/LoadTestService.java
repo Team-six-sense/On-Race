@@ -23,6 +23,8 @@ import com.kt.onrace.domain.event.service.EventService;
 import com.kt.onrace.domain.event.service.EventStockInitializer;
 import com.kt.onrace.domain.loadtest.dto.LoadTestSetupRequest;
 import com.kt.onrace.domain.loadtest.dto.LoadTestSetupResponse;
+import com.kt.onrace.domain.loadtest.dto.LoadTestStockSummaryResponse;
+import com.kt.onrace.domain.loadtest.dto.LoadTestStockSummaryResponse.PaceDetail;
 import com.kt.onrace.domain.loadtest.dto.LoadTestSetupResponse.PaceMapEntry;
 import com.kt.onrace.domain.loadtest.dto.LoadTestSetupResponse.PaceRef;
 
@@ -44,7 +46,6 @@ public class LoadTestService {
 	private final EventStockInitializer eventStockInitializer;
 	private final EventService eventService;
 	private final EntryService entryService;
-
 	private static final int TOTAL_USERS = 30000;
 	private static final int TOTAL_PACES = 15; // 코스 3개 x 페이스 5개
 	private static final String BCRYPT_HASH = "$2a$10$HWNLFZOjTELM0EaGC14xCeXLBC4RhgmlctVcED4/8MCM8KQ9y4xQS";
@@ -165,12 +166,91 @@ public class LoadTestService {
 	}
 
 	// ================================================================
-	// 테스트 전용 예약 확정 (Toss 결제 우회)
+	// 테스트 전용 예약 확정 (Toss 결제 우회 — 프로덕션 코드 직접 호출)
 	// ================================================================
 
-	@Transactional
 	public void confirmReservation(Long userId, Long paceId) {
 		entryService.confirmReservation(userId, paceId, EventAppType.FIRST_COME);
+	}
+
+	// ================================================================
+	// 재고 검증 리포트 (DB vs Redis 비교)
+	// ================================================================
+
+	@Transactional(readOnly = true)
+	public LoadTestStockSummaryResponse getStockSummary(Long eventId) {
+		// 1. DB: 페이스별 재고 조회
+		List<Map<String, Object>> rows = jdbcTemplate.queryForList("""
+			SELECT ep.id AS pace_id, ep.name AS pace_name, ec.name AS course_name,
+			       es.total_stock, es.confirmed_stock
+			FROM event_pace ep
+			JOIN event_course ec ON ep.course_id = ec.id
+			JOIN event_stock es ON es.event_pace_id = ep.id
+			WHERE ec.event_id = ?
+			ORDER BY ec.id, ep.id
+			""", eventId);
+
+		int dbTotalStock = 0;
+		int dbConfirmedStock = 0;
+		long redisRemainingTotal = 0;
+		long redisConfirmedTotal = 0;
+		boolean allMatch = true;
+		boolean overselling = false;
+
+		List<PaceDetail> paceDetails = new ArrayList<>();
+
+		for (Map<String, Object> row : rows) {
+			long paceId = ((Number)row.get("pace_id")).longValue();
+			int dbTotal = ((Number)row.get("total_stock")).intValue();
+			int dbConfirmed = ((Number)row.get("confirmed_stock")).intValue();
+
+			long redisRemaining = redissonClient.getAtomicLong("stock:temp:pace:" + paceId).get();
+			long redisConfirmed = redissonClient.getAtomicLong("stock:confirm:pace:" + paceId).get();
+
+			boolean match = dbConfirmed == (int)redisConfirmed;
+			if (!match) allMatch = false;
+			if (dbConfirmed > dbTotal) overselling = true;
+
+			dbTotalStock += dbTotal;
+			dbConfirmedStock += dbConfirmed;
+			redisRemainingTotal += redisRemaining;
+			redisConfirmedTotal += redisConfirmed;
+
+			paceDetails.add(PaceDetail.builder()
+				.paceId(paceId)
+				.courseName((String)row.get("course_name"))
+				.paceName((String)row.get("pace_name"))
+				.dbTotal(dbTotal)
+				.dbConfirmed(dbConfirmed)
+				.redisRemaining(redisRemaining)
+				.redisConfirmed(redisConfirmed)
+				.match(match)
+				.build());
+		}
+
+		// 2. Entry 상태별 카운트
+		Map<String, Integer> entryCounts = new LinkedHashMap<>();
+		jdbcTemplate.queryForList(
+			"SELECT status, COUNT(*) AS cnt FROM entry WHERE event_id = ? GROUP BY status",
+			eventId
+		).forEach(r -> entryCounts.put(
+			(String)r.get("status"),
+			((Number)r.get("cnt")).intValue()
+		));
+
+		return LoadTestStockSummaryResponse.builder()
+			.eventId(eventId)
+			.dbTotalStock(dbTotalStock)
+			.dbConfirmedStock(dbConfirmedStock)
+			.redisRemainingStock(redisRemainingTotal)
+			.redisConfirmedStock(redisConfirmedTotal)
+			.entryReservedCount(entryCounts.getOrDefault("RESERVED", 0))
+			.entryAppliedCount(entryCounts.getOrDefault("APPLIED", 0))
+			.entryPreSavedCount(entryCounts.getOrDefault("PRE_SAVED", 0))
+			.overselling(overselling)
+			.dbRedisMatch(allMatch)
+			.paceDetails(paceDetails)
+			.build();
 	}
 
 	// ================================================================

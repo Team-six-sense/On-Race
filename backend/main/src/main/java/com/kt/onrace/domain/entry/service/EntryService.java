@@ -284,7 +284,7 @@ public class EntryService {
 			entry.confirmPayment();
 		}
 
-		eventStockRepository.findByEventPaceIdOrThrow(paceId).confirmStock();
+		eventStockRepository.incrementConfirmedStock(paceId);
 
 		log.info("[ENTRY] 결제 확정 userId={}, paceId={}, appType={}", userId, paceId, type);
 
