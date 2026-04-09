@@ -49,6 +49,9 @@ public class LoadTestService {
 	private static final int TOTAL_PACES = 15; // 코스 3개 x 페이스 5개
 	private static final String BCRYPT_HASH = "$2a$10$HWNLFZOjTELM0EaGC14xCeXLBC4RhgmlctVcED4/8MCM8KQ9y4xQS";
 	private static final String TEST_EVENT_PREFIX = "k6 부하테스트";
+	private static final String SCENARIO_LOTTERY = "LOTTERY";
+	private static final String SCENARIO_FC_NO_QUEUE = "FIRST_COME_NO_QUEUE";
+	private static final String SCENARIO_FC_WITH_QUEUE = "FIRST_COME_WITH_QUEUE";
 
 	// ================================================================
 	// 전체 셋업 (단일 API)
@@ -105,27 +108,27 @@ public class LoadTestService {
 		Map<String, PaceMapEntry> paceMap = new LinkedHashMap<>();
 
 		// 응모
-		if (type == null || "LOTTERY".equals(type)) {
+		if (type == null || SCENARIO_LOTTERY.equals(type)) {
 			long lotteryId = insertEvent("k6 부하테스트 - 응모신청", "LOTTERY", false, "'2026-12-31 23:59:59'");
-			eventIds.put("LOTTERY", lotteryId);
+			eventIds.put(SCENARIO_LOTTERY, lotteryId);
 			paceMap.put(String.valueOf(lotteryId),
 				setupCoursesAndPaces(lotteryId, hotIndices, hotStockEach, otherStockEach));
 			insertSalesInfo(lotteryId, "2026-서울-0001");
 		}
 
 		// 선착순 대기열X
-		if (type == null || "FIRST_COME_NO_QUEUE".equals(type)) {
+		if (type == null || SCENARIO_FC_NO_QUEUE.equals(type)) {
 			long fcNoQueueId = insertEvent("k6 부하테스트 - 선착순(대기열X)", "FIRST_COME", false, "NULL");
-			eventIds.put("FIRST_COME_NO_QUEUE", fcNoQueueId);
+			eventIds.put(SCENARIO_FC_NO_QUEUE, fcNoQueueId);
 			paceMap.put(String.valueOf(fcNoQueueId),
 				setupCoursesAndPaces(fcNoQueueId, hotIndices, hotStockEach, otherStockEach));
 			insertSalesInfo(fcNoQueueId, "2026-서울-0002");
 		}
 
 		// 선착순 대기열O
-		if (type == null || "FIRST_COME_WITH_QUEUE".equals(type)) {
+		if (type == null || SCENARIO_FC_WITH_QUEUE.equals(type)) {
 			long fcWithQueueId = insertEvent("k6 부하테스트 - 선착순(대기열O)", "FIRST_COME", true, "NULL");
-			eventIds.put("FIRST_COME_WITH_QUEUE", fcWithQueueId);
+			eventIds.put(SCENARIO_FC_WITH_QUEUE, fcWithQueueId);
 			paceMap.put(String.valueOf(fcWithQueueId),
 				setupCoursesAndPaces(fcWithQueueId, hotIndices, hotStockEach, otherStockEach));
 			insertSalesInfo(fcWithQueueId, "2026-서울-0003");
@@ -138,8 +141,8 @@ public class LoadTestService {
 		for (Long id : eventIds.values()) {
 			eventStockInitializer.initializeEventStock(id);
 		}
-		if (eventIds.containsKey("FIRST_COME_WITH_QUEUE")) {
-			eventService.enableQueue(eventIds.get("FIRST_COME_WITH_QUEUE"));
+		if (eventIds.containsKey(SCENARIO_FC_WITH_QUEUE)) {
+			eventService.enableQueue(eventIds.get(SCENARIO_FC_WITH_QUEUE));
 		}
 
 		// 6. 사전정보 저장 (preSaveRatio가 지정된 경우)
@@ -261,9 +264,8 @@ public class LoadTestService {
 
 	private void cleanupEntries() {
 		int deleted = jdbcTemplate.update("""
-			DELETE FROM entry WHERE user_id IN (
-				SELECT id FROM user WHERE email LIKE 'k6user%@test.com'
-			)
+			DELETE FROM entry
+			WHERE user_id IN (SELECT id FROM user WHERE email LIKE 'k6user%@test.com')
 			""");
 		log.info("[LoadTest] 이전 테스트 entry 삭제 — {}건", deleted);
 	}
