@@ -120,27 +120,40 @@ resource "kubernetes_deployment_v1" "on_race_api" {
             container_port = 8080
           }
 
+          # 1. 기본 앱 설정
           env {
             name  = "SPRING_PROFILES_ACTIVE"
             value = "prod"
           }
           env {
-            name = "VQA_SERVICE_URL"
+            name  = "VQA_SERVICE_URL"
             value = "http://on-race-vqa-service.t6-on-race-prod.svc.cluster.local:8000"
           }
           env {
             name  = "JAVA_TOOL_OPTIONS"
             value = "-Dspring.datasource.url=jdbc:mysql://${data.terraform_remote_state.base.outputs.rds_proxy_endpoint}:3306/onrace?sslMode=REQUIRED&useSSL=true&verifyServerCertificate=false&allowPublicKeyRetrieval=true -Dspring.profiles.active=prod -XX:InitialRAMPercentage=75.0 -XX:MaxRAMPercentage=75.0 -XX:MinRAMPercentage=75.0"
           }
+
+          # 2. Redis 설정 (Option 2: MAIN_ 접두어로 통일 및 Secret 참조)
           env {
-            name = "SPRING_REDIS_PASSWORD"
+            name  = "MAIN_REDIS_HOST"
+            value = "127.0.0.1" # stunnel 사이드카를 통해 루프백 통신
+          }
+          env {
+            name  = "MAIN_REDIS_PORT"
+            value = "6379"
+          }
+          env {
+            name = "MAIN_REDIS_PASSWORD"
             value_from {
               secret_key_ref {
-                name = "redis-auth-secret" # 우리가 아까 생성한 Secret 이름
-                key  = "password"          # Secret 내부에 저장된 키 이름
+                name = "redis-auth-secret" # kubectl로 생성한 Secret 이름
+                key  = "password"          # Secret 내부의 키 이름
               }
             }
           }
+
+          # 3. 데이터베이스 설정 (기존 DB_ 및 MAIN_DB_ 병행 유지)
           env {
             name  = "DB_ENDPOINT"
             value = data.terraform_remote_state.base.outputs.rds_proxy_endpoint
@@ -170,15 +183,7 @@ resource "kubernetes_deployment_v1" "on_race_api" {
             value = local.db_creds.password
           }
 
-          env {
-            name  = "SPRING_REDIS_HOST"
-            value = "127.0.0.1"
-          }
-          env {
-            name  = "SPRING_REDIS_PORT"
-            value = "6379"
-          }
-
+          # 4. 기타 외부 서비스 설정
           env {
             name  = "SQS_QUEUE_URL"
             value = data.terraform_remote_state.base.outputs.queue_url
@@ -208,33 +213,26 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           }
 
           startup_probe {
-            tcp_socket {
-              port = 8080
-            }
+            tcp_socket { port = 8080 }
             initial_delay_seconds = 10
             period_seconds        = 5
             failure_threshold     = 30
           }
 
           readiness_probe {
-            http_get {
-              path = "/actuator/health"
-              port = 8080
-            }
+            http_get { path = "/actuator/health", port = 8080 }
             initial_delay_seconds = 30
             period_seconds        = 10
           }
 
           liveness_probe {
-            http_get {
-              path = "/actuator/health/liveness"
-              port = 8080
-            }
+            http_get { path = "/actuator/health/liveness", port = 8080 }
             initial_delay_seconds = 60
             period_seconds        = 15
           }
         }
 
+        # 5. Redis TLS 터널링용 stunnel 사이드카
         container {
           name  = "stunnel"
           image = "dweomer/stunnel:latest"
