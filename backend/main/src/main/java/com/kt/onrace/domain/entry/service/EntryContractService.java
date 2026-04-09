@@ -71,7 +71,7 @@ public class EntryContractService implements OrderEntryContract {
 		if (!shouldRollback) return;
 
 		Long paceId = entry.getEventPace().getId();
-		eventStockRepository.findByEventPaceIdOrThrow(paceId).cancelStock();
+		eventStockRepository.decrementConfirmedStock(paceId);
 
 		if (appType == EventAppType.FIRST_COME) {
 			eventStockService.cancelTempStock(paceId);

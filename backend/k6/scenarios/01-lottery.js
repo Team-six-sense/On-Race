@@ -9,21 +9,25 @@
 
 import http from 'k6/http';
 import { check, sleep } from 'k6';
-import { Counter } from 'k6/metrics';
+import { Counter, Rate, Trend } from 'k6/metrics';
 import { batchLoginAll, authHeaders } from '../lib/auth.js';
 import { setupTestData } from '../lib/setup.js';
 import { assignPace } from '../lib/distribution.js';
 import { withRetry } from '../lib/retry.js';
 import { errorLog, resultLog } from '../lib/log.js';
+import { buildSummaryOutput } from '../lib/report.js';
 import {
   BASE_URL, VU_COUNT,
   RAMP_UP_SEC, HOLD_SEC, RAMP_DOWN_SEC,
   SETUP_TIMEOUT_SEC,
 } from '../lib/config.js';
 
-// 커스텀 메트릭
-const applySuccess = new Counter('lottery_apply_success');
-const applyFail    = new Counter('lottery_apply_fail');
+// 커스텀 메트릭 (통일 네이밍)
+const applyOk        = new Counter('apply_ok');
+const applyDup       = new Counter('apply_dup');
+const unexpectedErr  = new Counter('unexpected_error');
+const errorRate      = new Rate('error_rate');
+const applyLatency   = new Trend('apply_latency');
 
 export const options = {
   setupTimeout: `${SETUP_TIMEOUT_SEC}s`,
@@ -89,28 +93,48 @@ export default function (data) {
   check(noAuthRes, { 'invalid JWT → 401': (r) => r.status === 401 });
 
   // 응모 신청
+  const start = Date.now();
   const { res, retries } = withRetry(
     () => http.post(
       `${BASE_URL}/main/events/${eventId}/entries/apply/lottery`,
       JSON.stringify({ courseId, paceId }),
-      { headers, tags: { name: 'lottery_apply' } }
+      {
+        headers,
+        tags: { name: 'lottery_apply' },
+        responseCallback: http.expectedStatuses(200, 400, 409),
+      }
     ),
     { maxRetries: 1, backoffSec: 2, name: '응모 신청', vu: __VU }
   );
+  const elapsed = Date.now() - start;
+  applyLatency.add(elapsed);
 
-  const ok = check(res, {
-    'lottery 200': (r) => r.status === 200,
-    'has entryId': (r) => {
-      try { return r.json().data.entryId != null; }
-      catch (e) { return false; }
-    },
-  });
-
-  if (ok) {
-    applySuccess.add(1);
+  if (res.status === 200) {
+    const ok = check(res, {
+      'has entryId': (r) => {
+        try { return r.json().data.entryId != null; }
+        catch (e) { return false; }
+      },
+    });
+    applyOk.add(1);
+    errorRate.add(false);
     resultLog(__VU, `응모 성공`, retries);
+  } else if (res.status === 400 || res.status === 409) {
+    applyDup.add(1);
+    errorRate.add(false);
+    resultLog(__VU, `이미 신청됨 (${res.status})`, retries);
   } else {
-    applyFail.add(1);
+    unexpectedErr.add(1);
+    errorRate.add(true);
     errorLog(__VU, `응모 실패 (${res.status})`);
   }
+}
+
+// ── handleSummary: 통합 리포트 출력 ──
+export function handleSummary(data) {
+  return buildSummaryOutput(data, {
+    testType: 'LOAD',
+    flow: 'LOTTERY',
+    vuCount: VU_COUNT,
+  });
 }

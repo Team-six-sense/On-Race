@@ -52,9 +52,21 @@ export const QUEUE_MAX_POLL_COUNT    = parseInt(__ENV.QUEUE_MAX_POLL || '300');
 // === 결제 이탈 + 2웨이브 설정 ===
 export const PAYMENT_DROPOUT_RATIO = parseFloat(__ENV.PAYMENT_DROPOUT_RATIO || '0.3');  // 30% 이탈
 export const RETRY_MAX_ROUNDS      = parseInt(__ENV.RETRY_MAX_ROUNDS || '5');            // 매진 시 최대 재시도 횟수
-export const RETRY_WAIT_SEC        = parseInt(__ENV.RETRY_WAIT_SEC || '18');             // 재시도 대기 (TTL 15초 + 여유 3초)
+export const RETRY_WAIT_SEC        = parseInt(__ENV.RETRY_WAIT_SEC || '18');             // Wave2 TTL 만료 대기 (TTL 15초 + 여유 3초)
+export const RETRY_DELAY_SEC       = parseInt(__ENV.RETRY_DELAY_SEC || '5');             // 매진 재시도 간격 (라운드 간 대기)
 
 // === Wave 2 추가 인원 (이탈자 재고 재선점) ===
 export const EXTRA_VU_COUNT = __ENV.EXTRA_VU_COUNT != null
   ? parseInt(__ENV.EXTRA_VU_COUNT)
   : Math.ceil(VU_COUNT * PAYMENT_DROPOUT_RATIO);  // 미지정 시 이탈률 기반 자동 계산
+
+// === 용량(Breakpoint) 테스트 설정 ===
+export const BP_START_VUS        = parseInt(__ENV.BP_START_VUS || '500');           // 시작 VU 수
+export const BP_STEP_VUS         = parseInt(__ENV.BP_STEP_VUS || '500');            // 단계별 VU 증분
+export const BP_MAX_VUS          = parseInt(__ENV.BP_MAX_VUS || '5000');            // 최대 VU 수
+export const BP_STEP_DURATION_SEC = parseInt(__ENV.BP_STEP_DURATION_SEC || '60');   // 단계 유지 시간 (초)
+export const BP_RAMP_SEC         = parseInt(__ENV.BP_RAMP_SEC || '10');             // 단계 간 ramp 시간 (초)
+export const BP_ERROR_THRESHOLD  = parseFloat(__ENV.BP_ERROR_THRESHOLD || '0.05'); // 에러율 중단 임계값 (5%)
+export const BP_P95_THRESHOLD_MS = parseInt(__ENV.BP_P95_THRESHOLD_MS || '5000');  // p95 응답시간 중단 임계값 (ms)
+export const BP_SCENARIO_FLOW    = __ENV.BP_SCENARIO_FLOW || 'LOTTERY';            // LOTTERY / FIRST_COME / FIRST_COME_QUEUE
+export const BP_LOGIN_POOL       = parseInt(__ENV.BP_LOGIN_POOL || '30000');       // 로그인 유저 풀 (BP_MAX_VUS와 분리, 쓰기 부하 유지용)

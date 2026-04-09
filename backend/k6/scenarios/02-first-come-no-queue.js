@@ -10,29 +10,32 @@
 
 import http from 'k6/http';
 import { check, sleep } from 'k6';
-import { Counter } from 'k6/metrics';
+import { Counter, Rate, Trend } from 'k6/metrics';
 import { batchLoginAll, authHeaders } from '../lib/auth.js';
 import { setupTestData } from '../lib/setup.js';
 import { assignPace } from '../lib/distribution.js';
 import { withRetry } from '../lib/retry.js';
 import { errorLog, resultLog } from '../lib/log.js';
+import { buildSummaryOutput } from '../lib/report.js';
 import {
   BASE_URL, VU_COUNT, EXTRA_VU_COUNT,
   RAMP_UP_SEC, HOLD_SEC, RAMP_DOWN_SEC,
   SETUP_TIMEOUT_SEC,
-  PAYMENT_DROPOUT_RATIO, RETRY_MAX_ROUNDS, RETRY_WAIT_SEC,
+  PAYMENT_DROPOUT_RATIO, RETRY_MAX_ROUNDS, RETRY_WAIT_SEC, RETRY_DELAY_SEC,
 } from '../lib/config.js';
 
 const TOTAL_VUS = VU_COUNT + EXTRA_VU_COUNT;
 
-// 커스텀 메트릭
-const reserveSuccess   = new Counter('firstcome_reserve_success');
-const paymentConfirmed = new Counter('firstcome_payment_confirmed');
-const paymentDropout   = new Counter('firstcome_payment_dropout');
-const wave2Confirmed   = new Counter('firstcome_wave2_confirmed');
-const soldOut          = new Counter('firstcome_sold_out');
-const alreadyReserved  = new Counter('firstcome_already_reserved');
-const unexpectedErr    = new Counter('firstcome_unexpected_error');
+// 커스텀 메트릭 (통일 네이밍)
+const applyOk        = new Counter('apply_ok');
+const applyDup       = new Counter('apply_dup');
+const confirmOk      = new Counter('confirm_ok');
+const paymentDropout = new Counter('payment_dropout');
+const wave2Ok        = new Counter('wave2_ok');
+const soldOut        = new Counter('sold_out');
+const unexpectedErr  = new Counter('unexpected_error');
+const errorRate      = new Rate('error_rate');
+const applyLatency   = new Trend('apply_latency');
 
 export const options = {
   setupTimeout: `${SETUP_TIMEOUT_SEC}s`,
@@ -108,8 +111,9 @@ export default function (data) {
   let totalRetries = 0;
 
   for (let round = 0; round <= RETRY_MAX_ROUNDS; round++) {
-    if (round > 0) sleep(RETRY_WAIT_SEC);
+    if (round > 0) sleep(RETRY_DELAY_SEC);
 
+    const start = Date.now();
     const { res, retries } = withRetry(
       () => http.post(
         `${BASE_URL}/main/events/${eventId}/entries/apply/first-come`,
@@ -122,10 +126,13 @@ export default function (data) {
       ),
       { maxRetries: 1, backoffSec: 2, name: '선착순 신청', vu: __VU }
     );
+    const elapsed = Date.now() - start;
+    applyLatency.add(elapsed);
     totalRetries += retries;
 
     if (res.status === 200) {
-      reserveSuccess.add(1);
+      applyOk.add(1);
+      errorRate.add(false);
 
       // Wave 1: 이탈/확정 판단 / Wave 2: 전원 결제확정
       if (!isWave2 && Math.random() < PAYMENT_DROPOUT_RATIO) {
@@ -142,24 +149,24 @@ export default function (data) {
 
       if (confirmRes.status === 200) {
         if (isWave2) {
-          wave2Confirmed.add(1);
+          wave2Ok.add(1);
           resultLog(__VU, `Wave2 결제 확정 (라운드 ${round})`, totalRetries);
         } else {
-          paymentConfirmed.add(1);
-          resultLog(__VU, `결제 확정 (라운드 ${round})`, totalRetries);
+          confirmOk.add(1);
+          resultLog(__VU, `Wave1 결제 확정 (라운드 ${round})`, totalRetries);
         }
       } else {
         unexpectedErr.add(1);
+        errorRate.add(true);
         errorLog(__VU, `결제 확정 실패 (${confirmRes.status}, 라운드 ${round})`);
       }
       break;
 
     } else if (res.status === 409) {
+      applyDup.add(1);
+      errorRate.add(false);
       try {
         const code = res.json().code;
-        if (code === 'ENT_010') {
-          alreadyReserved.add(1);
-        }
         if (round === RETRY_MAX_ROUNDS) {
           soldOut.add(1);
           resultLog(__VU, `최종 매진 (${code})`, totalRetries);
@@ -171,10 +178,73 @@ export default function (data) {
         }
       }
 
+    } else if (res.status === 400) {
+      applyDup.add(1);
+      errorRate.add(false);
+
     } else {
       unexpectedErr.add(1);
+      errorRate.add(true);
       errorLog(__VU, `예상 외 에러 (${res.status}, 라운드 ${round})`);
       break;
     }
   }
+}
+
+// ── teardown: 재고 검증 리포트 ──
+export function teardown(data) {
+  const eventId = data.eventIds.FIRST_COME_NO_QUEUE;
+  const token = data.tokens['1'];
+  if (!token) {
+    console.error('[teardown] 토큰 없음, 검증 스킵');
+    return;
+  }
+
+  const res = http.get(
+    `${BASE_URL}/main/internal/load-test/stock-summary?eventId=${eventId}`,
+    { headers: authHeaders(token), tags: { name: 'stock_summary' } }
+  );
+
+  if (res.status !== 200) {
+    console.error(`[teardown] 재고 검증 API 실패: ${res.status}`);
+    return;
+  }
+
+  const s = res.json().data;
+
+  console.log('');
+  console.log('========================================');
+  console.log('         재고 검증 리포트');
+  console.log('========================================');
+  console.log(`이벤트 ID: ${s.eventId}`);
+  console.log('');
+  console.log(`[DB]    총 재고: ${s.dbTotalStock}  |  확정: ${s.dbConfirmedStock}`);
+  console.log(`[Redis] 잔여:   ${s.redisRemainingStock}  |  확정: ${s.redisConfirmedStock}`);
+  console.log(`[Entry] PRE_SAVED: ${s.entryPreSavedCount}  |  RESERVED: ${s.entryReservedCount}  |  APPLIED: ${s.entryAppliedCount}`);
+  console.log('');
+  console.log(`오버셀링:     ${s.overselling ? '!! 발생 !!' : '없음 (OK)'}`);
+  console.log(`DB-Redis 일치: ${s.dbRedisMatch ? '일치 (OK)' : '!! 불일치 !!'}`);
+  console.log('');
+  console.log('코스/페이스         | DB재고 | DB확정 | R잔여 | R확정 | 일치');
+  console.log('--------------------+--------+--------+-------+-------+-----');
+  for (const p of s.paceDetails) {
+    const label = `${p.courseName}/${p.paceName}`.padEnd(18);
+    const t = String(p.dbTotal).padStart(6);
+    const c = String(p.dbConfirmed).padStart(6);
+    const rr = String(p.redisRemaining).padStart(5);
+    const rc = String(p.redisConfirmed).padStart(5);
+    const m = p.match ? ' OK ' : ' !! ';
+    console.log(`${label} | ${t} | ${c} | ${rr} | ${rc} | ${m}`);
+  }
+  console.log('========================================');
+  console.log('');
+}
+
+// ── handleSummary: 통합 리포트 출력 ──
+export function handleSummary(data) {
+  return buildSummaryOutput(data, {
+    testType: 'LOAD',
+    flow: 'FIRST_COME',
+    vuCount: TOTAL_VUS,
+  });
 }
