@@ -10,6 +10,17 @@ services:
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
+      # max_connections: MySQL이 허용하는 최대 동시 연결 수
+      # 범위: 100~10000 | 기준: 모든 앱 인스턴스의 HikariCP pool 합 + 여유분(모니터링, 관리 연결)
+      # 현재: Main(50) + Auth(30) = 80 → 500이면 충분한 여유
+      # [AWS 배포 시] RDS 인스턴스 클래스별 자동 계산됨 (t3.medium: ~312, r5.large: ~1365)
+      - --max_connections=500
+      # innodb_buffer_pool_size: InnoDB 데이터+인덱스 캐시 메모리
+      # 범위: 128M~시스템 메모리의 70% | 기준: 테이블 데이터 크기
+      # 클수록 디스크 I/O 감소 → 쿼리 성능 향상
+      # 로컬 Docker: 512M~2G, 서버: 전체 메모리의 50~70%
+      # 현재 Docker 메모리 31GB, MySQL 사용 ~500MB → 2G 할당 가능 (여유 충분)
+      - --innodb_buffer_pool_size=2G
     volumes:
       - main-db-data:/var/lib/mysql
     networks:

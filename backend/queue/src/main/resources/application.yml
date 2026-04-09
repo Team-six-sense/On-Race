@@ -25,6 +25,22 @@ queue:
   interval-ms: ${QUEUE_INTERVAL_MS:3000}
   pass-ttl-seconds: ${QUEUE_PASS_TTL_SECONDS:600}
   token-secret: ${QUEUE_TOKEN_SECRET}
+  # ──── 배치 처리 성능 튜닝 가이드 ────
+  # batch-size: pace당 1회 배치에서 처리할 사용자 수
+  #   범위: 50~2000 | 처리율 = batch-size / (interval-ms / 1000)
+  #   현재: 500 / 2초 = 250명/초/pace
+  #   높이면 처리율 증가, but Redis 단일 명령 실행 시간 증가 (blocking 주의)
+  #
+  # interval-ms: 배치 스케줄러 실행 주기 (fixedDelay)
+  #   범위: 1000~10000 | 줄이면 처리율 증가, Redis 부하 증가
+  #   1000ms 이하 비권장 (분산 락 경합 + Redis CPU 부하)
+  #
+  # pass-ttl-seconds: 통과 토큰 유효 시간 (초)
+  #   범위: 60~1800 | 사용자가 결제까지 완료할 시간 고려
+  #   너무 짧으면 결제 중 만료, 너무 길면 미사용 토큰이 슬롯 점유
+  #
+  # [AWS 배포 시] 30,000 트래픽 시: batch-size=1000, interval-ms=2000 → 500명/초/pace 권장
+  # 복수 pace 운영 시: 총 처리율 = 처리율/pace x pace 수
 
 management:
   endpoints:

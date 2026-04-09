@@ -33,6 +33,7 @@ public class SecurityConfig {
 				.pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 				.pathMatchers("/auth/**").permitAll()
 				.pathMatchers("/main/**").permitAll()
+				.pathMatchers("/queue/**").permitAll()
 				.pathMatchers("/actuator/**").permitAll()
 				.anyExchange().authenticated()
 			)
