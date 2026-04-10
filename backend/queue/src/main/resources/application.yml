@@ -1,7 +1,11 @@
 server:
   port: ${QUEUE_SERVER_PORT:8083}
+  shutdown: graceful
 
 spring:
+  lifecycle:
+    timeout-per-shutdown-phase: ${QUEUE_SHUTDOWN_TIMEOUT:30s}
+
   application:
     name: queue
 

@@ -1,23 +1,13 @@
 server:
   port: ${GATEWAY_SERVER_PORT:8080}
-  # ──── Gateway 성능 튜닝 가이드 (WebFlux/Netty 기반) ────
-  # Gateway는 Tomcat이 아닌 Netty 사용 → threads 설정 불필요
-  # Netty 워커 스레드: 기본 CPU 코어 x 2 (자동 설정)
-  #
-  # [AWS 배포 시] 고트래픽 환경에서 워커 스레드 수동 조정:
-  #   JVM_OPTS에 -Dreactor.netty.ioWorkerCount=32 추가 (기본: 코어 x 2)
-  #   K8s Pod CPU 2코어 기본 4개 → 16~32 권장
-  #
-  # [AWS 배포 시] Rate Limiter 활성화:
-  #   현재 auth-route, queue-route, entry-apply 라우트의 RateLimiter가 주석 처리됨
-  #   운영 시 반드시 활성화 (매크로 방어)
-  #   replenishRate: 초당 허용 요청 수 | burstCapacity: 순간 허용 최대 요청 수
-
+  shutdown: graceful
 spring:
   application:
     name: gateway
   profiles:
     active: ${GATEWAY_PROFILES_ACTIVE:local}
+  lifecycle:
+    timeout-per-shutdown-phase: ${GATEWAY_SHUTDOWN_TIMEOUT:30s}
   data:
     redis:
       host: ${GATEWAY_REDIS_HOST:localhost}

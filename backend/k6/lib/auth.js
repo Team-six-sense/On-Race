@@ -116,6 +116,11 @@ export function batchLoginAll(totalUsers) {
       }
     }
 
+    // 배치 간 쿨다운: DB 커넥션 반환 대기 (pool 소진 방지)
+    if (batchIdx < totalBatches - 1) {
+      sleep(2);
+    }
+
     // 진행률 로깅 (10배치마다)
     if ((batchIdx + 1) % 10 === 0 || batchIdx === totalBatches - 1) {
       console.log(`[setup] 로그인 진행: ${batchIdx + 1}/${totalBatches} 배치 (${Object.keys(tokens).length}/${totalUsers} 성공)`);

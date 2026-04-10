@@ -4,6 +4,7 @@ import org.redisson.Redisson;
 import org.redisson.api.RedissonClient;
 import org.redisson.config.Config;
 import org.redisson.config.SentinelServersConfig;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,6 +21,10 @@ public class RedissonConfig {
 
 	private final RedisProperties redisProperties;
 
+	// 기본 Redisson 기본값: 24. 부하테스트 시 환경변수로 조정 가능
+	@Value("${redisson.connection-pool-size:24}")
+	private int connectionPoolSize;
+
 	@Bean
 	@Profile("local")
 	public RedissonClient redissonSingleClient() {
@@ -31,7 +36,11 @@ public class RedissonConfig {
 		config
 			.useSingleServer()
 			.setAddress(uri)
-			.setPassword(redisProperties.getPassword());
+			.setPassword(redisProperties.getPassword())
+			.setConnectionPoolSize(connectionPoolSize)
+			.setConnectionMinimumIdleSize(connectionPoolSize / 2);
+
+		log.info("[Redisson] connectionPoolSize={}, minIdle={}", connectionPoolSize, connectionPoolSize / 2);
 
 		return Redisson.create(config);
 	}
@@ -53,6 +62,10 @@ public class RedissonConfig {
 		}
 
 		sentinelConfig.setPassword(redisProperties.getPassword());
+		sentinelConfig.setMasterConnectionPoolSize(connectionPoolSize);
+		sentinelConfig.setMasterConnectionMinimumIdleSize(connectionPoolSize / 2);
+
+		log.info("[Redisson] masterConnectionPoolSize={}, minIdle={}", connectionPoolSize, connectionPoolSize / 2);
 
 		return Redisson.create(config);
 	}
