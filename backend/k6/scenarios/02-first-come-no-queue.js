@@ -10,7 +10,8 @@
 
 import http from 'k6/http';
 import { check, sleep } from 'k6';
-import { Counter, Rate, Trend } from 'k6/metrics';
+import exec from 'k6/execution';
+import { Counter, Rate, Trend, Gauge } from 'k6/metrics';
 import { batchLoginAll, authHeaders } from '../lib/auth.js';
 import { setupTestData } from '../lib/setup.js';
 import { assignPace } from '../lib/distribution.js';
@@ -27,15 +28,25 @@ import {
 const TOTAL_VUS = VU_COUNT + EXTRA_VU_COUNT;
 
 // 커스텀 메트릭 (통일 네이밍)
-const applyOk        = new Counter('apply_ok');
-const applyDup       = new Counter('apply_dup');
-const confirmOk      = new Counter('confirm_ok');
-const paymentDropout = new Counter('payment_dropout');
-const wave2Ok        = new Counter('wave2_ok');
-const soldOut        = new Counter('sold_out');
-const unexpectedErr  = new Counter('unexpected_error');
-const errorRate      = new Rate('error_rate');
-const applyLatency   = new Trend('apply_latency');
+const applyOk          = new Counter('apply_ok');
+const applyDup         = new Counter('apply_dup');
+const confirmOk        = new Counter('confirm_ok');
+const paymentDropout   = new Counter('payment_dropout');
+const wave2Ok          = new Counter('wave2_ok');
+const soldOut          = new Counter('sold_out');
+const unexpectedErr    = new Counter('unexpected_error');
+const errorRate        = new Rate('error_rate');
+const applyLatency     = new Trend('apply_latency');
+// 병목(hold) 구간 응답시간: active VU가 target의 95% 이상일 때만 기록
+const peakApplyLatency = new Trend('peak_apply_latency');
+
+// 병목 판정 임계값 (TOTAL_VUS의 95%)
+const PEAK_VU_THRESHOLD = Math.max(1, Math.floor(TOTAL_VUS * 0.95));
+// 재고 검증 결과를 teardown에서 기록하여 통합 리포트에 포함시키기 위한 Gauge
+const stockOverselling    = new Gauge('stock_overselling');      // 0 = 없음, 1 = 발생
+const stockDbRedisMatch   = new Gauge('stock_db_redis_match');   // 0 = 불일치, 1 = 일치
+const stockDbConfirmed    = new Gauge('stock_db_confirmed');     // DB 확정 건수
+const stockRedisRemaining = new Gauge('stock_redis_remaining');  // Redis 잔여 건수
 
 export const options = {
   setupTimeout: `${SETUP_TIMEOUT_SEC}s`,
@@ -128,6 +139,9 @@ export default function (data) {
     );
     const elapsed = Date.now() - start;
     applyLatency.add(elapsed);
+    if (exec.instance.vusActive >= PEAK_VU_THRESHOLD) {
+      peakApplyLatency.add(elapsed);
+    }
     totalRetries += retries;
 
     if (res.status === 200) {
@@ -211,6 +225,12 @@ export function teardown(data) {
   }
 
   const s = res.json().data;
+
+  // 통합 리포트(handleSummary)에서 사용하도록 Gauge로 기록
+  stockOverselling.add(s.overselling ? 1 : 0);
+  stockDbRedisMatch.add(s.dbRedisMatch ? 1 : 0);
+  stockDbConfirmed.add(s.dbConfirmedStock);
+  stockRedisRemaining.add(s.redisRemainingStock);
 
   console.log('');
   console.log('========================================');
