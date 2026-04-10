@@ -7,6 +7,10 @@ resource "helm_release" "argocd" {
   namespace        = "argocd"
   create_namespace = true
 
+  wait            = false
+  timeout         = 600
+  cleanup_on_fail = true
+
   # 보안팀 권고 이미지 태그 강제 지정
   set {
     name  = "server.image.tag"

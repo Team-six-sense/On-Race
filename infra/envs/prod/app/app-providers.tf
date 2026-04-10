@@ -33,6 +33,10 @@ provider "aws" {
 provider "kubernetes" {
   host                   = module.eks.cluster_endpoint
   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+  
+  # [핵심 추가] Server-Side Apply 활성화
+  # 테라폼이 아닌 K8s API 서버가 필드 충돌을 관리하게 하여 Identity Change 오류를 원천 차단합니다.
+
   exec {
     api_version = "client.authentication.k8s.io/v1beta1"
     command     = "aws"

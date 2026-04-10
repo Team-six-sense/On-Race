@@ -16,6 +16,10 @@ resource "kubernetes_deployment_v1" "on_race_vqa" {
     namespace = kubernetes_namespace_v1.app.metadata[0].name
   }
 
+  # [추가] 배포 완료까지 테라폼이 무한 대기하지 않도록 설정
+  # 이미지 풀링이 늦어져서 발생하는 프로바이더 타임아웃 및 State 손상을 방지합니다.
+  wait_for_rollout = false
+
   spec {
     replicas = 2 
     selector {
@@ -30,7 +34,6 @@ resource "kubernetes_deployment_v1" "on_race_vqa" {
       spec {
         service_account_name = kubernetes_service_account_v1.vqa_sa.metadata[0].name
 
-        # [고가용성 추가] 여러 가용 영역(AZ)에 파드를 고르게 분산 배치
         topology_spread_constraint {
           max_skew           = 1
           topology_key       = "topology.kubernetes.io/zone"
@@ -43,8 +46,7 @@ resource "kubernetes_deployment_v1" "on_race_vqa" {
         container {
           name  = "vqa-api"
           image = "${data.terraform_remote_state.base.outputs.vqa_ecr_repository_url}:latest"
-
-          # [추가] :latest 태그 덮어쓰기 배포 시 새 이미지 다운로드 강제
+          
           image_pull_policy = "Always"
           
           port { container_port = 8000 }
@@ -91,6 +93,17 @@ resource "kubernetes_deployment_v1" "on_race_vqa" {
         }
       }
     }
+  }
+
+  # [핵심 추가] K8s 내부 관리 필드 무시
+  # 서비스 메시나 기타 컨트롤러가 주입하는 어노테이션/라벨로 인한 State 불일치를 방지합니다.
+  lifecycle {
+    ignore_changes = [
+      metadata[0].annotations,
+      metadata[0].labels,
+      spec[0].template[0].metadata[0].annotations,
+      spec[0].template[0].metadata[0].labels,
+    ]
   }
 }
 

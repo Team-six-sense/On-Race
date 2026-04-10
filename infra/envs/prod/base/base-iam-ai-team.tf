@@ -98,3 +98,30 @@ resource "aws_iam_group_policy_attachment" "ai_team_eks_view_attach" {
   group      = aws_iam_group.ai_team.name
   policy_arn = aws_iam_policy.ai_team_eks_view.arn
 }
+
+# AI 팀 전용 콘솔 진단 및 에러 해결 정책
+resource "aws_iam_policy" "ai_team_console_diagnostic" {
+  name        = "T6-AITeam-Console-Diagnostic"
+  description = "Allows AI team to view console logs and optimizer status"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = [
+          "ec2:GetConsoleOutput",       # 시스템 로그 확인용
+          "ec2:GetConsoleScreenshot",   # 화면 캡처 확인용
+          "compute-optimizer:GetEnrollmentStatus" # 콘솔 상단 빨간 에러 제거용
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# AI 팀 그룹에 정책 연결
+resource "aws_iam_group_policy_attachment" "ai_team_console_attach" {
+  group      = aws_iam_group.ai_team.name
+  policy_arn = aws_iam_policy.ai_team_console_diagnostic.arn
+}

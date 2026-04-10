@@ -56,7 +56,7 @@ resource "aws_security_group_rule" "eks_to_rds_proxy" {
   security_group_id = data.terraform_remote_state.base.outputs.rds_proxy_sg_id
   cidr_blocks       = [data.terraform_remote_state.base.outputs.vpc_cidr]
 }
-
+/*
 resource "aws_security_group_rule" "eks_to_redis" {
   type              = "ingress"
   from_port         = 6379
@@ -65,7 +65,7 @@ resource "aws_security_group_rule" "eks_to_redis" {
   security_group_id = data.terraform_remote_state.base.outputs.redis_sg_id
 
   cidr_blocks       = [data.terraform_remote_state.base.outputs.vpc_cidr]
-}
+}*/
 
 # 5. Stunnel ConfigMap (Redis TLS 통신을 위해 모든 서비스가 사이드카로 공유)
 resource "kubernetes_config_map_v1" "redis_stunnel_conf" {
@@ -220,13 +220,19 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           }
 
           readiness_probe {
-            http_get { path = "/actuator/health", port = 8080 }
+            http_get {
+              path = "/actuator/health"
+              port = 8080
+            }
             initial_delay_seconds = 30
             period_seconds        = 10
           }
 
           liveness_probe {
-            http_get { path = "/actuator/health/liveness", port = 8080 }
+            http_get {
+              path = "/actuator/health/liveness"
+              port = 8080
+            }
             initial_delay_seconds = 60
             period_seconds        = 15
           }
