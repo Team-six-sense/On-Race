@@ -26,9 +26,11 @@ output "database_subnets" {
   value       = module.vpc.database_subnets
 }
 
+# 1. 네트워크 계층 (VPC) 관련 출력 섹션에서 수정
 output "vpc_endpoint_sg_id" {
   description = "VPC Interface Endpoint 전용 보안 그룹 ID"
-  value       = module.vpc.vpc_endpoint_sg_id
+  # module.vpc.vpc_endpoint_sg_id 대신 리소스를 직접 참조하도록 수정
+  value       = aws_security_group.vpc_endpoints_sg.id 
 }
 
 output "nat_public_ips" {
