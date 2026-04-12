@@ -10,7 +10,8 @@
 
 import http from 'k6/http';
 import { check, sleep } from 'k6';
-import { Counter, Rate, Trend } from 'k6/metrics';
+import exec from 'k6/execution';
+import { Counter, Rate, Trend, Gauge } from 'k6/metrics';
 import { batchLoginAll, authHeaders } from '../lib/auth.js';
 import { setupTestData } from '../lib/setup.js';
 import { assignPace } from '../lib/distribution.js';
@@ -28,19 +29,31 @@ import {
 const TOTAL_VUS = VU_COUNT + EXTRA_VU_COUNT;
 
 // 커스텀 메트릭 (통일 네이밍)
-const applyOk        = new Counter('apply_ok');
-const applyDup       = new Counter('apply_dup');
-const confirmOk      = new Counter('confirm_ok');
-const paymentDropout = new Counter('payment_dropout');
-const wave2Ok        = new Counter('wave2_ok');
-const soldOut        = new Counter('sold_out');
-const unexpectedErr  = new Counter('unexpected_error');
-const errorRate      = new Rate('error_rate');
-const applyLatency   = new Trend('apply_latency');
-const queueWaitTime  = new Trend('queue_wait_time');
-const blocked        = new Counter('blocked');
+const applyOk          = new Counter('apply_ok');
+const applyDup         = new Counter('apply_dup');
+const confirmOk        = new Counter('confirm_ok');
+const paymentDropout   = new Counter('payment_dropout');
+const wave2Ok          = new Counter('wave2_ok');
+const soldOut          = new Counter('sold_out');
+const unexpectedErr    = new Counter('unexpected_error');
+const errorRate        = new Rate('error_rate');
+const applyLatency     = new Trend('apply_latency');
+// 병목(hold) 구간 응답시간: active VU가 target의 95% 이상일 때만 기록
+const peakApplyLatency = new Trend('peak_apply_latency');
+const queueWaitTime    = new Trend('queue_wait_time');
+
+// 병목 판정 임계값 (TOTAL_VUS의 95%)
+const PEAK_VU_THRESHOLD = Math.max(1, Math.floor(TOTAL_VUS * 0.95));
+// 비즈니스 차단 카운터를 원인별로 분리 — 리포트에서 원인 분석 가능하도록 함
+const blockedQueueDup     = new Counter('blocked_queue_dup');     // 409: 대기열 이미 진입 중
+const blockedTokenExpired = new Counter('blocked_token_expired'); // 429: passToken 만료
 const queuePass      = new Counter('queue_pass');
 const queueTimeout   = new Counter('queue_timeout');
+// 재고 검증 결과를 teardown에서 기록하여 통합 리포트에 포함시키기 위한 Gauge
+const stockOverselling    = new Gauge('stock_overselling');      // 0 = 없음, 1 = 발생
+const stockDbRedisMatch   = new Gauge('stock_db_redis_match');   // 0 = 불일치, 1 = 일치
+const stockDbConfirmed    = new Gauge('stock_db_confirmed');     // DB 확정 건수
+const stockRedisRemaining = new Gauge('stock_redis_remaining');  // Redis 잔여 건수
 
 export const options = {
   setupTimeout: `${SETUP_TIMEOUT_SEC}s`,
@@ -136,7 +149,7 @@ export default function (data) {
 
   // 409: QUEUE_ALREADY_ENTERED — 비즈니스 차단 (에러 아님)
   if (enterRes.status === 409) {
-    blocked.add(1);
+    blockedQueueDup.add(1);
     errorRate.add(false);
     resultLog(__VU, `대기열 진입 차단 — 이미 대기 중 (409)`);
     return;
@@ -220,11 +233,14 @@ export default function (data) {
     );
     const elapsed = Date.now() - start;
     applyLatency.add(elapsed);
+    if (exec.instance.vusActive >= PEAK_VU_THRESHOLD) {
+      peakApplyLatency.add(elapsed);
+    }
     totalRetries += applyRetries;
 
     // 429: passToken 만료 — 비즈니스 차단 (에러 아님)
     if (applyRes.status === 429) {
-      blocked.add(1);
+      blockedTokenExpired.add(1);
       errorRate.add(false);
       resultLog(__VU, `passToken 만료 차단 (429, 라운드 ${round})`);
       break;
@@ -311,6 +327,12 @@ export function teardown(data) {
   }
 
   const s = res.json().data;
+
+  // 통합 리포트(handleSummary)에서 사용하도록 Gauge로 기록
+  stockOverselling.add(s.overselling ? 1 : 0);
+  stockDbRedisMatch.add(s.dbRedisMatch ? 1 : 0);
+  stockDbConfirmed.add(s.dbConfirmedStock);
+  stockRedisRemaining.add(s.redisRemainingStock);
 
   console.log('');
   console.log('========================================');

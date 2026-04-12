@@ -5,7 +5,16 @@
 
 import http from 'k6/http';
 import { sleep } from 'k6';
+import { Trend } from 'k6/metrics';
 import { BASE_URL, USER_PASSWORD, LOGIN_TIMEOUT, LOGIN_BATCH_SIZE } from './config.js';
+
+/**
+ * setup() 일괄 로그인에 걸린 전체 시간(ms)
+ * batchLoginAll 내부에서 1회 기록된다. report.js가 이 값을 읽어
+ * "테스트 시간"에서 로그인 구간을 분리해 출력한다.
+ * (네이밍 컨벤션: queue_wait_time, apply_latency 등 기존 Trend와 동일하게 단위 접미사 생략)
+ */
+export const setupLoginDuration = new Trend('setup_login_duration');
 
 /**
  * VU 인덱스 → 이메일 (k6user00001@test.com ~ k6user30000@test.com)
@@ -60,6 +69,7 @@ export function batchLoginAll(totalUsers) {
   const tokens = {};
   const batchSize = LOGIN_BATCH_SIZE;
   const totalBatches = Math.ceil(totalUsers / batchSize);
+  const loginStartMs = Date.now();
 
   console.log(`[setup] 일괄 로그인 시작: ${totalUsers}명, 배치=${batchSize}, 총 ${totalBatches}배치`);
 
@@ -127,6 +137,8 @@ export function batchLoginAll(totalUsers) {
     }
   }
 
-  console.log(`[setup] 일괄 로그인 완료: ${Object.keys(tokens).length}/${totalUsers} 성공`);
+  const loginElapsedMs = Date.now() - loginStartMs;
+  setupLoginDuration.add(loginElapsedMs);
+  console.log(`[setup] 일괄 로그인 완료: ${Object.keys(tokens).length}/${totalUsers} 성공 (${Math.round(loginElapsedMs / 1000)}초 소요)`);
   return tokens;
 }

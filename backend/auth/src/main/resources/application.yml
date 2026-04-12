@@ -29,8 +29,6 @@ spring:
     password: ${AUTH_DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
-      # Auth는 로그인/회원가입 등 인증 위주 → Main 대비 DB 쿼리 빈도 낮음
-      # Main의 60~70% 수준으로 설정. 상세 설명은 main application.yml 참고
       maximum-pool-size: ${AUTH_HIKARI_MAX_POOL_SIZE:10}
       minimum-idle: ${AUTH_HIKARI_MIN_IDLE:5}
       connection-timeout: ${AUTH_HIKARI_CONNECTION_TIMEOUT:3000}
