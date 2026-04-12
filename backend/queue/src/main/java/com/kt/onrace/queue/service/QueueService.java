@@ -74,8 +74,9 @@ public class QueueService {
 
 		if (rank != null) {
 			long position = rank + 1;
+			long jitterMs = queueProperties.getPollJitterMs();
 			long retryAfterMs = queueProperties.getPollBaseMs()
-				+ ThreadLocalRandom.current().nextLong(queueProperties.getPollJitterMs());
+				+ (jitterMs > 0 ? ThreadLocalRandom.current().nextLong(jitterMs) : 0);
 			log.debug("[QUEUE] 대기 중 userId={}, paceId={}, position={}", userId, paceId, position);
 			return QueueStatusResponse.waiting(paceId, position, retryAfterMs);
 		}
