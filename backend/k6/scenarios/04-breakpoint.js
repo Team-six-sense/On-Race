@@ -233,6 +233,10 @@ function doFirstCome(eventId, courseId, paceId, headers) {
 
     if (confirmRes.status === 200) {
       confirmOk.add(1);
+    } else {
+      unexpectedErr.add(1);
+      errorRate.add(true);
+      errorLog(__VU, `결제 확정 실패 (${confirmRes.status})`);
     }
   } else if (res.status === 409 || res.status === 400) {
     applyDup.add(1);
@@ -337,6 +341,10 @@ function doFirstComeQueue(eventId, courseId, paceId, headers) {
     );
     if (confirmRes.status === 200) {
       confirmOk.add(1);
+    } else {
+      unexpectedErr.add(1);
+      errorRate.add(true);
+      errorLog(__VU, `결제 확정 실패 (${confirmRes.status})`);
     }
   } else if (applyRes.status === 429) {
     // passToken 만료 — 비즈니스 차단 (에러 아님)
