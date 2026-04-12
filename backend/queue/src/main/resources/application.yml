@@ -35,6 +35,8 @@ queue:
   interval-ms: ${QUEUE_INTERVAL_MS:3000}
   pass-ttl-seconds: ${QUEUE_PASS_TTL_SECONDS:600}
   token-secret: ${QUEUE_TOKEN_SECRET}
+  poll-base-ms: ${QUEUE_POLL_BASE_MS:3000}
+  poll-jitter-ms: ${QUEUE_POLL_JITTER_MS:2000}
 
 management:
   endpoints:

@@ -192,8 +192,9 @@ function formatBusinessMetrics(data, flow) {
   const queuePassCount = counter(m, 'queue_pass');
   const queueTimeoutCt = counter(m, 'queue_timeout');
   // 세분화된 차단 카운터 (FIRST_COME_QUEUE 전용)
-  const blockedQueueDup     = counter(m, 'blocked_queue_dup');     // 409 — 대기열 이미 진입
-  const blockedTokenExpired = counter(m, 'blocked_token_expired'); // 429 — passToken 만료
+  const blockedQueueDup          = counter(m, 'blocked_queue_dup');          // 409 — 대기열 이미 진입
+  const blockedTokenExpired      = counter(m, 'blocked_token_expired');      // 429 — passToken 만료
+  const blockedReservationExpired = counter(m, 'blocked_reservation_expired'); // 400 ENT_009 — 예약 TTL 만료
 
   const totalApply = applyOk + applyDup;
 
@@ -247,6 +248,10 @@ function formatBusinessMetrics(data, flow) {
     lines.push(`  선착순 차단:     ${fmt(blockedTokenExpired)}건 (passToken 만료 429)`);
   } else {
     lines.push(`  비즈니스 차단:  ${fmt(blockedCount)}건`);
+  }
+  // 예약 TTL 만료 차단 (FIRST_COME / FIRST_COME_QUEUE 공통)
+  if (flow === 'FIRST_COME' || flow === 'FIRST_COME_QUEUE') {
+    lines.push(`  예약 만료 차단:  ${fmt(blockedReservationExpired)}건 (TTL 초과 400)`);
   }
   lines.push(`  서버 에러:      ${fmt(unexpectedErr)}건`);
 
