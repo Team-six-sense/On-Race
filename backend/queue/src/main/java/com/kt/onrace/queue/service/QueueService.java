@@ -1,5 +1,7 @@
 package com.kt.onrace.queue.service;
 
+import java.util.concurrent.ThreadLocalRandom;
+
 import org.redisson.api.RBucket;
 import org.redisson.api.RScoredSortedSet;
 import org.redisson.api.RSet;
@@ -13,6 +15,7 @@ import com.kt.onrace.common.logging.annotation.ServiceLog;
 import com.kt.onrace.common.util.Preconditions;
 import com.kt.onrace.common.util.RedisKeyGenerator;
 import com.kt.onrace.queue.config.QueueMetrics;
+import com.kt.onrace.queue.config.QueueProperties;
 import com.kt.onrace.queue.dto.QueueEnterResponse;
 import com.kt.onrace.queue.dto.QueueStatusResponse;
 
@@ -25,6 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 public class QueueService {
 	private final RedissonClient redissonClient;
 	private final QueueMetrics queueMetrics;
+	private final QueueProperties queueProperties;
 
 	@ServiceLog
 	public QueueEnterResponse enter(Long userId, Long paceId) {
@@ -69,8 +73,11 @@ public class QueueService {
 		Integer rank = waitingSet.rank(String.valueOf(userId));
 
 		if (rank != null) {
-			log.debug("[QUEUE] 대기 중 userId={}, paceId={}, position={}", userId, paceId, rank + 1);
-			return QueueStatusResponse.waiting(paceId, (long) rank + 1);
+			long position = rank + 1;
+			long retryAfterMs = queueProperties.getPollBaseMs()
+				+ ThreadLocalRandom.current().nextLong(queueProperties.getPollJitterMs());
+			log.debug("[QUEUE] 대기 중 userId={}, paceId={}, position={}", userId, paceId, position);
+			return QueueStatusResponse.waiting(paceId, position, retryAfterMs);
 		}
 
 		throw new BusinessException(BusinessErrorCode.QUEUE_NOT_FOUND);

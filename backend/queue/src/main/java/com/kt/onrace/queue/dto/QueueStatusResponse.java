@@ -7,13 +7,15 @@ public record QueueStatusResponse(
 	Long paceId,
 	String status,
 	Long position,
-	String passToken
+	String passToken,
+	Long retryAfterMs // 인프라 요청사항 - 폴링 지터 적용
 ) {
-	public static QueueStatusResponse waiting(Long paceId, Long position) {
+	public static QueueStatusResponse waiting(Long paceId, Long position, Long retryAfterMs) {
 		return QueueStatusResponse.builder()
 			.paceId(paceId)
 			.status("WAITING")
 			.position(position)
+			.retryAfterMs(retryAfterMs)
 			.build();
 	}
 

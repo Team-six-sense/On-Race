@@ -167,9 +167,11 @@ export default function (data) {
   let passToken = null;
   let pollCount = 0;
 
+  // 서버 응답의 retryAfterMs 사용, 없으면 기존 클라이언트 jitter 폴백
+  let retryAfterSec = QUEUE_POLL_INTERVAL_SEC * (0.8 + Math.random() * 0.4);
+
   for (let i = 0; i < QUEUE_MAX_POLL_COUNT; i++) {
-    // ±20% jitter: 폴링 동시 집중(micro-burst) 방지
-    sleep(QUEUE_POLL_INTERVAL_SEC * (0.8 + Math.random() * 0.4));
+    sleep(retryAfterSec);
     pollCount++;
 
     const statusRes = http.get(
@@ -186,6 +188,10 @@ export default function (data) {
           queueWaitTime.add(Date.now() - startWait);
           queuePass.add(1);
           break;
+        }
+        // 서버가 retryAfterMs를 내려주면 사용, 아니면 클라이언트 jitter 유지
+        if (body.data && body.data.retryAfterMs) {
+          retryAfterSec = body.data.retryAfterMs / 1000;
         }
       } catch (e) { /* 다음 폴링 계속 */ }
     }
