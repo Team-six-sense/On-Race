@@ -64,10 +64,11 @@ resource "aws_elasticache_replication_group" "this" {
 
   automatic_failover_enabled = var.automatic_failover_enabled
   num_cache_clusters         = var.num_cache_clusters
-  multi_az_enabled           = true # Sentinel 고가용성을 위해 true로 변경
+  multi_az_enabled           = true
   
   at_rest_encryption_enabled = true
-  transit_encryption_enabled = true
+  transit_encryption_enabled = true # 필수: auth_token 사용을 위해 필요
+  auth_token                 = var.db_password # RDS와 동일한 암호 주입
   apply_immediately          = true
 }
 

@@ -30,4 +30,7 @@ dependencies {
     annotationProcessor 'com.querydsl:querydsl-apt:5.1.0:jakarta'
     annotationProcessor 'jakarta.annotation:jakarta.annotation-api'
     annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
+
+    // AWS EKS IRSA(Web Identity Token) 인증을 위한 필수 모듈 - 인프라팀 김서진 추가
+    implementation 'software.amazon.awssdk:sts'
 }

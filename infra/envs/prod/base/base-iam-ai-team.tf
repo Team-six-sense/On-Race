@@ -3,16 +3,15 @@ resource "aws_iam_group" "ai_team" {
   name = "${var.project_name}-ai-team-group"
 }
 
-# 현재 로그인된 AWS 계정 정보를 가져오는 데이터 소스
 data "aws_caller_identity" "current" {}
 
-# 2. AI 팀에게 필요한 최소 권한 (콘솔 로그인 + SSM 접속)
+# 2. AI 팀 SSM 전체 관리 권한
 resource "aws_iam_group_policy_attachment" "ai_team_ssm" {
   group      = aws_iam_group.ai_team.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMFullAccess" # 실제로는 더 좁게 설정 권장
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMFullAccess"
 }
 
-# 3. AI 팀원 계정 생성 (예: ai-dev1)
+# 3. AI 팀원 계정 생성 및 그룹 할당
 resource "aws_iam_user" "ai_dev1" {
   name = "on-race-ai-dev1"
 }
@@ -22,106 +21,83 @@ resource "aws_iam_user_group_membership" "ai_team_membership" {
   groups = [aws_iam_group.ai_team.name]
 }
 
-# 4. AI 팀이 EC2 인스턴스 목록을 볼 수 있도록 읽기 전용 권한 추가
+# 4. EC2 읽기 권한
 resource "aws_iam_group_policy_attachment" "ai_team_ec2_view" {
   group      = aws_iam_group.ai_team.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess"
 }
 
-# 5. [추가됨] ECR 이미지 푸시 권한 추가 (VQA 이미지 업로드용)
+# 5. ECR 푸시 권한
 resource "aws_iam_group_policy_attachment" "ai_team_ecr_push" {
   group      = aws_iam_group.ai_team.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
 }
 
-# 6. 인스턴스 제어(중지/시작) 권한 정책
+# 6. EC2 제어 권한 (태그 기반)
 resource "aws_iam_policy" "macro_team_ec2_control" {
   name        = "T6-MacroTeam-EC2-Control"
-  description = "매크로 탐지용 EC2 인스턴스 제어 권한"
-
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
-        Effect   = "Allow"
-        Action   = ["ec2:StartInstances", "ec2:StopInstances"]
-        Resource = "arn:aws:ec2:ap-northeast-2:${data.aws_caller_identity.current.account_id}:instance/*"
-        # Team: Macro 태그가 붙은 인스턴스만 제어 가능하도록 제한
-        Condition = {
-          StringEquals = {
-            "aws:ResourceTag/Team": "Macro"
-          }
-        }
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["ec2:StartInstances", "ec2:StopInstances"]
+      Resource = "arn:aws:ec2:ap-northeast-2:${data.aws_caller_identity.current.account_id}:instance/*"
+      Condition = {
+        StringEquals = { "aws:ResourceTag/Team": "Macro" }
       }
-    ]
+    }]
   })
 }
 
-# VQA 전용 ECR 리포지토리
-resource "aws_ecr_repository" "vqa_repo" {
-  name                 = "on-race-vqa"
-  image_tag_mutability = "MUTABLE"
-  force_delete         = false
-
-  image_scanning_configuration {
-    scan_on_push = true
-  }
-}
-
-# 정책을 AI 팀 그룹에 연결
 resource "aws_iam_group_policy_attachment" "ai_team_ec2_control_attach" {
   group      = aws_iam_group.ai_team.name
   policy_arn = aws_iam_policy.macro_team_ec2_control.arn
 }
 
-# 7. EKS 클러스터 접속 정보(kubeconfig) 다운로드 권한
-# 이 정책이 있어야 AI 팀원이 'aws eks update-kubeconfig' 명령어를 실행할 수 있습니다.
+# 7. EKS 클러스터 정보 조회 권한
 resource "aws_iam_policy" "ai_team_eks_view" {
-  name        = "T6-AITeam-EKS-View"
-  description = "Allow AI team to update kubeconfig for VQA deployment"
-
+  name = "T6-AITeam-EKS-View"
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
-        Effect   = "Allow"
-        Action   = ["eks:DescribeCluster"]
-        # 클러스터 ARN을 변수를 사용하여 동적으로 지정합니다.
-        Resource = "arn:aws:eks:ap-northeast-2:${data.aws_caller_identity.current.account_id}:cluster/${var.project_name}-${var.environment}-cluster"
-      }
-    ]
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["eks:DescribeCluster"]
+      Resource = "arn:aws:eks:ap-northeast-2:${data.aws_caller_identity.current.account_id}:cluster/${var.project_name}-${var.environment}-cluster"
+    }]
   })
 }
 
-# 생성한 정책을 AI 팀 그룹에 연결합니다.
 resource "aws_iam_group_policy_attachment" "ai_team_eks_view_attach" {
   group      = aws_iam_group.ai_team.name
   policy_arn = aws_iam_policy.ai_team_eks_view.arn
 }
 
-# AI 팀 전용 콘솔 진단 및 에러 해결 정책
+# 8. 콘솔 진단 권한 (GetConsoleOutput 등)
 resource "aws_iam_policy" "ai_team_console_diagnostic" {
-  name        = "T6-AITeam-Console-Diagnostic"
-  description = "Allows AI team to view console logs and optimizer status"
-
+  name = "T6-AITeam-Console-Diagnostic"
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
-        Effect   = "Allow"
-        Action   = [
-          "ec2:GetConsoleOutput",       # 시스템 로그 확인용
-          "ec2:GetConsoleScreenshot",   # 화면 캡처 확인용
-          "compute-optimizer:GetEnrollmentStatus" # 콘솔 상단 빨간 에러 제거용
-        ]
-        Resource = "*"
-      }
-    ]
+    Statement = [{
+      Effect   = "Allow"
+      Action   = [
+        "ec2:GetConsoleOutput",
+        "ec2:GetConsoleScreenshot",
+        "compute-optimizer:GetEnrollmentStatus"
+      ]
+      Resource = "*"
+    }]
   })
 }
 
-# AI 팀 그룹에 정책 연결
 resource "aws_iam_group_policy_attachment" "ai_team_console_attach" {
   group      = aws_iam_group.ai_team.name
   policy_arn = aws_iam_policy.ai_team_console_diagnostic.arn
+}
+
+# 9. VQA ECR 리포지토리
+resource "aws_ecr_repository" "vqa_repo" {
+  name                 = "on-race-vqa"
+  image_tag_mutability = "MUTABLE"
+  force_delete         = false
+  image_scanning_configuration { scan_on_push = true }
 }

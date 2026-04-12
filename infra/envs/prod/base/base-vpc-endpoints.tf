@@ -56,3 +56,15 @@ resource "aws_vpc_endpoint" "ec2messages" {
 
   tags = { Name = "${var.project_name}-ec2messages-endpoint" }
 }
+
+# EC2 Instance Connect Endpoint 생성
+resource "aws_ec2_instance_connect_endpoint" "this" {
+  # 인스턴스가 위치한 프라이빗 서브넷 중 하나를 지정합니다. [cite: 9044]
+  subnet_id          = module.vpc.private_subnets[0] 
+  # 기존 엔드포인트 보안 그룹을 공유하거나 별도 지정 가능합니다. [cite: 8182]
+  security_group_ids = [aws_security_group.vpc_endpoints_sg.id]
+  
+  tags = {
+    Name = "${var.project_name}-eic-endpoint"
+  }
+}

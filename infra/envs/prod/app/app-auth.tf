@@ -36,12 +36,10 @@ resource "kubernetes_deployment_v1" "on_race_auth" {
             name  = "SPRING_PROFILES_ACTIVE"
             value = "prod"
           }
-          
           env {
             name  = "JAVA_TOOL_OPTIONS"
             value = "-Dspring.datasource.url=jdbc:mysql://${data.terraform_remote_state.base.outputs.rds_proxy_endpoint}:3306/onrace?sslMode=REQUIRED&useSSL=true&verifyServerCertificate=false&allowPublicKeyRetrieval=true -Dspring.profiles.active=prod -XX:InitialRAMPercentage=75.0 -XX:MaxRAMPercentage=75.0 -XX:MinRAMPercentage=75.0"
           }
-
           env {
             name  = "DB_ENDPOINT"
             value = data.terraform_remote_state.base.outputs.rds_proxy_endpoint
@@ -54,7 +52,18 @@ resource "kubernetes_deployment_v1" "on_race_auth" {
             name  = "DB_PASSWORD"
             value = local.db_creds.password
           }
-
+          env {
+            name  = "AUTH_DB_HOST"
+            value = data.terraform_remote_state.base.outputs.rds_proxy_endpoint
+          }
+          env {
+            name  = "AUTH_DB_USERNAME"
+            value = local.db_creds.username
+          }
+          env {
+            name  = "AUTH_DB_PASSWORD"
+            value = local.db_creds.password
+          }
           env {
             name  = "SPRING_REDIS_HOST"
             value = "127.0.0.1"
@@ -62,6 +71,34 @@ resource "kubernetes_deployment_v1" "on_race_auth" {
           env {
             name  = "SPRING_REDIS_PORT"
             value = "6379"
+          }
+          env {
+            name  = "SPRING_REDIS_PASSWORD"
+            value = local.db_creds.password
+          }
+          env {
+            name  = "AUTH_REDIS_HOST"
+            value = "127.0.0.1"
+          }
+          env {
+            name  = "AUTH_REDIS_PORT"
+            value = "6379"
+          }
+          env {
+            name  = "AUTH_REDIS_PASSWORD"
+            value = local.db_creds.password
+          }
+          env {
+            name  = "JWT_SECRET"
+            value = "onrace-jwt-secret-key-must-be-at-least-32-bytes-long-for-hmac-sha-256-standard-2026"
+          }
+          env {
+            name  = "GATEWAY_INTERNAL_SECRET"
+            value = "on-race-internal-gateway-secret-key-2026"
+          }
+          env {
+            name  = "MAIN_SERVICE_URI"
+            value = "http://t6-on-race-api.t6-on-race-prod.svc.cluster.local:80"
           }
 
           resources {
@@ -76,6 +113,7 @@ resource "kubernetes_deployment_v1" "on_race_auth" {
             initial_delay_seconds = 10
             period_seconds        = 5
             failure_threshold     = 30
+            timeout_seconds       = 5
           }
           readiness_probe {
             http_get {
@@ -84,6 +122,7 @@ resource "kubernetes_deployment_v1" "on_race_auth" {
             }
             initial_delay_seconds = 30
             period_seconds        = 10
+            timeout_seconds       = 5
           }
           liveness_probe {
             http_get {
@@ -92,30 +131,22 @@ resource "kubernetes_deployment_v1" "on_race_auth" {
             }
             initial_delay_seconds = 60
             period_seconds        = 15
+            timeout_seconds       = 5
           }
         }
 
+        # 5. Redis TLS 터널링용 stunnel 사이드카 (Alpine 이미지 기반 런타임 설치)
         container {
           name  = "stunnel"
-          image = "dweomer/stunnel:latest"
+          image = "alpine:latest"
+
+          # [핵심 수정] Alpine 부팅 시 stunnel 설치 후 ConfigMap 설정을 기반으로 실행
+          command = ["/bin/sh", "-c", "apk add --no-cache stunnel && /usr/bin/stunnel /etc/stunnel/stunnel.conf"]
           
           port {
             container_port = 6379
           }
-          
-          env {
-            name  = "STUNNEL_SERVICE"
-            value = "redis-stunnel"
-          }
-          env {
-            name  = "STUNNEL_ACCEPT"
-            value = "127.0.0.1:6379"
-          }
-          env {
-            name  = "STUNNEL_CONNECT"
-            value = "${data.terraform_remote_state.base.outputs.redis_endpoint}:6379"
-          }
-          
+
           volume_mount {
             name       = "stunnel-conf"
             mount_path = "/etc/stunnel/stunnel.conf"

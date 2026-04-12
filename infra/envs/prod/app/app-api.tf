@@ -11,8 +11,8 @@ module "api_irsa" {
   
   role_policy_arns = {
     secrets = "arn:aws:iam::aws:policy/SecretsManagerReadWrite"
-    # SQS 권한 (KEDA 스케일링 및 메시지 처리용)
-    sqs     = aws_iam_policy.keda_sqs_policy.arn 
+    sqs     = aws_iam_policy.keda_sqs_policy.arn # SQS 권한 (KEDA 스케일링 및 메시지 처리용)
+    s3      = "arn:aws:iam::aws:policy/AmazonS3FullAccess" # S3 접근 권한 부여
   }
 
   oidc_providers = {
@@ -56,16 +56,15 @@ resource "aws_security_group_rule" "eks_to_rds_proxy" {
   security_group_id = data.terraform_remote_state.base.outputs.rds_proxy_sg_id
   cidr_blocks       = [data.terraform_remote_state.base.outputs.vpc_cidr]
 }
-/*
+
 resource "aws_security_group_rule" "eks_to_redis" {
   type              = "ingress"
   from_port         = 6379
   to_port           = 6379
   protocol          = "tcp"
   security_group_id = data.terraform_remote_state.base.outputs.redis_sg_id
-
   cidr_blocks       = [data.terraform_remote_state.base.outputs.vpc_cidr]
-}*/
+}
 
 # 5. Stunnel ConfigMap (Redis TLS 통신을 위해 모든 서비스가 사이드카로 공유)
 resource "kubernetes_config_map_v1" "redis_stunnel_conf" {
@@ -76,7 +75,10 @@ resource "kubernetes_config_map_v1" "redis_stunnel_conf" {
   data = {
     "stunnel.conf" = <<-EOF
 foreground = yes
-delay = yes
+debug = info
+# 컨테이너 내 권한 문제를 방지하기 위해 반드시 추가해야 합니다.
+pid = /tmp/stunnel.pid
+
 [redis-tls]
 client = yes
 accept = 127.0.0.1:6379
@@ -120,40 +122,14 @@ resource "kubernetes_deployment_v1" "on_race_api" {
             container_port = 8080
           }
 
-          # 1. 기본 앱 설정
           env {
             name  = "SPRING_PROFILES_ACTIVE"
             value = "prod"
           }
           env {
-            name  = "VQA_SERVICE_URL"
-            value = "http://on-race-vqa-service.t6-on-race-prod.svc.cluster.local:8000"
-          }
-          env {
             name  = "JAVA_TOOL_OPTIONS"
             value = "-Dspring.datasource.url=jdbc:mysql://${data.terraform_remote_state.base.outputs.rds_proxy_endpoint}:3306/onrace?sslMode=REQUIRED&useSSL=true&verifyServerCertificate=false&allowPublicKeyRetrieval=true -Dspring.profiles.active=prod -XX:InitialRAMPercentage=75.0 -XX:MaxRAMPercentage=75.0 -XX:MinRAMPercentage=75.0"
           }
-
-          # 2. Redis 설정 (Option 2: MAIN_ 접두어로 통일 및 Secret 참조)
-          env {
-            name  = "MAIN_REDIS_HOST"
-            value = "127.0.0.1" # stunnel 사이드카를 통해 루프백 통신
-          }
-          env {
-            name  = "MAIN_REDIS_PORT"
-            value = "6379"
-          }
-          env {
-            name = "MAIN_REDIS_PASSWORD"
-            value_from {
-              secret_key_ref {
-                name = "redis-auth-secret" # kubectl로 생성한 Secret 이름
-                key  = "password"          # Secret 내부의 키 이름
-              }
-            }
-          }
-
-          # 3. 데이터베이스 설정 (기존 DB_ 및 MAIN_DB_ 병행 유지)
           env {
             name  = "DB_ENDPOINT"
             value = data.terraform_remote_state.base.outputs.rds_proxy_endpoint
@@ -182,11 +158,57 @@ resource "kubernetes_deployment_v1" "on_race_api" {
             name  = "MAIN_DB_PASSWORD"
             value = local.db_creds.password
           }
-
-          # 4. 기타 외부 서비스 설정
+          env {
+            name  = "SPRING_REDIS_HOST"
+            value = "127.0.0.1"
+          }
+          env {
+            name  = "SPRING_REDIS_PORT"
+            value = "6379"
+          }
+          env {
+            name  = "SPRING_REDIS_PASSWORD"
+            value = local.db_creds.password
+          }
+          env {
+            name  = "MAIN_REDIS_HOST"
+            value = "127.0.0.1"
+          }
+          env {
+            name  = "MAIN_REDIS_PORT"
+            value = "6379"
+          }
+          env {
+            name  = "MAIN_REDIS_PASSWORD"
+            value = local.db_creds.password
+          }
           env {
             name  = "SQS_QUEUE_URL"
             value = data.terraform_remote_state.base.outputs.queue_url
+          }
+          env {
+            name  = "AWS_S3_BUCKET"
+            value = data.terraform_remote_state.base.outputs.ai_vqa_bucket_name
+          }
+          env {
+            name  = "AWS_REGION"
+            value = "ap-northeast-2"
+          }
+          env {
+            name  = "AWS_S3_PRESIGN_EXPIRE_SECONDS"
+            value = "900"
+          }
+          env {
+            name  = "JWT_SECRET"
+            value = "onrace-jwt-secret-key-must-be-at-least-32-bytes-long-for-hmac-sha-256-standard-2026"
+          }
+          env {
+            name  = "GATEWAY_INTERNAL_SECRET"
+            value = "on-race-internal-gateway-secret-key-2026"
+          }
+          env {
+            name  = "VQA_SERVICE_URL"
+            value = "http://on-race-vqa-service.t6-on-race-prod.svc.cluster.local:8000"
           }
           env {
             name  = "AI_MODEL_URL"
@@ -217,6 +239,7 @@ resource "kubernetes_deployment_v1" "on_race_api" {
             initial_delay_seconds = 10
             period_seconds        = 5
             failure_threshold     = 30
+            timeout_seconds       = 5
           }
 
           readiness_probe {
@@ -226,6 +249,7 @@ resource "kubernetes_deployment_v1" "on_race_api" {
             }
             initial_delay_seconds = 30
             period_seconds        = 10
+            timeout_seconds       = 5
           }
 
           liveness_probe {
@@ -235,31 +259,22 @@ resource "kubernetes_deployment_v1" "on_race_api" {
             }
             initial_delay_seconds = 60
             period_seconds        = 15
+            timeout_seconds       = 5
           }
         }
 
-        # 5. Redis TLS 터널링용 stunnel 사이드카
+        # 5. Redis TLS 터널링용 stunnel 사이드카 (Alpine 이미지 기반 런타임 설치)
         container {
           name  = "stunnel"
-          image = "dweomer/stunnel:latest"
+          image = "alpine:latest"
+
+          # [핵심 수정] Alpine 부팅 시 stunnel 설치 후 ConfigMap 설정을 기반으로 실행
+          command = ["/bin/sh", "-c", "apk add --no-cache stunnel && /usr/bin/stunnel /etc/stunnel/stunnel.conf"]
           
           port {
             container_port = 6379
           }
-          
-          env {
-            name  = "STUNNEL_SERVICE"
-            value = "redis-stunnel"
-          }
-          env {
-            name  = "STUNNEL_ACCEPT"
-            value = "127.0.0.1:6379"
-          }
-          env {
-            name  = "STUNNEL_CONNECT"
-            value = "${data.terraform_remote_state.base.outputs.redis_endpoint}:6379"
-          }
-          
+
           volume_mount {
             name       = "stunnel-conf"
             mount_path = "/etc/stunnel/stunnel.conf"
