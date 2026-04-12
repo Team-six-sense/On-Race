@@ -45,8 +45,9 @@ const queueWaitTime    = new Trend('queue_wait_time');
 // 병목 판정 임계값 (TOTAL_VUS의 95%)
 const PEAK_VU_THRESHOLD = Math.max(1, Math.floor(TOTAL_VUS * 0.95));
 // 비즈니스 차단 카운터를 원인별로 분리 — 리포트에서 원인 분석 가능하도록 함
-const blockedQueueDup     = new Counter('blocked_queue_dup');     // 409: 대기열 이미 진입 중
-const blockedTokenExpired = new Counter('blocked_token_expired'); // 429: passToken 만료
+const blockedQueueDup          = new Counter('blocked_queue_dup');          // 409: 대기열 이미 진입 중
+const blockedTokenExpired      = new Counter('blocked_token_expired');      // 429: passToken 만료
+const blockedReservationExpired = new Counter('blocked_reservation_expired'); // 400 ENT_009: 예약 TTL 만료
 const queuePass      = new Counter('queue_pass');
 const queueTimeout   = new Counter('queue_timeout');
 // 재고 검증 결과를 teardown에서 기록하여 통합 리포트에 포함시키기 위한 Gauge
@@ -277,6 +278,11 @@ export default function (data) {
           confirmOk.add(1);
           resultLog(__VU, `Wave1 결제 확정 (라운드 ${round})`, totalRetries);
         }
+      } else if (confirmRes.status === 400) {
+        // ENT_009: 예약 TTL 만료 / ENT_007: 신청 불가 상태 — 비즈니스 차단 (에러 아님)
+        blockedReservationExpired.add(1);
+        errorRate.add(false);
+        resultLog(__VU, `예약 만료 차단 (${confirmRes.status}, 라운드 ${round})`);
       } else {
         unexpectedErr.add(1);
         errorRate.add(true);

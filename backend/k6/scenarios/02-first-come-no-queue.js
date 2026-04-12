@@ -34,7 +34,8 @@ const confirmOk        = new Counter('confirm_ok');
 const paymentDropout   = new Counter('payment_dropout');
 const wave2Ok          = new Counter('wave2_ok');
 const soldOut          = new Counter('sold_out');
-const unexpectedErr    = new Counter('unexpected_error');
+const unexpectedErr             = new Counter('unexpected_error');
+const blockedReservationExpired = new Counter('blocked_reservation_expired'); // 400 ENT_009: 예약 TTL 만료
 const errorRate        = new Rate('error_rate');
 const applyLatency     = new Trend('apply_latency');
 // 병목(hold) 구간 응답시간: active VU가 target의 95% 이상일 때만 기록
@@ -169,6 +170,11 @@ export default function (data) {
           confirmOk.add(1);
           resultLog(__VU, `Wave1 결제 확정 (라운드 ${round})`, totalRetries);
         }
+      } else if (confirmRes.status === 400) {
+        // ENT_009: 예약 TTL 만료 / ENT_007: 신청 불가 상태 — 비즈니스 차단 (에러 아님)
+        blockedReservationExpired.add(1);
+        errorRate.add(false);
+        resultLog(__VU, `예약 만료 차단 (${confirmRes.status}, 라운드 ${round})`);
       } else {
         unexpectedErr.add(1);
         errorRate.add(true);
