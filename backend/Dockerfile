@@ -24,6 +24,9 @@ FROM amazoncorretto:21-alpine-jdk AS runtime
 
 WORKDIR /app
 
+ENV AWS_EC2_METADATA_DISABLED=true \
+    AWS_METADATA_SERVICE_TIMEOUT=1
+
 COPY --from=builder /workspace/app.jar /app/app.jar
 
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+ENTRYPOINT ["java", "-Daws.disableEc2Metadata=true", "-Daws.disableEc2MetadataV1=true", "-Daws.ec2MetadataServiceTimeout=1", "-Dcom.amazonaws.sdk.disableEc2Metadata=true", "-jar", "/app/app.jar"]

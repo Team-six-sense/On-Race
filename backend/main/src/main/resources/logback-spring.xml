@@ -12,6 +12,7 @@
             </root>
         </springProfile>
         <springProfile name="prod">
+            <logger name="com.kt.onrace.common.config" level="INFO"/>
             <logger name="com.kt.onrace" level="WARN"/>
             <root level="WARN">
                 <appender-ref ref="JSON_CONSOLE"/>
