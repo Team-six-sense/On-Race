@@ -115,13 +115,14 @@ resource "kubernetes_deployment_v1" "on_race_api" {
 
         container {
           name              = "api"
-          image             = "${data.terraform_remote_state.base.outputs.ecr_repository_url}:main-${var.image_tag}"
+          image             = "${data.terraform_remote_state.base.outputs.ecr_repository_url}:main-latest"
           image_pull_policy = "Always"
           
           port {
             container_port = 8080
           }
 
+          # [API 서비스] 운영 환경(prod) 전용 통합 환경 변수
           env {
             name  = "SPRING_PROFILES_ACTIVE"
             value = "prod"
@@ -130,6 +131,8 @@ resource "kubernetes_deployment_v1" "on_race_api" {
             name  = "JAVA_TOOL_OPTIONS"
             value = "-Dspring.datasource.url=jdbc:mysql://${data.terraform_remote_state.base.outputs.rds_proxy_endpoint}:3306/onrace?sslMode=REQUIRED&useSSL=true&verifyServerCertificate=false&allowPublicKeyRetrieval=true -Dspring.profiles.active=prod -XX:InitialRAMPercentage=75.0 -XX:MaxRAMPercentage=75.0 -XX:MinRAMPercentage=75.0"
           }
+
+          # 데이터베이스 연결 정보 (기존 로직 유지)
           env {
             name  = "DB_ENDPOINT"
             value = data.terraform_remote_state.base.outputs.rds_proxy_endpoint
@@ -158,6 +161,8 @@ resource "kubernetes_deployment_v1" "on_race_api" {
             name  = "MAIN_DB_PASSWORD"
             value = local.db_creds.password
           }
+
+          # Redis 연결 정보 (stunnel 127.0.0.1 경유)
           env {
             name  = "SPRING_REDIS_HOST"
             value = "127.0.0.1"
@@ -182,6 +187,8 @@ resource "kubernetes_deployment_v1" "on_race_api" {
             name  = "MAIN_REDIS_PASSWORD"
             value = local.db_creds.password
           }
+
+          # AWS 및 인프라 설정 (SQS, S3)
           env {
             name  = "SQS_QUEUE_URL"
             value = data.terraform_remote_state.base.outputs.queue_url
@@ -198,6 +205,8 @@ resource "kubernetes_deployment_v1" "on_race_api" {
             name  = "AWS_S3_PRESIGN_EXPIRE_SECONDS"
             value = "900"
           }
+
+          # 보안 비밀키 (32바이트 이상 규격 준수)
           env {
             name  = "JWT_SECRET"
             value = "onrace-jwt-secret-key-must-be-at-least-32-bytes-long-for-hmac-sha-256-standard-2026"
@@ -206,6 +215,8 @@ resource "kubernetes_deployment_v1" "on_race_api" {
             name  = "GATEWAY_INTERNAL_SECRET"
             value = "on-race-internal-gateway-secret-key-2026"
           }
+
+          # 외부/내부 서비스 통신 URI
           env {
             name  = "VQA_SERVICE_URL"
             value = "http://on-race-vqa-service.t6-on-race-prod.svc.cluster.local:8000"
@@ -214,6 +225,8 @@ resource "kubernetes_deployment_v1" "on_race_api" {
             name  = "AI_MODEL_URL"
             value = "http://ai-model.on-race.local:8000"
           }
+
+          # CDN 및 CloudFront 설정
           env {
             name  = "CLOUDFRONT_KEY_ID"
             value = aws_cloudfront_public_key.vqa_key_v2.id
@@ -238,39 +251,30 @@ resource "kubernetes_deployment_v1" "on_race_api" {
             tcp_socket { port = 8080 }
             initial_delay_seconds = 10
             period_seconds        = 5
-            failure_threshold     = 30
-            timeout_seconds       = 5
+            failure_threshold     = 60
+            timeout_seconds       = 15
           }
 
           readiness_probe {
-            http_get {
-              path = "/actuator/health"
-              port = 8080
-            }
+            tcp_socket { port = 8080 }
             initial_delay_seconds = 30
             period_seconds        = 10
-            timeout_seconds       = 5
+            timeout_seconds       = 15
           }
 
           liveness_probe {
-            http_get {
-              path = "/actuator/health/liveness"
-              port = 8080
-            }
+            tcp_socket { port = 8080 }
             initial_delay_seconds = 60
             period_seconds        = 15
-            timeout_seconds       = 5
+            timeout_seconds       = 15
           }
         }
 
         # 5. Redis TLS 터널링용 stunnel 사이드카 (Alpine 이미지 기반 런타임 설치)
         container {
           name  = "stunnel"
-          image = "alpine:latest"
+          image = "916228846377.dkr.ecr.ap-northeast-2.amazonaws.com/t6-on-race-repo:stunnel-latest"
 
-          # [핵심 수정] Alpine 부팅 시 stunnel 설치 후 ConfigMap 설정을 기반으로 실행
-          command = ["/bin/sh", "-c", "apk add --no-cache stunnel && /usr/bin/stunnel /etc/stunnel/stunnel.conf"]
-          
           port {
             container_port = 6379
           }
@@ -283,10 +287,11 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           }
         }
 
+        # 가용성 정책 완화
         topology_spread_constraint {
           max_skew           = 1
           topology_key       = "topology.kubernetes.io/zone"
-          when_unsatisfiable = "DoNotSchedule"
+          when_unsatisfiable = "ScheduleAnyway" # DoNotSchedule에서 변경
           label_selector {
             match_labels = { app = "on-race-api" }
           }

@@ -16,8 +16,6 @@ resource "kubernetes_deployment_v1" "on_race_vqa" {
     namespace = kubernetes_namespace_v1.app.metadata[0].name
   }
 
-  # [추가] 배포 완료까지 테라폼이 무한 대기하지 않도록 설정
-  # 이미지 풀링이 늦어져서 발생하는 프로바이더 타임아웃 및 State 손상을 방지합니다.
   wait_for_rollout = false
 
   spec {
@@ -37,7 +35,7 @@ resource "kubernetes_deployment_v1" "on_race_vqa" {
         topology_spread_constraint {
           max_skew           = 1
           topology_key       = "topology.kubernetes.io/zone"
-          when_unsatisfiable = "DoNotSchedule"
+          when_unsatisfiable = "ScheduleAnyway" # 분석 결과 반영: 가용성 정책 완화
           label_selector {
             match_labels = { app = "on-race-vqa" }
           }
@@ -48,20 +46,14 @@ resource "kubernetes_deployment_v1" "on_race_vqa" {
           image = "${data.terraform_remote_state.base.outputs.vqa_ecr_repository_url}:latest"
           
           image_pull_policy = "Always"
-          
           port { container_port = 8000 }
 
           resources {
-            requests = {
-              cpu    = "200m"
-              memory = "512Mi" 
-            }
-            limits = {
-              cpu    = "1000m"
-              memory = "1Gi"
-            }
+            requests = { cpu = "250m", memory = "800Mi" }
+            limits   = { cpu = "1200m", memory = "2Gi" }
           }
 
+          # [환경 변수] DB/S3 연동 및 보안 키
           env {
             name  = "DB_ENDPOINT"
             value = data.terraform_remote_state.base.outputs.rds_proxy_endpoint
@@ -90,13 +82,34 @@ resource "kubernetes_deployment_v1" "on_race_vqa" {
             name  = "AWS_REGION"
             value = "ap-northeast-2"
           }
+          env {
+            name  = "JWT_SECRET"
+            value = "onrace-jwt-secret-key-must-be-at-least-32-bytes-long-for-hmac-sha-256-standard-2026"
+          }
+          env {
+            name  = "GATEWAY_INTERNAL_SECRET"
+            value = "on-race-internal-gateway-secret-key-2026"
+          }
+
+          # [추가] AI 모델 로딩 시간을 고려한 상태 검사
+          startup_probe {
+            tcp_socket { port = 8000 }
+            initial_delay_seconds = 30 # 모델 로딩 대기
+            period_seconds        = 10
+            failure_threshold     = 30
+            timeout_seconds       = 10
+          }
+          readiness_probe {
+            tcp_socket { port = 8000 }
+            initial_delay_seconds = 10
+            period_seconds        = 10
+            timeout_seconds       = 5
+          }
         }
       }
     }
   }
 
-  # [핵심 추가] K8s 내부 관리 필드 무시
-  # 서비스 메시나 기타 컨트롤러가 주입하는 어노테이션/라벨로 인한 State 불일치를 방지합니다.
   lifecycle {
     ignore_changes = [
       metadata[0].annotations,
@@ -130,21 +143,20 @@ resource "kubernetes_pod_disruption_budget_v1" "vqa_pdb" {
     namespace = kubernetes_namespace_v1.app.metadata[0].name
   }
   spec {
-    min_available = 1 # 업데이트나 노드 점검 시에도 최소 1개 파드 가동 유지
+    min_available = 1
     selector {
       match_labels = { app = "on-race-vqa" }
     }
   }
 }
 
-# AI 팀원이 EKS에 접근할 수 있도록 클러스터 레벨 권한 부여
+# 5. AI 팀원 접근 권한
 resource "aws_eks_access_entry" "ai_team_eks_access" {
   cluster_name  = module.eks.cluster_name
   principal_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/on-race-ai-dev1"
   type          = "STANDARD"
 }
 
-# AI 팀원에게 VQA가 있는 네임스페이스 한정으로 파드 편집/재시작 권한 부여
 resource "aws_eks_access_policy_association" "ai_team_eks_policy_assoc" {
   cluster_name  = module.eks.cluster_name
   principal_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/on-race-ai-dev1"
@@ -152,6 +164,6 @@ resource "aws_eks_access_policy_association" "ai_team_eks_policy_assoc" {
 
   access_scope {
     type       = "namespace"
-    namespaces = [kubernetes_namespace_v1.app.metadata[0].name] # t6-on-race-prod 자동 참조
+    namespaces = [kubernetes_namespace_v1.app.metadata[0].name]
   }
 }

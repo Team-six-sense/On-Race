@@ -1,23 +1,21 @@
-# 1. 리소스 식별자(vqa_key -> vqa_key_v2)와 AWS 등록 이름(-v2 추가) 변경
+# 1. CloudFront 퍼블릭 키
 resource "aws_cloudfront_public_key" "vqa_key_v2" {
   name        = "${var.project_name}-vqa-public-key-v2"
   encoded_key = trimspace(file("${path.module}/certs/vqa_public_key.pem"))
 
   lifecycle {
-    # 한 번 생성된 후에는 encoded_key 변경으로 인한 강제 교체를 방지
     ignore_changes = [encoded_key]
   }
 }
 
-# 2. 키 그룹이 새로 만든 vqa_key_v2를 바라보게 수정
+# 2. CloudFront 키 그룹
 resource "aws_cloudfront_key_group" "vqa_key_group" {
   name  = "${var.project_name}-vqa-key-group"
-  items = [aws_cloudfront_public_key.vqa_key_v2.id] # 참조 변경
+  items = [aws_cloudfront_public_key.vqa_key_v2.id]
 }
 
-# 2. S3 버킷 정책 (Base 레이어의 Output 참조)
+# 3. S3 버킷 정책
 resource "aws_s3_bucket_policy" "ai_vqa_bucket_policy" {
-  # [해결] base 레이어에서 가져온 bucket_id 사용
   bucket = data.terraform_remote_state.base.outputs.ai_vqa_bucket_id 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -36,14 +34,13 @@ resource "aws_s3_bucket_policy" "ai_vqa_bucket_policy" {
   })
 }
 
-# 3. CloudFront 배포 설정
+# 4. CloudFront 배포 설정
 resource "aws_cloudfront_distribution" "ai_vqa_cdn" {
   enabled             = true
   is_ipv6_enabled     = true
   default_root_object = "index.html"
 
   origin {
-    # [해결] base 레이어에서 가져온 도메인 및 OAC ID 사용
     domain_name              = data.terraform_remote_state.base.outputs.ai_vqa_bucket_domain_name
     origin_id                = "S3-VQA-Data"
     origin_access_control_id = data.terraform_remote_state.base.outputs.ai_vqa_oac_id
@@ -53,33 +50,25 @@ resource "aws_cloudfront_distribution" "ai_vqa_cdn" {
     allowed_methods  = ["GET", "HEAD"]
     cached_methods   = ["GET", "HEAD"]
     target_origin_id = "S3-VQA-Data"
-
     forwarded_values {
       query_string = false
       cookies { forward = "none" }
     }
-
     viewer_protocol_policy = "redirect-to-https"
-    # Signed URL 사용 시 아래 주석 해제
-    # trusted_key_groups = [aws_cloudfront_key_group.vqa_key_group.id]
   }
 
   restrictions {
-    geo_restriction {
-      restriction_type = "none"
-    }
+    geo_restriction { restriction_type = "none" }
   }
 
   viewer_certificate {
     cloudfront_default_certificate = true
   }
 
-  tags = {
-    Name = "${var.project_name}-vqa-cdn"
-  }
+  tags = { Name = "${var.project_name}-vqa-cdn" }
 }
 
-# 4. AI/매크로 탐지용 공통 S3 접근 권한 (IRSA용)
+# 5. S3 접근 IAM 정책
 resource "aws_iam_policy" "ai_s3_access" {
   name = "${var.project_name}-ai-s3-access"
   policy = jsonencode({
@@ -95,9 +84,8 @@ resource "aws_iam_policy" "ai_s3_access" {
   })
 }
 
-# 5. EKS IRSA (서브 모듈 경로 수정)
+# 6. EKS IRSA (VQA 파드 전용 역할)
 module "ai_vqa_irsa" {
-  # [해결] // 를 사용하여 서브 디렉토리 경로 명시 (Unreadable module subdirectory 에러 방지)
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
   version = "~> 5.0"
   
@@ -105,7 +93,8 @@ module "ai_vqa_irsa" {
   oidc_providers = {
     main = {
       provider_arn               = module.eks.oidc_provider_arn
-      namespace_service_accounts = ["${var.namespace}:ai-service-account"]
+      # [교정] 네임스페이스를 동적으로 직접 참조
+      namespace_service_accounts = ["${kubernetes_namespace_v1.app.metadata[0].name}:ai-service-account"]
     }
   }
   role_policy_arns = { s3_access = aws_iam_policy.ai_s3_access.arn }
