@@ -7,6 +7,12 @@
 
 import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
 import { describeStages } from './breakpoint.js';
+import {
+  BASE_URL,
+  TARGET_AVG_RESPONSE_MS,
+  TARGET_ERROR_RATE,
+  TARGET_SUCCESS_RATE,
+} from './config.js';
 
 // ================================================================
 // 공통 유틸
@@ -48,6 +54,7 @@ function formatLoadTestHeader(config) {
       '========================================',
       '         스모크 테스트 리포트',
       '========================================',
+      `테스트 대상:   ${BASE_URL}`,
       `테스트 흐름:   SMOKE (환경 검증)`,
       `동시 사용자:   ${fmt(config.vuCount)} VUs`,
     ];
@@ -58,6 +65,7 @@ function formatLoadTestHeader(config) {
     '========================================',
     '         부하 테스트 리포트',
     '========================================',
+    `테스트 대상:   ${BASE_URL}`,
     `테스트 흐름:   ${config.flow}`,
     `동시 사용자:   ${fmt(config.vuCount)} VUs`,
   ];
@@ -74,11 +82,96 @@ function formatBreakpointHeader(config) {
     '========================================',
     '     용량(Breakpoint) 테스트 리포트',
     '========================================',
+    `테스트 대상:   ${BASE_URL}`,
     `테스트 흐름:   ${config.flow}`,
     `스테이지 구성:  ${stagesDesc}`,
     `단계 유지:     ${config.stepDurationSec}초 (ramp ${config.rampSec}초)`,
     `로그인 풀:     ${config.loginPool ? fmt(config.loginPool) + '명' : 'BP_MAX_VUS와 동일'}`,
     `중단 임계값:   에러율 > ${(config.errorThreshold * 100).toFixed(0)}% 또는 p95 > ${config.p95ThresholdMs}ms`,
+  ];
+}
+
+// ================================================================
+// 성공 지표 섹션 (Executive Summary)
+// ================================================================
+
+function formatSuccessMetrics(data, config) {
+  if (config.flow === 'SMOKE') return [];
+
+  const metrics = data.metrics;
+  const isBreakpoint = config.testType === 'BREAKPOINT';
+
+  // ── 1. 동시 접속 처리 가능 사용자 수 ──
+  let actualVUs, targetVUs;
+  if (isBreakpoint) {
+    actualVUs = metrics.vus ? (metrics.vus.values.max || 0) : 0;
+    targetVUs = config.maxVUs;
+  } else {
+    actualVUs = metrics.vus_max ? metrics.vus_max.values.value : 0;
+    targetVUs = config.vuCount;
+  }
+  const vuPass = actualVUs >= targetVUs;
+
+  // ── 2. 평균 응답 시간 ──
+  const latencyMetric = metrics.apply_latency || metrics.http_req_duration;
+  const avgMs = latencyMetric && latencyMetric.values.avg != null
+    ? Math.round(latencyMetric.values.avg) : 0;
+  const targetMs = TARGET_AVG_RESPONSE_MS;
+  const avgPass = avgMs > 0 && avgMs <= targetMs;
+
+  // ── 3. 서버 에러율 ──
+  let actualErrorRate;
+  if (metrics.error_rate) {
+    actualErrorRate = metrics.error_rate.values.rate || 0;
+  } else {
+    actualErrorRate = metrics.http_req_failed ? metrics.http_req_failed.values.rate : 0;
+  }
+  const actualErrorPct = actualErrorRate * 100;
+  const targetErrorPct = isBreakpoint
+    ? config.errorThreshold * 100
+    : TARGET_ERROR_RATE * 100;
+  const errorPass = actualErrorPct <= targetErrorPct;
+
+  // ── 4. 요청 성공률 ──
+  // 비즈니스 에러(409 중복, 400 매진)는 서버가 정상 처리한 것이므로 성공에 포함
+  const applyOk  = counter(metrics, 'apply_ok');
+  const applyDup = counter(metrics, 'apply_dup');
+  const errCount = counter(metrics, 'unexpected_error');
+  const totalAttempts = applyOk + applyDup + errCount;
+  const successRate = totalAttempts > 0
+    ? (applyOk + applyDup) / totalAttempts * 100 : 100;
+  const targetSuccessPct = isBreakpoint
+    ? (1 - config.errorThreshold) * 100
+    : TARGET_SUCCESS_RATE * 100;
+  const successPass = successRate >= targetSuccessPct;
+
+  // ── 여유% 계산 유틸 ──
+  function margin(actual, target, lowerIsBetter) {
+    let pass, pctMargin;
+    if (lowerIsBetter) {
+      pass = actual <= target;
+      pctMargin = target > 0 ? (target - actual) / target * 100 : 100;
+    } else {
+      pass = actual >= target;
+      pctMargin = target > 0 ? (actual - target) / target * 100 : 0;
+    }
+    if (!pass) return 'FAIL';
+    if (pctMargin > 999) return 'PASS';
+    return `~${Math.round(pctMargin)}% 여유`;
+  }
+
+  const allPass = vuPass && avgPass && errorPass && successPass;
+
+  return [
+    '',
+    '========================================',
+    allPass ? '  성공 지표 — ALL PASS' : '  성공 지표 — FAIL 항목 있음',
+    '========================================',
+    `  ${vuPass ? 'PASS' : 'FAIL'}  동시 접속:  ${fmt(actualVUs)} / ${fmt(targetVUs)} VUs — ${vuPass ? 'PASS' : 'FAIL'}`,
+    `  ${avgPass ? 'PASS' : 'FAIL'}  평균 응답:  ${fmt(avgMs)}ms / ${fmt(targetMs)}ms — ${margin(avgMs, targetMs, true)}`,
+    `  ${errorPass ? 'PASS' : 'FAIL'}  에러율:    ${actualErrorPct.toFixed(2)}% / ${targetErrorPct.toFixed(1)}% — ${margin(actualErrorPct, targetErrorPct, true)}`,
+    `  ${successPass ? 'PASS' : 'FAIL'}  성공률:    ${successRate.toFixed(2)}% / ${targetSuccessPct.toFixed(1)}% — ${margin(successRate, targetSuccessPct, false)}`,
+    '========================================',
   ];
 }
 
@@ -119,6 +212,10 @@ function formatPerformanceMetrics(data) {
   const avgRPS = totalReqs > 0 ? (totalReqs / loadSec).toFixed(1) : '0';
   const maxVUs = metrics.vus_max ? metrics.vus_max.values.value : 0;
 
+  // 비즈니스 TPS: 신청 성공(apply_ok) 건수 / 부하 구간 시간
+  const applyOkCount = metrics.apply_ok ? metrics.apply_ok.values.count : 0;
+  const bizTPS = applyOkCount > 0 ? (applyOkCount / loadSec).toFixed(1) : '0';
+
   // 에러율: error_rate (커스텀 Rate) 또는 http_req_failed (내장)
   // k6 Rate: add(true)=passes(에러), add(false)=fails(성공)
   let errorRate, errorCount;
@@ -150,6 +247,7 @@ function formatPerformanceMetrics(data) {
   lines.push('성능 지표:');
   lines.push(`  총 요청:     ${fmt(totalReqs)}`);
   lines.push(`  평균 RPS:    ${avgRPS}${setupMs > 0 ? ' (부하 구간 기준)' : ''}`);
+  lines.push(`  비즈니스 TPS: ${bizTPS} (신청 성공 기준)`);
   lines.push(`  에러율:      ${errorRate}% (${fmt(errorCount)}건)`);
   lines.push('');
   lines.push('  응답시간 (전체):');
@@ -422,26 +520,29 @@ export function buildSummaryOutput(data, config) {
     ? formatBreakpointHeader(config)
     : formatLoadTestHeader(config);
 
-  // 2. 성능 지표
+  // 2. 성공 지표 (Executive Summary — SMOKE 제외)
+  const successMetrics = formatSuccessMetrics(data, config);
+
+  // 3. 성능 지표
   const perf = formatPerformanceMetrics(data);
 
-  // 3. 비즈니스 지표
+  // 4. 비즈니스 지표
   const business = formatBusinessMetrics(data, config.flow);
 
-  // 4. 재고 검증 (FIRST_COME / FIRST_COME_QUEUE 중 Gauge 기록된 경우만)
+  // 5. 재고 검증 (FIRST_COME / FIRST_COME_QUEUE 중 Gauge 기록된 경우만)
   const stockVerification = (config.flow === 'FIRST_COME' || config.flow === 'FIRST_COME_QUEUE')
     ? formatStockVerification(data)
     : [];
 
-  // 5. 용량 테스트 결과 (BREAKPOINT만)
+  // 6. 용량 테스트 결과 (BREAKPOINT만)
   const bpResult = config.testType === 'BREAKPOINT'
     ? formatBreakpointResult(data, config, perf)
     : ['========================================'];
 
-  // 조합 — 모든 시나리오 공통 7단 구조:
-  //   헤더 → 성능 지표 → 비즈니스 지표 → (재고 검증) → (BP 결과 또는 구분선)
+  // 조합 — 헤더 → 성공 지표 → 성능 지표 → 비즈니스 지표 → (재고 검증) → (BP 결과)
   const report = [
     ...header,
+    ...successMetrics,
     ...perf.lines,
     ...business,
     ...stockVerification,
