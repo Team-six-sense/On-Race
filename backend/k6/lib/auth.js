@@ -108,8 +108,8 @@ export function batchLoginAll(totalUsers) {
 
     // 실패분 1회 재시도
     if (retryIndices.length > 0) {
-      console.warn(`[setup] 배치 ${batchIdx + 1}: ${retryIndices.length}건 실패, 2초 후 재시도`);
-      sleep(2);
+      console.warn(`[setup] 배치 ${batchIdx + 1}: ${retryIndices.length}건 실패, 재시도 대기`);
+      sleep(1.5 + Math.random());  // 1.5~2.5초 분산 대기
       const retryRequests = retryIndices.map((i) => requests[i]);
       const retryResponses = http.batch(retryRequests);
       for (let j = 0; j < retryResponses.length; j++) {
@@ -128,7 +128,7 @@ export function batchLoginAll(totalUsers) {
 
     // 배치 간 쿨다운: DB 커넥션 반환 대기 (pool 소진 방지)
     if (batchIdx < totalBatches - 1) {
-      sleep(2);
+      sleep(1.5 + Math.random());  // 1.5~2.5초 분산 대기
     }
 
     // 진행률 로깅 (10배치마다)
