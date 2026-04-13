@@ -36,7 +36,6 @@ import lombok.extern.slf4j.Slf4j;
  * 모든 ID는 auto_increment — 환경에 무관하게 동작
  */
 @Slf4j
-@Profile("local")
 @Service
 @RequiredArgsConstructor
 public class LoadTestService {

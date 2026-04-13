@@ -16,7 +16,7 @@ spring:
     name: queue
 
   profiles:
-    active: ${QUEUE_PROFILES_ACTIVE:local}
+    active: ${SPRING_PROFILES_ACTIVE:local}
 
   data:
     redis:

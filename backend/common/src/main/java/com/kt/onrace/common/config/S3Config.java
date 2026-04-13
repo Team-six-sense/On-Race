@@ -49,7 +49,7 @@ public class S3Config {
 	@Bean
 	public StsClient awsStsClient() {
 		log.info(
-			"Initializing AWS STS client. region={}, connectionTimeoutSeconds={}, socketTimeoutSeconds={}, apiCallTimeoutSeconds={}, apiCallAttemptTimeoutSeconds={}",
+			"[S3Config] STS 클라이언트 초기화 - region={}, connectionTimeout={}s, socketTimeout={}s, apiCallTimeout={}s, apiCallAttemptTimeout={}s",
 			region,
 			connectionTimeoutSeconds,
 			socketTimeoutSeconds,
@@ -76,7 +76,7 @@ public class S3Config {
 		);
 
 		log.info(
-			"Initializing AWS credentials provider. region={}, roleArnPresent={}, webIdentityTokenPresent={}, metadataDisabled={}",
+			"[S3Config] AWS 자격증명 프로바이더 초기화 - region={}, roleArnPresent={}, tokenFilePresent={}, metadataDisabled={}",
 			region,
 			roleArnPresent,
 			tokenFilePresent,
@@ -84,16 +84,17 @@ public class S3Config {
 		);
 
 		DefaultCredentialsProvider fallbackProvider = DefaultCredentialsProvider.builder()
-			.asyncCredentialUpdateEnabled(false)
+			.asyncCredentialUpdateEnabled(true)
 			.reuseLastProviderEnabled(true)
 			.build();
 
 		if (!roleArnPresent || !tokenFilePresent) {
 			log.warn(
-				"AWS IRSA environment variables are incomplete. Falling back to DefaultCredentialsProvider. roleArnPresent={}, webIdentityTokenPresent={}",
+				"[S3Config] IRSA 환경변수 미설정, DefaultCredentialsProvider로 대체 - roleArn={}, tokenFile={}",
 				roleArnPresent,
 				tokenFilePresent
 			);
+			verifyCredentials(fallbackProvider);
 			return fallbackProvider;
 		}
 
@@ -110,13 +111,14 @@ public class S3Config {
 			)
 			.build();
 
-		log.info("AWS credentials provider initialized with IRSA-first chain.");
+		log.info("[S3Config] IRSA 우선 자격증명 체인 초기화 완료");
+		verifyCredentials(credentialsProvider);
 		return credentialsProvider;
 	}
 
 	@Bean
 	public S3Presigner s3Presigner(AwsCredentialsProvider awsCredentialsProvider) {
-		log.info("Initializing AWS S3 presigner. region={}", region);
+		log.info("[S3Config] S3Presigner 빈 초기화 - region={}", region);
 		return S3Presigner.builder()
 			.region(Region.of(region))
 			.credentialsProvider(awsCredentialsProvider)
@@ -125,7 +127,7 @@ public class S3Config {
 
 	@Bean
 	public S3Client s3Client(AwsCredentialsProvider awsCredentialsProvider) {
-		log.info("Initializing AWS S3 client. region={}", region);
+		log.info("[S3Config] S3Client 빈 초기화 - region={}", region);
 		return S3Client.builder()
 			.region(Region.of(region))
 			.credentialsProvider(awsCredentialsProvider)
@@ -146,6 +148,15 @@ public class S3Config {
 			.apiCallTimeout(durationOrDefault(apiCallTimeoutSeconds, DEFAULT_API_CALL_TIMEOUT))
 			.apiCallAttemptTimeout(durationOrDefault(apiCallAttemptTimeoutSeconds, DEFAULT_API_CALL_ATTEMPT_TIMEOUT))
 			.build();
+	}
+
+	private void verifyCredentials(AwsCredentialsProvider provider) {
+		try {
+			provider.resolveCredentials();
+			log.info("[S3Config] AWS 자격증명 확인 완료");
+		} catch (Exception e) {
+			log.warn("[S3Config] AWS 자격증명 사전 확인 실패 - {}", e.getMessage());
+		}
 	}
 
 	private String resolveRoleSessionName() {

@@ -62,9 +62,6 @@ out/
 logs/
 spring.log
 
-### Application Properties (민감 정보) ###
-application-prod.yml
-
 ### API Keys & Secrets ###
 gradle.properties
 *.pem
