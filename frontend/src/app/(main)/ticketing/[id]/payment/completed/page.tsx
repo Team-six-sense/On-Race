@@ -4,7 +4,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { HiCheckCircle } from 'react-icons/hi2';
 import { useEffect, useState } from 'react';
-import { formatKoreanDate } from '@/features/ticketing/utils/date';
+import { format, parseISO } from 'date-fns';
 
 interface PaymentData {
   orderName: string;
@@ -23,6 +23,12 @@ export default function LoginSuccess() {
   const paymentKey = searchParams.get('paymentKey');
   const orderId = searchParams.get('orderId');
   const amount = searchParams.get('amount');
+
+  let approvedAt = '날짜 정보 없음';
+
+  if (data?.approvedAt) {
+    approvedAt = format(parseISO(data?.approvedAt), 'yyyy-MM-dd HH:mm:ss');
+  }
 
   useEffect(() => {
     // 백엔드(Route Handler)로 승인 요청을 보냄
@@ -80,9 +86,7 @@ export default function LoginSuccess() {
             </div>
             <div className="flex justify-between items-center mb-4">
               <span className="text-base text-font-medium">결제일자</span>
-              <span className="text-base font-medium">
-                {formatKoreanDate(data?.approvedAt, true)}
-              </span>
+              <span className="text-base font-medium">{approvedAt}</span>
             </div>
             <div className="flex justify-between items-center mb-4">
               <span className="text-base text-font-medium">결제수단</span>
@@ -111,7 +115,9 @@ export default function LoginSuccess() {
               rounded="full"
               size="lg"
               onClick={() =>
-                router.push(`/ticketing/${params.id}/payment/details`)
+                router.push(
+                  `/ticketing/${params.id}/payment/details?paymentKey=${paymentKey}&orderId=${orderId}&amount=${amount}`,
+                )
               }
             >
               결제 상세내역 보기

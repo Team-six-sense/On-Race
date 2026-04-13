@@ -9,19 +9,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useEventStore } from '@/features/event/store/useEventStore';
 
-export function EntryOptions({
-  selectedCourse,
-  setSelectedCourse,
-  selectedPace,
-  setSelectedPace,
-}: {
-  selectedCourse: string;
-  setSelectedCourse: React.Dispatch<React.SetStateAction<string>>;
-  selectedPace: string;
-  setSelectedPace: React.Dispatch<React.SetStateAction<string>>;
-}) {
+export function EntryOptions() {
   // 하이드레이션 오류 방지를 위한 마운트 상태 관리
+  const { course, pace, setCourse, setPace } = useEventStore();
   const [mounted, setMounted] = useState(false);
 
   const courses = [
@@ -50,15 +42,15 @@ export function EntryOptions({
   return (
     <section>
       {/* 코스 선택 */}
-      <div className="py-2">
+      <div className="p-2">
         <label className="text-base font-semibold">코스*</label>
-        <Select value={selectedCourse} onValueChange={setSelectedCourse}>
+        <Select value={course} onValueChange={setCourse}>
           <SelectTrigger variant="default">
             <SelectValue placeholder="코스을 선택하세요" />
           </SelectTrigger>
           <SelectContent>
             {courses.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
+              <SelectItem key={opt.value} value={opt.label}>
                 {opt.label}
               </SelectItem>
             ))}
@@ -67,15 +59,15 @@ export function EntryOptions({
       </div>
 
       {/* 페이스 선택 */}
-      <div className="py-2">
+      <div className="p-2">
         <label className="text-base font-semibold">페이스</label>
-        <Select value={selectedPace} onValueChange={setSelectedPace}>
+        <Select value={pace} onValueChange={setPace}>
           <SelectTrigger variant="default">
             <SelectValue placeholder="페이스를 선택하세요" />
           </SelectTrigger>
           <SelectContent>
             {paces.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
+              <SelectItem key={opt.value} value={opt.label}>
                 {opt.label}
               </SelectItem>
             ))}

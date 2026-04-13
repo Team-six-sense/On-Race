@@ -9,16 +9,16 @@ const apiClient = axios.create({
 });
 
 export const eventApi: IEventService = {
-  getEvents: async () => {
-    const response = await apiClient.get('/events');
+  getEvents: async (data) => {
+    const response = await apiClient.get('/events', { params: data });
     return response.data;
   },
   getEventById: async (id) => {
-    const response = await apiClient.get(`/events/${id}`);
+    const response = await apiClient.get(`/events/${id}/info`);
     return response.data;
   },
   getEventDetails: async (id) => {
-    const response = await apiClient.get(`/events/${id}/info`);
+    const response = await apiClient.get(`/events/${id}`);
     return response.data;
   },
   getSalesInfo: async (id) => {

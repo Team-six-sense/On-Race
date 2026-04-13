@@ -64,7 +64,7 @@ export function AccountSettings() {
   return (
     <div className="min-h-screen bg-white">
       {userInfo && (
-        <div className="space-y-10">
+        <div className="space-y-20">
           <section>
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
@@ -88,12 +88,17 @@ export function AccountSettings() {
                   {formatPhoneNumber(userInfo.phoneNumber)}
                 </span>
               </div>
-              <div className="flex">
+              <div className="flex items-center">
                 <span className="w-30 text-base font-medium text-font-medium">
                   이메일(ID)
                 </span>
-                <span className="flex-1 text-base font-medium">
-                  {userInfo.email}
+                <span className="flex-1 text-base font-medium flex items-center gap-2">
+                  <img
+                    src="/favicon.ico"
+                    alt="email icon"
+                    className="w-5 h-5 object-contain shrink-0"
+                  />
+                  <span className="whitespace-nowrap">{userInfo.email}</span>
                 </span>
               </div>
               <div className="flex items-center">

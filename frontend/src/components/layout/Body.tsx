@@ -63,7 +63,7 @@ export default function Body() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const result = await eventService.getEvents();
+        const result = await eventService.getEvents({ size: 5 });
         setEvents(result.data.content);
       } catch (error) {
         console.error('데이터 로드 실패:', error);

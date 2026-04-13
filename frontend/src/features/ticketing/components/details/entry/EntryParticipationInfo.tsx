@@ -17,7 +17,7 @@ export function EntryParticipationInfo() {
   }
 
   return (
-    <section>
+    <section className="px-2">
       <div className="flex items-center">
         <label className="text-base font-semibold text-black">참가 정보</label>
       </div>

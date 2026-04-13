@@ -62,7 +62,7 @@ export default function SecurityAuthPage() {
         clearInterval(timer);
         return;
       }
-
+      [];
       const now = Date.now();
       const remaining = Math.round((endTimeRef.current! - now) / 1000);
 
