@@ -52,7 +52,6 @@ export default function AddressForm({ onClose }: { onClose?: () => void }) {
   };
 
   const onSubmit = (data: AddressFormData) => {
-    console.log('서버로 전송할 데이터:', data);
     alert('배송지가 추가되었습니다.');
     if (onClose) onClose();
   };

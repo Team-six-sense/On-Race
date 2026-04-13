@@ -30,7 +30,6 @@ export default function SignupForm() {
   const handleDuplicationEmail = async () => {
     try {
       const response = await authService.checkEmailAddress({ email });
-      console.log(response.data);
     } catch (error: any) {
       throw new Error(error);
     }
@@ -40,7 +39,6 @@ export default function SignupForm() {
   const handleCheckCode = async () => {
     try {
       const response = await authService.sendSmsCode({ phoneNumber });
-      console.log(response.data);
     } catch (error: any) {
       throw new Error(error);
     }

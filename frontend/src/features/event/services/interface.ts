@@ -7,11 +7,24 @@ import {
   EventRate,
   EventPrevSave,
   EventApply,
+  Event,
 } from '../types';
 
 export interface IEventService {
-  getEvents(): Promise<ApiResponse<EventList>>;
-  getEventById(id: string): Promise<ApiResponse<EventList>>;
+  getEvents(data?: {
+    type?: string;
+    appType?: string;
+    minDistance?: number;
+    maxDistance?: number;
+    eventStartDate?: string;
+    eventEndDate?: string;
+    region?: string;
+    keyword?: string;
+    cursor?: string;
+    size?: number;
+    validSize?: number;
+  }): Promise<ApiResponse<EventList>>;
+  getEventById(id: string): Promise<ApiResponse<Event>>;
   getEventDetails(id: string): Promise<ApiResponse<EventDetails>>;
   getSalesInfo(id: string): Promise<ApiResponse<SalesInfo>>;
   postStockInit(

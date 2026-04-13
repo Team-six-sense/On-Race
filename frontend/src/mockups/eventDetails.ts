@@ -63,4 +63,8 @@ export const EVENT_DETAILS: EventDetails = {
     { id: 3, type: 'THUMBNAIL', url: '/image/default.png', sort: 1 },
   ],
   detailImg: [{ id: 3, type: 'DETAIL', url: '/image/detail.png', sort: 1 }],
+  delivery: {
+    schedule: '본 상품은 일괄배송 상품으로 2026년 4월 1일부터 순차 배송됩니다.',
+    feePolicy: '3만 원 이상 무료배송',
+  },
 };

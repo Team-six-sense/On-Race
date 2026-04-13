@@ -28,7 +28,6 @@ export default function WaitingPage() {
 
   // 자동 이동 로직
   useEffect(() => {
-    console.log(status);
     if (status?.status === 'passed' && status?.passToken) {
       // 토큰 저장
       localStorage.setItem(`token_${eventId}`, status.passToken);

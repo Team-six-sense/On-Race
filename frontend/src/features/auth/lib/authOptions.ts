@@ -133,8 +133,6 @@ export const authOptions: NextAuthOptions = {
       session.refreshToken = token.springRefreshToken;
       session.isUnregistered = token.isUnregistered;
 
-      console.log(session);
-
       return session;
     },
   },

@@ -23,16 +23,6 @@ export async function POST(request: Request) {
   const result = await response.json();
 
   if (response.ok) {
-    const orderName = result.orderName;
-    const method = result.method;
-    const approvedAt = result.approvedAt;
-    const receiptUrl = result.receipt?.url;
-
-    console.log(`상품명: ${orderName}`);
-    console.log(`결제수단: ${method}`);
-    console.log(`승인시간: ${approvedAt}`);
-    console.log(`승인시간: ${receiptUrl}`);
-
     return NextResponse.json(result);
   } else {
     return NextResponse.json(result, { status: response.status });
