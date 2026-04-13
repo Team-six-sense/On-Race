@@ -162,7 +162,7 @@ public class QueueBatchScheduler {
 			String passToken = queueTokenGenerator.generatePassToken(userId, paceId);
 			RBucket<String> passBucket = redissonClient.getBucket(passKey, StringCodec.INSTANCE);
 			passBucket.set(passToken, passTtl, TimeUnit.SECONDS);
-			log.info("[QUEUE] 통과 토큰 발급 userId={}, paceId={}", userId, paceId);
+			log.debug("[QUEUE] 통과 토큰 발급 userId={}, paceId={}", userId, paceId);
 			return true;
 		} catch (Exception e) {
 			int nextRetry = retryCount + 1;

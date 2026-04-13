@@ -15,7 +15,7 @@ dependencies {
     api platform("software.amazon.awssdk:bom:2.31.66")
     api "software.amazon.awssdk:apache-client"
     api "software.amazon.awssdk:s3"
-    api "software.amazon.awssdk:sts"
+    api "software.amazon.awssdk:sts"  // IRSA (WebIdentityTokenCredentialsProvider) 지원에 필수
 
     // OPENAPI/SWAGGER
     api 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0'
