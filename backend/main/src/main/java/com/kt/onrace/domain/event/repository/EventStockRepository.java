@@ -8,7 +8,7 @@ import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
 import com.kt.onrace.domain.event.entity.EventStock;
 
-public interface EventStockRepository extends JpaRepository<EventStock, Long> {
+public interface EventStockRepository extends JpaRepository<EventStock, Long>, EventStockRepositoryCustom {
 
 	Optional<EventStock> findByEventPaceId(Long eventPaceId);
 

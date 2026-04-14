@@ -13,12 +13,16 @@ import com.kt.onrace.common.util.RedisKeyGenerator;
 import com.kt.onrace.domain.entry.config.EntryProperties;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class EventStockService {
 	private final RedissonClient redissonClient;
 	private final EntryProperties entryProperties;
+	private final StockMetrics stockMetrics;
+
 	private static final String RESERVE_SCRIPT =
 		"if redis.call('EXISTS', KEYS[1]) == 1 then return -2 end " +
 			"local stock = redis.call('DECR', KEYS[2]) " +
@@ -36,6 +40,12 @@ public class EventStockService {
 
 		RAtomicLong confirm = redissonClient.getAtomicLong(RedisKeyGenerator.confirmStockKey(paceId));
 		confirm.set(confirmedStock);
+
+		stockMetrics.registerStockGauges(paceId,
+			() -> redissonClient.getAtomicLong(RedisKeyGenerator.tempStockKey(paceId)).get(),
+			() -> redissonClient.getAtomicLong(RedisKeyGenerator.confirmStockKey(paceId)).get());
+
+		log.info("[STOCK] 재고 초기화 paceId={}, total={}, confirmed={}", paceId, totalStock, confirmedStock);
 	}
 
 	public long tryReserveStock(Long paceId, Long userId) {
@@ -43,13 +53,27 @@ public class EventStockService {
 
 		// -2: 이미 선점된 경우, -1: 재고 부족, 0 이상: 선점 성공 (남은 재고 수)
 		// eval 자체가 내부적으로 EVALSHA → NOSCRIPT fallback을 자동으로 진행해줘서 인프라 요구사항에 충족할 수 잇음!
-		return script.eval(
+		long result = script.eval(
 			RScript.Mode.READ_WRITE,
 			RESERVE_SCRIPT,
 			RScript.ReturnType.INTEGER,
 			List.of(RedisKeyGenerator.reservationKey(paceId, userId), RedisKeyGenerator.tempStockKey(paceId)),
 			String.valueOf(entryProperties.getTtlSeconds())
 		);
+
+		stockMetrics.recordReserveResult(paceId, result);
+
+		String resultDesc;
+		if (result >= 0) {
+			resultDesc = "성공(남은:" + result + ")";
+		} else if (result == -1) {
+			resultDesc = "매진";
+		} else {
+			resultDesc = "중복";
+		}
+		log.info("[STOCK] 재고 선점 paceId={}, userId={}, result={}", paceId, userId, resultDesc);
+
+		return result;
 	}
 
 	public long getTotalStock(Long paceId) {
@@ -75,6 +99,7 @@ public class EventStockService {
 
 	public void restoreStock(Long paceId) {
 		redissonClient.getAtomicLong(RedisKeyGenerator.tempStockKey(paceId)).incrementAndGet();
+		log.info("[STOCK] 재고 복원 paceId={}", paceId);
 	}
 
 	public boolean hasReservation(Long paceId, Long userId) {
@@ -92,6 +117,7 @@ public class EventStockService {
 	public void confirmStock(Long paceId) {
 		RAtomicLong stock = redissonClient.getAtomicLong(RedisKeyGenerator.confirmStockKey(paceId));
 		stock.incrementAndGet();
+		log.info("[STOCK] 재고 확정 paceId={}", paceId);
 	}
 
 	public void cancelConfirmedStock(Long paceId) {

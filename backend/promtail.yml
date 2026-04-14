@@ -1,0 +1,47 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: onrace-logs
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: label
+            values: ["onrace.log.collect=true"]
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.+)'
+        target_label: 'container'
+    pipeline_stages:
+      - replace:
+          expression: '\x1b\[[0-9;]*m'
+          replace: ''
+      # JSON 로그 파싱 (dev/prod 프로파일)
+      - match:
+          selector: '{container=~"on-race-(main|auth|gateway|queue)"}'
+          stages:
+            - json:
+                expressions:
+                  level: level
+                  service: service
+                  traceId: traceId
+                  logger: logger_name
+            - labels:
+                level:
+                service:
+      # JSON 파싱 실패 시 텍스트 로그 정규식 파싱 (local 프로파일)
+      - match:
+          selector: '{container=~"on-race-(main|auth|gateway|queue)", level=""}'
+          stages:
+            - regex:
+                expression: '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \[TraceId: (?P<traceId>[^\]]*)\]\s+(?P<level>\w+)\s+(?P<logger>\S+)\s+-\s+(?P<message>.*)'
+            - labels:
+                level:

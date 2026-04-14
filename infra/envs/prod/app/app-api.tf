@@ -2,39 +2,9 @@
 # [공통 인프라] 모든 마이크로서비스(API, Auth, Gateway, Queue)가 공유
 # =====================================================================
 
-# 1. API 파드 전용 IAM 역할 (IRSA) 생성
-module "api_irsa" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.0"
+# [보안 개선] API 서비스 전용 IAM 정책 (최소 권한 원칙)
 
-  role_name = "${var.project_name}-${var.environment}-api-role"
-  
-  role_policy_arns = {
-    secrets = "arn:aws:iam::aws:policy/SecretsManagerReadWrite"
-    sqs     = aws_iam_policy.keda_sqs_policy.arn # SQS 권한 (KEDA 스케일링 및 메시지 처리용)
-    s3      = "arn:aws:iam::aws:policy/AmazonS3FullAccess" # S3 접근 권한 부여
-  }
-
-  oidc_providers = {
-    main = {
-      provider_arn               = module.eks.oidc_provider_arn
-      namespace_service_accounts = ["${kubernetes_namespace_v1.app.metadata[0].name}:on-race-api-sa"]
-    }
-  }
-}
-
-# 2. API 전용 Service Account 생성 (모든 서비스 파드가 이 SA를 공유하여 IAM 권한 획득)
-resource "kubernetes_service_account_v1" "api_sa" {
-  metadata {
-    name      = "on-race-api-sa"
-    namespace = kubernetes_namespace_v1.app.metadata[0].name
-    annotations = {
-      "eks.amazonaws.com/role-arn" = module.api_irsa.iam_role_arn
-    }
-  }
-}
-
-# 3. Secrets Manager에서 DB 암호 가져오기
+# 1. Secrets Manager에서 DB 암호 가져오기
 data "aws_secretsmanager_secret" "db_secret" {
   name = "${var.project_name}-${var.environment}-db-password-v4" 
 }
@@ -47,14 +17,14 @@ locals {
   db_creds = jsondecode(data.aws_secretsmanager_secret_version.db_secret_val.secret_string)
 }
 
-# 4. 보안 그룹 규칙: EKS 노드 -> RDS Proxy / Redis 접속 허용
+# 2. 보안 그룹 규칙: EKS 노드 -> RDS Proxy / Redis 접속 허용
 resource "aws_security_group_rule" "eks_to_rds_proxy" {
   type              = "ingress"
   from_port         = 3306
   to_port           = 3306
   protocol          = "tcp"
   security_group_id = data.terraform_remote_state.base.outputs.rds_proxy_sg_id
-  cidr_blocks       = [data.terraform_remote_state.base.outputs.vpc_cidr]
+  source_security_group_id = module.eks.nodes_security_group_id
 }
 
 resource "aws_security_group_rule" "eks_to_redis" {
@@ -63,10 +33,10 @@ resource "aws_security_group_rule" "eks_to_redis" {
   to_port           = 6379
   protocol          = "tcp"
   security_group_id = data.terraform_remote_state.base.outputs.redis_sg_id
-  cidr_blocks       = [data.terraform_remote_state.base.outputs.vpc_cidr]
+  source_security_group_id = module.eks.nodes_security_group_id
 }
 
-# 5. Stunnel ConfigMap (Redis TLS 통신을 위해 모든 서비스가 사이드카로 공유)
+# 3. Stunnel ConfigMap (Redis TLS 통신을 위해 모든 서비스가 사이드카로 공유)
 resource "kubernetes_config_map_v1" "redis_stunnel_conf" {
   metadata {
     name      = "redis-stunnel-conf"
@@ -90,7 +60,7 @@ EOF
 # =====================================================================
 # [서비스 배포] Main API 전용 리소스 (Deployment, Service, PDB)
 # =====================================================================
-# 6. 메인 API Deployment
+# 4. 메인 API Deployment
 resource "kubernetes_deployment_v1" "on_race_api" {
   metadata {
     name      = "on-race-api"
@@ -115,35 +85,53 @@ resource "kubernetes_deployment_v1" "on_race_api" {
 
         container {
           name              = "api"
-          image             = "${data.terraform_remote_state.base.outputs.ecr_repository_url}:main-latest"
+          image             = "${data.terraform_remote_state.base.outputs.ecr_repository_url}:main-${var.image_tag}"
           image_pull_policy = "Always"
           
           port {
-            container_port = 8080
+            container_port = 8082
           }
 
-          # [API 서비스] 운영 환경(prod) 전용 통합 환경 변수
+          # [API 서비스] 서버/프로필/JPA 설정
           env {
             name  = "SPRING_PROFILES_ACTIVE"
             value = "prod"
           }
           env {
+            name  = "MAIN_SERVER_PORT"
+            value = "8082"
+          }
+          env {
+            name  = "MAIN_JPA_DDL_AUTO"
+            value = "validate" # [수정] 최초 배포 시 테이블 자동 생성을 위해 임시로 update로 변경 (이후 validate로 복귀 권장)
+          }
+          env {
             name  = "JAVA_TOOL_OPTIONS"
-            value = "-Dspring.datasource.url=jdbc:mysql://${data.terraform_remote_state.base.outputs.rds_proxy_endpoint}:3306/onrace?sslMode=REQUIRED&useSSL=true&verifyServerCertificate=false&allowPublicKeyRetrieval=true -Dspring.profiles.active=prod -XX:InitialRAMPercentage=75.0 -XX:MaxRAMPercentage=75.0 -XX:MinRAMPercentage=75.0"
+            value = "-Dspring.datasource.url=jdbc:mysql://${data.terraform_remote_state.base.outputs.rds_proxy_endpoint}:3306/onrace?sslMode=REQUIRED&useSSL=true&verifyServerCertificate=false&allowPublicKeyRetrieval=true -XX:InitialRAMPercentage=75.0 -XX:MaxRAMPercentage=75.0 -XX:MinRAMPercentage=75.0"
+          }
+
+          # 보안 비밀키 (32바이트 이상 규격 준수)
+          env {
+            name  = "JWT_SECRET"
+            value = "onrace-jwt-secret-key-must-be-at-least-32-bytes-long-for-hmac-sha-256-standard-2026"
+          }
+          env {
+            name  = "JWT_ACCESS_TOKEN_EXPIRATION"
+            value = "1800000"
+          }
+          env {
+            name  = "JWT_REFRESH_TOKEN_EXPIRATION"
+            value = "604800000"
+          }
+          env {
+            name  = "GATEWAY_INTERNAL_SECRET"
+            value = "on-race-internal-gateway-secret-key-2026"
           }
 
           # 데이터베이스 연결 정보 (기존 로직 유지)
           env {
-            name  = "DB_ENDPOINT"
-            value = data.terraform_remote_state.base.outputs.rds_proxy_endpoint
-          }
-          env {
-            name  = "DB_USERNAME"
-            value = local.db_creds.username
-          }
-          env {
-            name  = "DB_PASSWORD"
-            value = local.db_creds.password
+            name  = "MAIN_DB_NAME"
+            value = "onrace"
           }
           env {
             name  = "MAIN_DB_HOST"
@@ -176,23 +164,25 @@ resource "kubernetes_deployment_v1" "on_race_api" {
             value = local.db_creds.password
           }
           env {
-            name  = "MAIN_REDIS_HOST"
-            value = "127.0.0.1"
-          }
-          env {
-            name  = "MAIN_REDIS_PORT"
-            value = "6379"
-          }
-          env {
             name  = "MAIN_REDIS_PASSWORD"
             value = local.db_creds.password
           }
 
-          # AWS 및 인프라 설정 (SQS, S3)
+          # 성능 튜닝 및 외부 API 키
           env {
-            name  = "SQS_QUEUE_URL"
-            value = data.terraform_remote_state.base.outputs.queue_url
+            name  = "MAIN_HIKARI_MAX_POOL_SIZE"
+            value = "50"
           }
+          env {
+            name  = "MAIN_TOMCAT_MAX_THREADS"
+            value = "400"
+          }
+          env {
+            name  = "TOSS_SECRET_KEY"
+            value = "test_sk_zXLkKEypNArWmo50nX3lmeaxYG5R"
+          }
+
+          # AWS 및 인프라 설정 (S3)
           env {
             name  = "AWS_S3_BUCKET"
             value = data.terraform_remote_state.base.outputs.ai_vqa_bucket_name
@@ -203,17 +193,13 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           }
           env {
             name  = "AWS_S3_PRESIGN_EXPIRE_SECONDS"
-            value = "900"
+            value = "900" # 15분
           }
 
-          # 보안 비밀키 (32바이트 이상 규격 준수)
+          # 서비스 통신 URI
           env {
-            name  = "JWT_SECRET"
-            value = "onrace-jwt-secret-key-must-be-at-least-32-bytes-long-for-hmac-sha-256-standard-2026"
-          }
-          env {
-            name  = "GATEWAY_INTERNAL_SECRET"
-            value = "on-race-internal-gateway-secret-key-2026"
+            name  = "AUTH_SERVICE_URI"
+            value = "http://t6-on-race-auth.t6-on-race-prod.svc.cluster.local:80"
           }
 
           # 외부/내부 서비스 통신 URI
@@ -248,7 +234,7 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           }
 
           startup_probe {
-            tcp_socket { port = 8080 }
+            tcp_socket { port = 8082 }
             initial_delay_seconds = 10
             period_seconds        = 5
             failure_threshold     = 60
@@ -256,14 +242,14 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           }
 
           readiness_probe {
-            tcp_socket { port = 8080 }
+            tcp_socket { port = 8082 }
             initial_delay_seconds = 30
             period_seconds        = 10
             timeout_seconds       = 15
           }
 
           liveness_probe {
-            tcp_socket { port = 8080 }
+            tcp_socket { port = 8082 }
             initial_delay_seconds = 60
             period_seconds        = 15
             timeout_seconds       = 15
@@ -311,7 +297,7 @@ resource "kubernetes_deployment_v1" "on_race_api" {
   }
 }
 
-# 7. 내부 통신용 서비스 (ClusterIP)
+# 5. 내부 통신용 서비스 (ClusterIP)
 resource "kubernetes_service_v1" "on_race_api" {
   metadata {
     name      = "t6-on-race-api"
@@ -330,14 +316,14 @@ resource "kubernetes_service_v1" "on_race_api" {
     }
     port {
       port        = 80
-      target_port = 8080
+      target_port = 8082
       protocol    = "TCP"
     }
     type = "ClusterIP"
   }
 }
 
-# 8. 가용성 보장 정책 (업데이트 시 최소 1개 가동 유지)
+# 6. 가용성 보장 정책 (업데이트 시 최소 1개 가동 유지)
 resource "kubernetes_pod_disruption_budget_v1" "api_pdb" {
   metadata {
     name      = "on-race-api-pdb"

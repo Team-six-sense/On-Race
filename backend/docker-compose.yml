@@ -7,9 +7,38 @@ services:
       MYSQL_DATABASE: ${MAIN_DB_NAME}
     ports:
       - '${MAIN_DB_PORT}:3306'
+    # ── AWS RDS 스펙 시뮬레이션 (deploy.resources) ──
+    # docker compose up 시 --compatibility 또는 Docker Compose v2 필요
+    # 기본 개발: 제한 없음 (호스트 리소스 공유)
+    # ┌──────────────────┬────────┬────────┬──────────┬──────────────────┐
+    # │ RDS 인스턴스      │ vCPU   │ RAM    │ max_conn │ buffer_pool      │
+    # ├──────────────────┼────────┼────────┼──────────┼──────────────────┤
+    # │ db.t3.micro      │ 2      │ 1 GB   │ 66       │ 256M             │
+    # │ db.t3.small      │ 2      │ 2 GB   │ 150      │ 512M             │
+    # │ db.t3.medium     │ 2      │ 4 GB   │ 312      │ 1G               │
+    # │ db.t3.large      │ 2      │ 8 GB   │ 648      │ 4G               │
+    # └──────────────────┴────────┴────────┴──────────┴──────────────────┘
+    deploy:
+      resources:
+        limits:
+          # db.t3.micro: 2 vCPU, 1GB RAM
+          # 기본 개발 값: 제한 없음
+          cpus: '2.0'
+          memory: 1G
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
+      # ── max_connections ──
+      # db.t3.micro (1GB RAM): max_connections ≈ 66 (RAM / 12582880)
+      # 현재: Main(15) + Auth(8) = 23 → 66이면 여유 43
+      # 기본 개발 값: 500 (로컬 Docker, Main=50 + Auth=30)
+      #- --max_connections=500
+      - --max_connections=66
+      # ── innodb_buffer_pool_size ──
+      # db.t3.micro (1GB RAM): 전체 메모리의 25% = 256M (OS/MySQL 오버헤드 고려)
+      # 기본 개발 값: 2G (로컬 Docker, RAM 31GB)
+      #- --innodb_buffer_pool_size=2G
+      - --innodb_buffer_pool_size=256M
     volumes:
       - main-db-data:/var/lib/mysql
     networks:
@@ -20,11 +49,36 @@ services:
     container_name: on-race-main-redis
     ports:
       - '${MAIN_REDIS_PORT}:6379'
+    # ── AWS ElastiCache 스펙 시뮬레이션 ──
+    # ┌──────────────────────┬────────┬────────┬──────────────────────┐
+    # │ ElastiCache 인스턴스  │ vCPU   │ RAM    │ maxmemory 권장       │
+    # ├──────────────────────┼────────┼────────┼──────────────────────┤
+    # │ cache.t4g.micro      │ 2      │ 0.5 GB │ 400m (OS 오버헤드)    │
+    # │ cache.t4g.small      │ 2      │ 1.5 GB │ 1200m               │
+    # │ cache.t4g.medium     │ 2      │ 3.1 GB │ 2500m               │
+    # └──────────────────────┴────────┴────────┴──────────────────────┘
+    deploy:
+      resources:
+        limits:
+          # cache.t4g.micro: 2 vCPU, 0.5GB RAM
+          # 기본 개발 값: 제한 없음
+          cpus: '2.0'
+          memory: 512M
     volumes:
       - main-redis-data:/data
     networks:
       - on-race-network
-    command: redis-server --requirepass ${MAIN_REDIS_PASSWORD} --notify-keyspace-events Ex
+    command: redis-server --requirepass ${MAIN_REDIS_PASSWORD} --notify-keyspace-events Ex --maxmemory 400mb --maxmemory-policy allkeys-lru
+
+  # ── 앱 서비스 리소스 제한 (EKS Pod 스펙 시뮬레이션) ──
+  # ┌──────────────┬────────┬────────┬──────────────────────────────────┐
+  # │ EKS 노드     │ vCPU   │ RAM    │ Pod 배분 예시                    │
+  # ├──────────────┼────────┼────────┼──────────────────────────────────┤
+  # │ t3.micro     │ 2      │ 1 GB   │ 서비스당 0.5 vCPU, 384MB        │
+  # │ t3.small     │ 2      │ 2 GB   │ 서비스당 0.5 vCPU, 768MB        │
+  # │ t3.medium    │ 2      │ 4 GB   │ 서비스당 1.0 vCPU, 1.5GB        │
+  # │ t3.large     │ 2      │ 8 GB   │ 서비스당 1.0 vCPU, 3GB          │
+  # └──────────────┴────────┴────────┴──────────────────────────────────┘
 
   gateway:
     build:
@@ -32,17 +86,27 @@ services:
       args:
         SERVICE: gateway
     container_name: on-race-gateway
+    labels:
+      onrace.log.collect: "true"
     env_file: .env
     ports:
-      - '${GATEWAY_SERVER_PORT}:8080'
+      - '${GATEWAY_SERVER_PORT}:${GATEWAY_SERVER_PORT}'
     environment:
       - GATEWAY_REDIS_HOST=main-redis
-      - AUTH_SERVICE_URI=http://auth:8081
-      - MAIN_SERVICE_URI=http://main:8082
+      - AUTH_SERVICE_URI=http://auth:${AUTH_SERVER_PORT}
+      - MAIN_SERVICE_URI=http://main:${MAIN_SERVER_PORT}
+      - QUEUE_SERVICE_URI=http://queue:${QUEUE_SERVER_PORT}
+    # 기본 개발 값: 제한 없음
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 384M
     depends_on:
       - main-redis
       - auth
       - main
+      - queue
     networks:
       - on-race-network
     restart: always
@@ -53,13 +117,21 @@ services:
       args:
         SERVICE: auth
     container_name: on-race-auth
+    labels:
+      onrace.log.collect: "true"
     env_file: .env
     ports:
-      - '${AUTH_SERVER_PORT}:8081'
+      - '${AUTH_SERVER_PORT}:${AUTH_SERVER_PORT}'
     environment:
       - AUTH_DB_HOST=main-mysql
       - AUTH_REDIS_HOST=main-redis
-      - MAIN_SERVICE_URI=http://main:8082
+      - MAIN_SERVICE_URI=http://main:${MAIN_SERVER_PORT}
+    # 기본 개발 값: 제한 없음
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 384M
     depends_on:
       - main-mysql
       - main-redis
@@ -73,18 +145,106 @@ services:
       args:
         SERVICE: main
     container_name: on-race-main
+    labels:
+      onrace.log.collect: "true"
     env_file: .env
     ports:
-      - '${MAIN_SERVER_PORT}:8082'
+      - '${MAIN_SERVER_PORT}:${MAIN_SERVER_PORT}'
     environment:
       - MAIN_DB_HOST=main-mysql
       - MAIN_REDIS_HOST=main-redis
+      - AUTH_SERVICE_URI=http://auth:${AUTH_SERVER_PORT}
+    # 기본 개발 값: 제한 없음
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 384M
     depends_on:
       - main-mysql
       - main-redis
     networks:
       - on-race-network
     restart: always
+
+  queue:
+    build:
+      context: .
+      args:
+        SERVICE: queue
+    container_name: on-race-queue
+    labels:
+      onrace.log.collect: "true"
+    env_file: .env
+    ports:
+      - '${QUEUE_SERVER_PORT}:${QUEUE_SERVER_PORT}'
+    environment:
+      - QUEUE_REDIS_HOST=main-redis
+    # 기본 개발 값: 제한 없음
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 384M
+    depends_on:
+      - main-redis
+    networks:
+      - on-race-network
+    restart: always
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: onrace-prometheus
+    ports:
+      - "${PROMETHEUS_PORT}:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.template.yml:ro
+    env_file: .env
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        sed -e 's/GATEWAY_SERVER_PORT/'"$$GATEWAY_SERVER_PORT"'/g' \
+            -e 's/AUTH_SERVER_PORT/'"$$AUTH_SERVER_PORT"'/g' \
+            -e 's/MAIN_SERVER_PORT/'"$$MAIN_SERVER_PORT"'/g' \
+            -e 's/QUEUE_SERVER_PORT/'"$$QUEUE_SERVER_PORT"'/g' \
+            /etc/prometheus/prometheus.template.yml > /tmp/prometheus.yml && \
+        exec /bin/prometheus --config.file=/tmp/prometheus.yml --storage.tsdb.path=/prometheus
+    networks:
+      - on-race-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: onrace-grafana
+    ports:
+      - "${GRAFANA_PORT}:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+    depends_on:
+      - prometheus
+      - loki
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: onrace-loki
+    ports:
+      - "${LOKI_PORT}:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    restart: unless-stopped
+
+  promtail:
+    image: grafana/promtail:3.0.0
+    container_name: onrace-promtail
+    volumes:
+      - ./promtail.yml:/etc/promtail/config.yml
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    restart: unless-stopped
 
 networks:
   on-race-network:

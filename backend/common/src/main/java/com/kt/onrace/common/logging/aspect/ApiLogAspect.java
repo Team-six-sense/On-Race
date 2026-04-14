@@ -6,6 +6,7 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -14,6 +15,8 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import com.kt.onrace.common.logging.annotation.ApiLog;
 import com.kt.onrace.common.logging.helper.AopLoggingHelper;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +37,7 @@ public class ApiLogAspect {
 
 	private static final String PREFIX = "[AOP-API] ";
 	private final AopLoggingHelper loggingHelper;
+	private final ObjectProvider<MeterRegistry> meterRegistryProvider;
 
 	//@Around("@within(org.springframework.web.bind.annotation.RestController)")
 	@Around("@within(apiLog) || @annotation(apiLog)")
@@ -49,6 +53,9 @@ public class ApiLogAspect {
 		logRequestDetails(requestOpt, joinPoint);
 
 		long startTime = System.currentTimeMillis();
+
+		MeterRegistry meterRegistry = meterRegistryProvider.getIfAvailable();
+		Timer.Sample sample = meterRegistry != null ? Timer.start(meterRegistry) : null;
 
 		try {
 			Object result = joinPoint.proceed();
@@ -66,6 +73,13 @@ public class ApiLogAspect {
 			log.info("{} API 실패: {}ms", PREFIX, executionTime);
 
 			throw e;
+		} finally {
+			if (sample != null && meterRegistry != null) {
+				sample.stop(Timer.builder("api.execution")
+					.tag("class", joinPoint.getTarget().getClass().getSimpleName())
+					.tag("method", signature.getName())
+					.register(meterRegistry));
+			}
 		}
 	}
 
@@ -77,6 +91,9 @@ public class ApiLogAspect {
 	}
 
 	private void logRequestSummary(Optional<HttpServletRequest> requestOpt, MethodSignature signature) {
+		if (!log.isInfoEnabled()) {
+			return;
+		}
 		requestOpt.ifPresentOrElse(
 			request -> log.info("{} 요청정보: {} {} - req ip: {}",
 				PREFIX,
@@ -91,6 +108,9 @@ public class ApiLogAspect {
 	}
 
 	private void logRequestDetails(Optional<HttpServletRequest> requestOpt, ProceedingJoinPoint joinPoint) {
+		if (!log.isDebugEnabled()) {
+			return;
+		}
 		String params = loggingHelper.extractParameters(joinPoint, requestOpt.orElse(null));
 		if (!"no".equals(params)) {
 			log.debug("{} 파라미터: [{}]", PREFIX, params);

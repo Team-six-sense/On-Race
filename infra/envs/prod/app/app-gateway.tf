@@ -4,7 +4,7 @@
 # 1. Gateway Deployment
 resource "kubernetes_deployment_v1" "on_race_gateway" {
   metadata {
-    name      = "on-race-scg"
+    name      = "on-race-gateway"
     namespace = kubernetes_namespace_v1.app.metadata[0].name
   }
   wait_for_rollout = false
@@ -12,72 +12,64 @@ resource "kubernetes_deployment_v1" "on_race_gateway" {
   spec {
     replicas = 2
     selector {
-      match_labels = { app = "t6-on-race-scg" }
+      match_labels = { app = "on-race-gateway" }
     }
 
     template {
       metadata {
-        labels = { app = "t6-on-race-scg" }
+        labels = { app = "on-race-gateway" }
       }
 
       spec {
-        service_account_name = kubernetes_service_account_v1.api_sa.metadata[0].name
+        service_account_name = kubernetes_service_account_v1.gateway_sa.metadata[0].name # app-iam.tf에서 생성
 
         # -----------------------------------------------------------
         # 메인 컨테이너: Gateway (Spring Cloud Gateway)
         # -----------------------------------------------------------
         container {
           name              = "gateway"
-          image             = "${data.terraform_remote_state.base.outputs.ecr_repository_url}:gateway-latest"
+          image             = "${data.terraform_remote_state.base.outputs.ecr_repository_url}:gateway-${var.image_tag}"
           image_pull_policy = "Always"
           
           port {
             container_port = 8080
           }
 
-          # [GATEWAY 서비스] 운영 환경(prod) 전용 통합 환경 변수
+          # [GATEWAY 서비스] 서버/프로필 설정
           env {
             name  = "SPRING_PROFILES_ACTIVE"
             value = "prod"
           }
           env {
+            name  = "GATEWAY_SERVER_PORT"
+            value = "8080"
+          }
+          env {
             name  = "JAVA_TOOL_OPTIONS"
-            value = "-Dspring.profiles.active=prod -XX:InitialRAMPercentage=75.0 -XX:MaxRAMPercentage=75.0 -XX:MinRAMPercentage=75.0"
+            value = "-XX:InitialRAMPercentage=75.0 -XX:MaxRAMPercentage=75.0 -XX:MinRAMPercentage=75.0"
           }
 
-          # 보안 비밀키 (인증 필터 및 내부 서비스 통신용)
+          # 보안 비밀키 (인증/내부 통신/대기열)
           env {
             name  = "JWT_SECRET"
             value = "onrace-jwt-secret-key-must-be-at-least-32-bytes-long-for-hmac-sha-256-standard-2026"
           }
           env {
+            name  = "JWT_ACCESS_TOKEN_EXPIRATION"
+            value = "1800000"
+          }
+          env {
+            name  = "JWT_REFRESH_TOKEN_EXPIRATION"
+            value = "604800000"
+          }
+          env {
             name  = "GATEWAY_INTERNAL_SECRET"
             value = "on-race-internal-gateway-secret-key-2026"
           }
-
-          # --- [대기열 필터 전용 비밀키 융단폭격] ---
-          # 앱 내부의 기본값(168bits)을 덮어쓰기 위해 가능한 모든 변수명에 32바이트 키 주입
-          env {
-            name  = "WAITING_ROOM_SECRET"
-            value = "onrace-queue-token-secret-key-security-standard-minimum-32-characters-2026"
-          }
-          env {
-            name  = "WAITING_QUEUE_SECRET"
-            value = "onrace-queue-token-secret-key-security-standard-minimum-32-characters-2026"
-          }
-          env {
-            name  = "QUEUE_SECRET"
-            value = "onrace-queue-token-secret-key-security-standard-minimum-32-characters-2026"
-          }
           env {
             name  = "QUEUE_TOKEN_SECRET"
-            value = "onrace-queue-token-secret-key-security-standard-minimum-32-characters-2026"
+            value = "MutYiYbCH48Xw9b6Z598UWKzGQVw6GYu7dW5TW6oedGEyQwtAFIMss3r1xTYs"
           }
-          env {
-            name  = "GATEWAY_WAITING_ROOM_SECRET"
-            value = "onrace-queue-token-secret-key-security-standard-minimum-32-characters-2026"
-          }
-          # -----------------------------------------
 
           # 공통 Redis 연결 정보 (stunnel 127.0.0.1 경유)
           env {
@@ -115,6 +107,18 @@ resource "kubernetes_deployment_v1" "on_race_gateway" {
           env {
             name  = "MAIN_SERVICE_URI"
             value = "http://t6-on-race-api.t6-on-race-prod.svc.cluster.local:80"
+          }
+          env {
+            name  = "QUEUE_SERVICE_URI"
+            value = "http://t6-on-race-queue.t6-on-race-prod.svc.cluster.local:80"
+          }
+          env {
+            name  = "QUEUE_SERVICE_URI"
+            value = "http://t6-on-race-queue.t6-on-race-prod.svc.cluster.local:80"
+          }
+          env {
+            name  = "CORS_ALLOWED_ORIGIN_PATTERNS"
+            value = "https://on-race.com,http://localhost:3000"
           }
 
           resources {
@@ -171,7 +175,7 @@ resource "kubernetes_deployment_v1" "on_race_gateway" {
           topology_key       = "topology.kubernetes.io/zone"
           when_unsatisfiable = "ScheduleAnyway"
           label_selector {
-            match_labels = { app = "t6-on-race-scg" }
+            match_labels = { app = "on-race-gateway" }
           }
         }
 
@@ -189,11 +193,11 @@ resource "kubernetes_deployment_v1" "on_race_gateway" {
 # 2. 내부 통신용 서비스
 resource "kubernetes_service_v1" "on_race_gateway" {
   metadata {
-    name      = "t6-on-race-scg"
+    name      = "t6-on-race-gateway"
     namespace = kubernetes_namespace_v1.app.metadata[0].name
   }
   spec {
-    selector = { app = "t6-on-race-scg" }
+    selector = { app = "on-race-gateway" }
     port {
       port        = 80
       target_port = 8080
@@ -206,11 +210,11 @@ resource "kubernetes_service_v1" "on_race_gateway" {
 # 3. 가용성 보장 정책
 resource "kubernetes_pod_disruption_budget_v1" "gateway_pdb" {
   metadata {
-    name      = "on-race-scg-pdb"
+    name      = "on-race-gateway-pdb"
     namespace = kubernetes_namespace_v1.app.metadata[0].name
   }
   spec {
     min_available = 1
-    selector { match_labels = { app = "t6-on-race-scg" } }
+    selector { match_labels = { app = "on-race-gateway" } }
   }
 }

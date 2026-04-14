@@ -1,5 +1,7 @@
 package com.kt.onrace.queue.service;
 
+import java.util.concurrent.ThreadLocalRandom;
+
 import org.redisson.api.RBucket;
 import org.redisson.api.RScoredSortedSet;
 import org.redisson.api.RSet;
@@ -12,6 +14,8 @@ import com.kt.onrace.common.exception.BusinessException;
 import com.kt.onrace.common.logging.annotation.ServiceLog;
 import com.kt.onrace.common.util.Preconditions;
 import com.kt.onrace.common.util.RedisKeyGenerator;
+import com.kt.onrace.queue.config.QueueMetrics;
+import com.kt.onrace.queue.config.QueueProperties;
 import com.kt.onrace.queue.dto.QueueEnterResponse;
 import com.kt.onrace.queue.dto.QueueStatusResponse;
 
@@ -23,6 +27,8 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class QueueService {
 	private final RedissonClient redissonClient;
+	private final QueueMetrics queueMetrics;
+	private final QueueProperties queueProperties;
 
 	@ServiceLog
 	public QueueEnterResponse enter(Long userId, Long paceId) {
@@ -41,8 +47,12 @@ public class QueueService {
 		RSet<String> activePaces = redissonClient.getSet(RedisKeyGenerator.queueActivePaces(), StringCodec.INSTANCE);
 		activePaces.add(String.valueOf(paceId));
 
+		queueMetrics.recordEnter(paceId);
+
 		Integer rank = waitingSet.rank(String.valueOf(userId));
 		long position = (rank != null) ? rank + 1 : 1;
+
+		log.info("[QUEUE] 대기열 진입 userId={}, paceId={}, position={}", userId, paceId, position);
 
 		return QueueEnterResponse.of(paceId, position);
 	}
@@ -54,6 +64,7 @@ public class QueueService {
 		String passToken = passBucket.get();
 
 		if (passToken != null) {
+			log.info("[QUEUE] 통과 확인 userId={}, paceId={}", userId, paceId);
 			return QueueStatusResponse.pass(paceId, passToken);
 		}
 
@@ -62,7 +73,12 @@ public class QueueService {
 		Integer rank = waitingSet.rank(String.valueOf(userId));
 
 		if (rank != null) {
-			return QueueStatusResponse.waiting(paceId, (long) rank + 1);
+			long position = rank + 1;
+			long jitterMs = queueProperties.getPollJitterMs();
+			long retryAfterMs = queueProperties.getPollBaseMs()
+				+ (jitterMs > 0 ? ThreadLocalRandom.current().nextLong(jitterMs) : 0);
+			log.debug("[QUEUE] 대기 중 userId={}, paceId={}, position={}", userId, paceId, position);
+			return QueueStatusResponse.waiting(paceId, position, retryAfterMs);
 		}
 
 		throw new BusinessException(BusinessErrorCode.QUEUE_NOT_FOUND);
@@ -79,5 +95,7 @@ public class QueueService {
 		boolean deletedPass = passBucket.delete();
 
 		Preconditions.validate(removedFromWaiting || deletedPass, BusinessErrorCode.QUEUE_NOT_FOUND);
+
+		log.info("[QUEUE] 대기열 이탈 userId={}, paceId={}", userId, paceId);
 	}
 }

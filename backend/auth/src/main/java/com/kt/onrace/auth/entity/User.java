@@ -3,6 +3,8 @@ package com.kt.onrace.auth.entity;
 import static com.kt.onrace.auth.entity.Role.*;
 import static com.kt.onrace.auth.entity.UserStatus.*;
 
+import java.time.LocalDate;
+
 import com.kt.onrace.common.entity.BaseEntity;
 
 import jakarta.persistence.Column;
@@ -21,8 +23,15 @@ public class User extends BaseEntity {
 	@Column(nullable = false, length = 100)
 	private String email;
 
-	@Column(nullable = false, length = 50)
+	@Column(length = 50)
 	private String name;
+
+	@Enumerated(EnumType.STRING)
+	@Column(length = 10)
+	private Gender gender;
+
+	@Column
+	private LocalDate birthdate;
 
 	// OAuth 사용자는 전화번호 없이 가입 가능
 	@Column(length = 20)
@@ -58,11 +67,13 @@ public class User extends BaseEntity {
 	@Column(nullable = false, columnDefinition = "TINYINT(1) NOT NULL DEFAULT 0")
 	private boolean marketingConsent = false;
 
-	private User(String email, String name, String password, String phoneNumber) {
+	private User(String email, String name, String password, String phoneNumber, Gender gender, LocalDate birthdate) {
 		this.email = email;
 		this.name = name;
 		this.password = password;
 		this.phoneNumber = phoneNumber;
+		this.gender = gender;
+		this.birthdate = birthdate;
 		this.authProvider = AuthProvider.LOCAL;
 		this.role = USER;
 		this.status = ACTIVE;
@@ -77,8 +88,8 @@ public class User extends BaseEntity {
 		this.status = ACTIVE;
 	}
 
-	public static User createUser(String email, String name, String password, String phoneNumber) {
-		return new User(email, name, password, phoneNumber);
+	public static User createUser(String email, String name, String password, String phoneNumber, Gender gender, LocalDate birthdate) {
+		return new User(email, name, password, phoneNumber, gender, birthdate);
 	}
 
 	public static User createOAuthUser(String email, String name, AuthProvider authProvider, String providerId) {
@@ -111,6 +122,13 @@ public class User extends BaseEntity {
 
 	public void changeVerificationStatus(VerificationStatus verificationStatus) {
 		this.verificationStatus = verificationStatus;
+	}
+
+	public void applyPassVerification(String name, Gender gender, LocalDate birthdate) {
+		this.name = name;
+		this.gender = gender;
+		this.birthdate = birthdate;
+		this.verificationStatus = VerificationStatus.VERIFIED;
 	}
 
 	public boolean canChangePassword() {

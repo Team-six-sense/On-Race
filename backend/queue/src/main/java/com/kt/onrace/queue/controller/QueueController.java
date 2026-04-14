@@ -19,7 +19,6 @@ import com.kt.onrace.queue.service.QueueService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
-@ApiLog
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/queue")
@@ -27,6 +26,7 @@ public class QueueController {
 
 	private final QueueService queueService;
 
+	@ApiLog
 	@PostMapping("/enter")
 	public ApiResponse<QueueEnterResponse> enter(
 		@RequestHeader("X-User-Id") Long userId,
@@ -43,6 +43,7 @@ public class QueueController {
 		return ApiResponse.success(queueService.getStatus(userId, paceId));
 	}
 
+	@ApiLog
 	@DeleteMapping("/leave")
 	public ApiResponse<Void> leave(
 		@RequestHeader("X-User-Id") Long userId,

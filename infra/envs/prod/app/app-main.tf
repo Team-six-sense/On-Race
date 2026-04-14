@@ -19,4 +19,6 @@ resource "kubernetes_namespace_v1" "app" {
   metadata {
     name = "${var.project_name}-${var.environment}"
   }
+
+  depends_on = [module.eks]
 }

@@ -2,6 +2,7 @@ package com.kt.onrace.domain.mypage.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.ArgumentMatchers.anyLong;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -42,6 +43,7 @@ import com.kt.onrace.domain.event.repository.EventCourseRepository;
 import com.kt.onrace.domain.event.repository.EventImageRepository;
 import com.kt.onrace.domain.event.repository.EventPaceRepository;
 import com.kt.onrace.domain.event.repository.EventRepository;
+import com.kt.onrace.domain.event.service.EventStockService;
 import com.kt.onrace.domain.member.entity.Member;
 import com.kt.onrace.domain.member.repository.MemberRepository;
 import com.kt.onrace.domain.order.entity.Order;
@@ -111,6 +113,9 @@ class MyPageApiContractTest {
 	@MockBean
 	private EntryExpListener entryExpListener;
 
+	@MockBean
+	private EventStockService eventStockService;
+
 	@BeforeEach
 	void setUp() {
 		orderRepository.deleteAll();
@@ -128,6 +133,7 @@ class MyPageApiContractTest {
 		createMember(ORDER_ONLY_USER_ID);
 		createMember(ADDRESS_ONLY_USER_ID);
 		createMember(ACTION_CASE_USER_ID);
+		given(eventStockService.hasReservation(anyLong(), anyLong())).willReturn(false);
 		stubAuthAccount(MIXED_USER_ID, "runner@example.com", "홍길동", "01012345678", "LOCAL", true, "VERIFIED", true);
 		stubAuthAccount(EMPTY_USER_ID, "empty@example.com", "빈사용자", "01000000000", "LOCAL", true, "UNVERIFIED", false);
 		stubAuthAccount(ENTRY_ONLY_USER_ID, "kakao@example.com", "신청사용자", "01011112222", "KAKAO", false, "UNVERIFIED", false);
@@ -185,6 +191,12 @@ class MyPageApiContractTest {
 		assertThat(overview.path("data").path("address").path("hasAddress").asBoolean()).isTrue();
 		assertThat(overview.path("data").path("waitingEntries").path("items").get(0).path("courseName").asText()).isNotBlank();
 		assertThat(overview.path("data").path("waitingEntries").path("items").get(0).path("paceName").asText()).isNotBlank();
+		assertThat(overview.path("data").path("waitingEntries").path("items").get(0).has("actionType")).isFalse();
+		assertThat(overview.path("data").path("waitingEntries").path("items").get(0).has("actionLabel")).isFalse();
+		assertThat(overview.path("data").path("waitingEntries").path("items").get(0).has("actionEnabled")).isFalse();
+		assertThat(overview.path("data").path("orders").path("items").get(0).has("actionType")).isFalse();
+		assertThat(overview.path("data").path("orders").path("items").get(0).has("actionLabel")).isFalse();
+		assertThat(overview.path("data").path("orders").path("items").get(0).has("actionEnabled")).isFalse();
 
 		assertThat(entries.path("data")).hasSize(1);
 		assertThat(textValues(entries.path("data"), "entryStatus"))
@@ -208,10 +220,11 @@ class MyPageApiContractTest {
 		assertThat(waitingEntries.path("data").path("page").asInt()).isZero();
 		assertThat(waitingEntries.path("data").path("size").asInt()).isEqualTo(20);
 		assertThat(waitingEntries.path("data").path("hasNext").asBoolean()).isFalse();
-		assertThat(waitingEntries.path("data").path("items").get(0).path("actionType").asText()).isEqualTo("EDIT");
-		assertThat(waitingEntries.path("data").path("items").get(0).path("actionLabel").asText()).isEqualTo("사전정보 수정");
 		assertThat(waitingEntries.path("data").path("items").get(0).path("courseName").asText()).isNotBlank();
 		assertThat(waitingEntries.path("data").path("items").get(0).path("paceName").asText()).isNotBlank();
+		assertThat(waitingEntries.path("data").path("items").get(0).has("actionType")).isFalse();
+		assertThat(waitingEntries.path("data").path("items").get(0).has("actionLabel")).isFalse();
+		assertThat(waitingEntries.path("data").path("items").get(0).has("actionEnabled")).isFalse();
 
 		assertThat(orders.path("data")).hasSize(1);
 		assertThat(orders.path("data").get(0).path("id").asText()).isEqualTo("ORD-TEST-0001");
@@ -226,6 +239,9 @@ class MyPageApiContractTest {
 		assertThat(orderDetail.path("data").path("status").asText()).isEqualTo("결제 대기");
 		assertThat(orderDetail.path("data").path("canCancel").asBoolean()).isTrue();
 		assertThat(orderDetail.path("data").path("canRefund").asBoolean()).isFalse();
+		assertThat(orderDetail.path("data").has("actionType")).isFalse();
+		assertThat(orderDetail.path("data").has("actionLabel")).isFalse();
+		assertThat(orderDetail.path("data").has("actionEnabled")).isFalse();
 
 		assertThat(address.path("data").path("hasAddress").asBoolean()).isTrue();
 		assertThat(address.path("data").path("defaultAddress").path("label").asText()).isEqualTo("집");
@@ -378,20 +394,20 @@ class MyPageApiContractTest {
 		JsonNode lotteryEntries = get(ACTION_CASE_USER_ID, "/mypage/entries?filter=LOTTERY");
 		JsonNode firstComeEntries = get(ACTION_CASE_USER_ID, "/mypage/entries?filter=FIRST_COME");
 
-		assertThat(allEntries.path("data")).hasSize(4);
+		assertThat(allEntries.path("data")).hasSize(5);
 		assertThat(textValues(allEntries.path("data"), "entryStatus"))
-			.containsExactlyInAnyOrder("발표 대기", "신청 가능", "신청 완료", "신청 불가");
-		assertThat(textValues(allEntries.path("data"), "title")).hasSize(4);
+			.containsExactlyInAnyOrder("발표 대기", "신청 가능", "결제 대기", "예약 만료", "신청 불가");
+		assertThat(textValues(allEntries.path("data"), "title")).hasSize(5);
 		assertThat(textValues(allEntries.path("data"), "appType"))
-			.containsExactlyInAnyOrder("LOTTERY", "FIRST_COME", "FIRST_COME", "FIRST_COME");
+			.containsExactlyInAnyOrder("LOTTERY", "FIRST_COME", "FIRST_COME", "FIRST_COME", "FIRST_COME");
 
 		assertThat(lotteryEntries.path("data")).hasSize(1);
 		assertThat(textValues(lotteryEntries.path("data"), "entryStatus"))
 			.containsExactly("발표 대기");
 
-		assertThat(firstComeEntries.path("data")).hasSize(3);
+		assertThat(firstComeEntries.path("data")).hasSize(4);
 		assertThat(textValues(firstComeEntries.path("data"), "entryStatus"))
-			.containsExactlyInAnyOrder("신청 가능", "신청 완료", "신청 불가");
+			.containsExactlyInAnyOrder("신청 가능", "결제 대기", "예약 만료", "신청 불가");
 	}
 
 	@Test
@@ -438,6 +454,69 @@ class MyPageApiContractTest {
 			.containsExactly("신청 대기");
 		assertThat(textValues(orders.path("data"), "orderStatus"))
 			.containsExactly("입금대기");
+	}
+
+	@Test
+	void failedAndExpiredOrdersAreOwnedByCancelledOrderHistoryNotApplications() throws Exception {
+		LocalDateTime now = LocalDateTime.now();
+
+		EventBundle failedBundle = createEventBundle(
+			"실패 주문 선착순 이벤트",
+			EventType.RUNNING,
+			EventAppType.FIRST_COME,
+			now.plusDays(18),
+			now.minusDays(2),
+			now.plusDays(2),
+			null,
+			EventRegion.SEOUL,
+			"보라매공원",
+			"10K",
+			10000,
+			21000L,
+			"5:35/km",
+			5,
+			35,
+			100
+		);
+		Entry failedEntry = createEntry(EMPTY_USER_ID, failedBundle, EntryStatus.RESERVED);
+		createOrder(EMPTY_USER_ID, failedBundle, failedEntry.getId(), OrderStatus.FAILED, "ORD-FAILED-001");
+
+		EventBundle expiredBundle = createEventBundle(
+			"만료 주문 선착순 이벤트",
+			EventType.RUNNING,
+			EventAppType.FIRST_COME,
+			now.plusDays(19),
+			now.minusDays(2),
+			now.plusDays(2),
+			null,
+			EventRegion.BUSAN,
+			"수영강변",
+			"15K",
+			15000,
+			24000L,
+			"5:45/km",
+			5,
+			45,
+			100
+		);
+		Entry expiredEntry = createEntry(EMPTY_USER_ID, expiredBundle, EntryStatus.RESERVED);
+		createOrder(EMPTY_USER_ID, expiredBundle, expiredEntry.getId(), OrderStatus.EXPIRED, "ORD-EXPIRED-001");
+
+		JsonNode overview = get(EMPTY_USER_ID, "/mypage");
+		JsonNode entries = get(EMPTY_USER_ID, "/mypage/entries");
+		JsonNode waitingEntries = get(EMPTY_USER_ID, "/mypage/waiting-entries");
+		JsonNode cancelledOrders = get(EMPTY_USER_ID, "/mypage/orders?tab=CANCELLED");
+
+		assertThat(overview.path("data").path("entries").path("totalCount").asInt()).isZero();
+		assertThat(overview.path("data").path("waitingEntries").path("totalCount").asInt()).isZero();
+		assertThat(overview.path("data").path("orders").path("totalCount").asInt()).isEqualTo(2);
+		assertThat(entries.path("data")).isEmpty();
+		assertThat(waitingEntries.path("data").path("items")).isEmpty();
+		assertThat(cancelledOrders.path("data")).hasSize(2);
+		assertThat(textValues(cancelledOrders.path("data"), "id"))
+			.containsExactlyInAnyOrder("ORD-FAILED-001", "ORD-EXPIRED-001");
+		assertThat(textValues(cancelledOrders.path("data"), "orderStatus"))
+			.containsExactlyInAnyOrder("결제취소", "결제취소");
 	}
 
 	@Test
@@ -756,6 +835,27 @@ class MyPageApiContractTest {
 			90
 		);
 		createEntry(ACTION_CASE_USER_ID, firstComeReservedBundle, EntryStatus.RESERVED);
+		given(eventStockService.hasReservation(firstComeReservedBundle.pace().getId(), ACTION_CASE_USER_ID)).willReturn(true);
+
+		EventBundle firstComeExpiredBundle = createEventBundle(
+			"상태표 예약 만료 이벤트",
+			EventType.RUNNING,
+			EventAppType.FIRST_COME,
+			now.plusDays(13),
+			now.minusDays(1),
+			now.plusDays(4),
+			null,
+			EventRegion.SEOUL,
+			"뚝섬한강공원",
+			"8K",
+			8000,
+			20000L,
+			"5:55/km",
+			5,
+			55,
+			90
+		);
+		createEntry(ACTION_CASE_USER_ID, firstComeExpiredBundle, EntryStatus.RESERVED);
 
 		EventBundle firstComeClosedBundle = createEventBundle(
 			"상태표 신청 마감 이벤트",

@@ -28,6 +28,7 @@ public class EntryContractService implements OrderEntryContract {
 	private final EventStockService eventStockService;
 	private final EventStockRepository eventStockRepository;
 	private final EntryService entryService;
+	private final EntryMetrics entryMetrics;
 
 	@Override
 	public OrderCheckoutEligibility resolveCheckoutEligibility(Long userId, Long eventId, Long paceId) {
@@ -70,8 +71,10 @@ public class EntryContractService implements OrderEntryContract {
 
 		if (!shouldRollback) return;
 
+		entryMetrics.recordRollback(appType.name());
+
 		Long paceId = entry.getEventPace().getId();
-		eventStockRepository.findByEventPaceIdOrThrow(paceId).cancelStock();
+		eventStockRepository.decrementConfirmedStock(paceId);
 
 		if (appType == EventAppType.FIRST_COME) {
 			eventStockService.cancelTempStock(paceId);

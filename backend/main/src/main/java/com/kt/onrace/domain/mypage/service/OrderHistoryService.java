@@ -92,9 +92,6 @@ public class OrderHistoryService {
 			currentOrder.getEventId(),
 			currentOrder.getOrderNumber(),
 			status.statusText(),
-			status.actionType(),
-			status.actionLabel(),
-			status.actionEnabled(),
 			currentOrder.getCreatedAt(),
 			resolvePaymentDeadlineAt(currentOrder),
 			currentOrder.getEventTitle(),
@@ -140,7 +137,11 @@ public class OrderHistoryService {
 			case ALL -> null;
 			case PENDING -> order.orderStatus.eq(OrderStatus.PENDING);
 			case COMPLETED -> order.orderStatus.eq(OrderStatus.PAID);
-			case CANCELLED -> order.orderStatus.eq(OrderStatus.CANCELLED);
+			case CANCELLED -> order.orderStatus.in(
+				OrderStatus.CANCELLED,
+				OrderStatus.EXPIRED,
+				OrderStatus.FAILED
+			);
 		};
 	}
 
@@ -184,9 +185,6 @@ public class OrderHistoryService {
 			currentOrder.getOrderNumber(),
 			currentOrder.getEventId(),
 			status.statusText(),
-			status.actionType(),
-			status.actionLabel(),
-			status.actionEnabled(),
 			null,
 			currentOrder.getEventTitle(),
 			currentOrder.getCourseName(),

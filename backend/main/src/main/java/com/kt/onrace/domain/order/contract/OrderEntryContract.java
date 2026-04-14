@@ -1,18 +1,13 @@
 package com.kt.onrace.domain.order.contract;
 
 /**
- * PAY-00에서 고정한 주문팀 관점의 entry 연동 계약.
- * 실제 구현은 entry/stock 팀 로직에 맞춰 별도 adapter가 제공되어야 한다.
+ * 주문 도메인이 entry 도메인과 상호작용할 때 사용하는 계약.
  */
 public interface OrderEntryContract {
 
 	OrderCheckoutEligibility resolveCheckoutEligibility(Long userId, Long eventId, Long paceId);
 
-	default void handlePaymentConfirmed(Long entryId) {
-		// order 티켓 단계에서는 계약만 열어두고 실제 구현은 후속 작업에서 연결한다.
-	}
+	void handlePaymentConfirmed(Long entryId);
 
-	default void rollbackPendingPayment(Long entryId) {
-		// order 티켓 단계에서는 계약만 열어두고 실제 구현은 후속 작업에서 연결한다.
-	}
+	void rollbackPendingPayment(Long entryId);
 }

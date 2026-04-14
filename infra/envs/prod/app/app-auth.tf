@@ -21,44 +21,66 @@ resource "kubernetes_deployment_v1" "on_race_auth" {
       }
 
       spec {
-        service_account_name = kubernetes_service_account_v1.api_sa.metadata[0].name
+        service_account_name = kubernetes_service_account_v1.auth_sa.metadata[0].name # app-iam.tf에서 생성
 
         # -----------------------------------------------------------
         # 메인 컨테이너: Auth API
         # -----------------------------------------------------------
         container {
           name              = "auth"
-          image             = "${data.terraform_remote_state.base.outputs.ecr_repository_url}:auth-latest"
+          image             = "${data.terraform_remote_state.base.outputs.ecr_repository_url}:auth-${var.image_tag}"
           image_pull_policy = "Always"
           
           port {
             container_port = 8081
           }
 
-          # [AUTH 서비스] 운영 환경(prod) 전용 통합 환경 변수
+          # [AUTH 서비스] 서버/프로필/JPA 설정
           env {
             name  = "SPRING_PROFILES_ACTIVE"
             value = "prod"
           }
           env {
+            name  = "AUTH_SERVER_PORT"
+            value = "8081"
+          }
+          env {
+            name  = "AUTH_JPA_DDL_AUTO"
+            value = "validate" # [수정] 최초 배포 시 테이블 자동 생성을 위해 임시로 validate로 변경
+          }
+          env {
             name  = "JAVA_TOOL_OPTIONS"
-            value = "-Dspring.datasource.url=jdbc:mysql://${data.terraform_remote_state.base.outputs.rds_proxy_endpoint}:3306/onrace?sslMode=REQUIRED&useSSL=true&verifyServerCertificate=false&allowPublicKeyRetrieval=true -Dspring.profiles.active=prod -Dgateway.internal.secret=on-race-internal-gateway-secret-key-2026 -XX:InitialRAMPercentage=75.0 -XX:MaxRAMPercentage=75.0 -XX:MinRAMPercentage=75.0"
+            value = "-Dspring.datasource.url=jdbc:mysql://${data.terraform_remote_state.base.outputs.rds_proxy_endpoint}:3306/onrace?sslMode=REQUIRED&useSSL=true&verifyServerCertificate=false&allowPublicKeyRetrieval=true -XX:InitialRAMPercentage=75.0 -XX:MaxRAMPercentage=75.0 -XX:MinRAMPercentage=75.0"
+          }
+
+          # 보안 비밀키 (32바이트 이상 규격 준수)
+          env {
+            name  = "JWT_SECRET"
+            value = "onrace-jwt-secret-key-must-be-at-least-32-bytes-long-for-hmac-sha-256-standard-2026"
+          }
+          env {
+            name  = "JWT_ACCESS_TOKEN_EXPIRATION"
+            value = "1800000"
+          }
+          env {
+            name  = "JWT_REFRESH_TOKEN_EXPIRATION"
+            value = "604800000"
+          }
+          env {
+            name  = "GATEWAY_INTERNAL_SECRET"
+            value = "on-race-internal-gateway-secret-key-2026"
           }
 
           # 공통 DB 연결 정보
+          # AUTH 전용 DB 연결 정보 (기존 로직 유지)
           env {
-            name  = "DB_ENDPOINT"
-            value = data.terraform_remote_state.base.outputs.rds_proxy_endpoint
+            name  = "AUTH_DB_NAME"
+            value = "onrace"
           }
           env {
-            name  = "DB_USERNAME"
-            value = local.db_creds.username
+            name  = "AUTH_DB_PORT"
+            value = "3306"
           }
-          env {
-            name  = "DB_PASSWORD"
-            value = local.db_creds.password
-          }
-
           # AUTH 전용 DB 연결 정보 (기존 로직 유지)
           env {
             name  = "AUTH_DB_HOST"
@@ -86,29 +108,39 @@ resource "kubernetes_deployment_v1" "on_race_auth" {
             name  = "SPRING_REDIS_PASSWORD"
             value = local.db_creds.password
           }
-
-          # AUTH 전용 Redis 연결 정보
-          env {
-            name  = "AUTH_REDIS_HOST"
-            value = "127.0.0.1"
-          }
-          env {
-            name  = "AUTH_REDIS_PORT"
-            value = "6379"
-          }
           env {
             name  = "AUTH_REDIS_PASSWORD"
             value = local.db_creds.password
           }
 
-          # 보안 비밀키 (32바이트 이상 규격 준수)
+          # 외부 서비스 연동 (Mails, SMS, OAuth)
           env {
-            name  = "JWT_SECRET"
-            value = "onrace-jwt-secret-key-must-be-at-least-32-bytes-long-for-hmac-sha-256-standard-2026"
+            name  = "SOLAPI_API_KEY"
+            value = "NCSR9BHTS0IOCWVI"
           }
           env {
-            name  = "GATEWAY_INTERNAL_SECRET"
-            value = "on-race-internal-gateway-secret-key-2026"
+            name  = "SOLAPI_API_SECRET"
+            value = "DA0GOHEI2OC0RIJ3TG9WIZLGJCTLTNGF"
+          }
+          env {
+            name  = "SOLAPI_SENDER"
+            value = "01097568664"
+          }
+          env {
+            name  = "MAIL_USERNAME"
+            value = "onrace.dev@gmail.com"
+          }
+          env {
+            name  = "MAIL_PASSWORD"
+            value = "kxxaiqanmhnelzqz"
+          }
+          env {
+            name  = "KAKAO_CLIENT_ID"
+            value = "dummy-kakao-client-id" # 필요시 Secrets Manager로 교체
+          }
+          env {
+            name  = "NAVER_CLIENT_ID"
+            value = "dummy-naver-client-id" # 필요시 Secrets Manager로 교체
           }
 
           # 내부 서비스 통신 URI (API 서비스 호출용)
@@ -120,6 +152,16 @@ resource "kubernetes_deployment_v1" "on_race_auth" {
           resources {
             requests = { cpu = "250m", memory = "800Mi" }
             limits   = { cpu = "1200m", memory = "2Gi" }
+          }
+
+          # 성능 튜닝
+          env {
+            name  = "AUTH_HIKARI_MAX_POOL_SIZE"
+            value = "30"
+          }
+          env {
+            name  = "AUTH_TOMCAT_MAX_THREADS"
+            value = "250"
           }
 
           startup_probe {

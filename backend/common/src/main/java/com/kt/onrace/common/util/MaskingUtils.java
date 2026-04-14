@@ -6,6 +6,7 @@ public class MaskingUtils {
 		return switch (type) {
 			case EMAIL -> maskEmail(value);
 			case PHONE -> maskPhone(value);
+			case FULL -> "*".repeat(Math.min(value.length(), 10));
 		};
 	}
 

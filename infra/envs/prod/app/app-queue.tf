@@ -21,28 +21,32 @@ resource "kubernetes_deployment_v1" "on_race_queue" {
       }
 
       spec {
-        service_account_name = kubernetes_service_account_v1.api_sa.metadata[0].name
+        service_account_name = kubernetes_service_account_v1.queue_sa.metadata[0].name # app-iam.tf에서 생성
 
         # -----------------------------------------------------------
         # 메인 컨테이너: Queue Service
         # -----------------------------------------------------------
         container {
           name              = "queue"
-          image             = "${data.terraform_remote_state.base.outputs.ecr_repository_url}:queue-latest"
+          image             = "${data.terraform_remote_state.base.outputs.ecr_repository_url}:queue-${var.image_tag}"
           image_pull_policy = "Always"
           
           port {
-            container_port = 8082
+            container_port = 8083
           }
 
-          # [QUEUE 서비스] 운영 환경(prod) 전용 통합 환경 변수
+          # [QUEUE 서비스] 서버/프로필 설정
           env {
             name  = "SPRING_PROFILES_ACTIVE"
             value = "prod"
           }
           env {
+            name  = "QUEUE_SERVER_PORT"
+            value = "8083"
+          }
+          env {
             name  = "JAVA_TOOL_OPTIONS"
-            value = "-Dspring.datasource.url=jdbc:mysql://${data.terraform_remote_state.base.outputs.rds_proxy_endpoint}:3306/onrace?sslMode=REQUIRED&useSSL=true&verifyServerCertificate=false&allowPublicKeyRetrieval=true -Dspring.profiles.active=prod -XX:InitialRAMPercentage=75.0 -XX:MaxRAMPercentage=75.0 -XX:MinRAMPercentage=75.0"
+            value = "-XX:InitialRAMPercentage=75.0 -XX:MaxRAMPercentage=75.0 -XX:MinRAMPercentage=75.0"
           }
 
           # 보안 비밀키 (중요: 보안 규격 준수)
@@ -51,41 +55,23 @@ resource "kubernetes_deployment_v1" "on_race_queue" {
             value = "onrace-jwt-secret-key-must-be-at-least-32-bytes-long-for-hmac-sha-256-standard-2026"
           }
           env {
+            name  = "JWT_ACCESS_TOKEN_EXPIRATION"
+            value = "1800000"
+          }
+          env {
+            name  = "JWT_REFRESH_TOKEN_EXPIRATION"
+            value = "604800000"
+          }
+          env {
             name  = "QUEUE_TOKEN_SECRET"
-            value = "onrace-queue-token-secret-key-security-standard-minimum-32-characters-2026"
+            value = "MutYiYbCH48Xw9b6Z598UWKzGQVw6GYu7dW5TW6oedGEyQwtAFIMss3r1xTYs"
           }
           env {
             name  = "GATEWAY_INTERNAL_SECRET"
             value = "on-race-internal-gateway-secret-key-2026"
           }
 
-          # 공통 및 QUEUE 전용 DB 연결 정보
-          env {
-            name  = "DB_ENDPOINT"
-            value = data.terraform_remote_state.base.outputs.rds_proxy_endpoint
-          }
-          env {
-            name  = "DB_USERNAME"
-            value = local.db_creds.username
-          }
-          env {
-            name  = "DB_PASSWORD"
-            value = local.db_creds.password
-          }
-          env {
-            name  = "QUEUE_DB_HOST"
-            value = data.terraform_remote_state.base.outputs.rds_proxy_endpoint
-          }
-          env {
-            name  = "QUEUE_DB_USERNAME"
-            value = local.db_creds.username
-          }
-          env {
-            name  = "QUEUE_DB_PASSWORD"
-            value = local.db_creds.password
-          }
-
-          # 공통 및 QUEUE 전용 Redis 연결 정보 (stunnel 경유)
+          # Redis 연결 정보 (stunnel 경유)
           env {
             name  = "SPRING_REDIS_HOST"
             value = "127.0.0.1"
@@ -111,10 +97,18 @@ resource "kubernetes_deployment_v1" "on_race_queue" {
             value = local.db_creds.password
           }
 
-          # AWS 인프라 설정
+          # 성능 튜닝 (대기열 특화)
           env {
-            name  = "SQS_QUEUE_URL"
-            value = data.terraform_remote_state.base.outputs.queue_url
+            name  = "QUEUE_TOMCAT_MAX_CONNECTIONS"
+            value = "5000"
+          }
+          env {
+            name  = "QUEUE_BATCH_SIZE"
+            value = "500"
+          }
+          env {
+            name  = "QUEUE_INTERVAL_MS"
+            value = "2000"
           }
 
           resources {
@@ -123,20 +117,20 @@ resource "kubernetes_deployment_v1" "on_race_queue" {
           }
 
           startup_probe {
-            tcp_socket { port = 8082 }
+            tcp_socket { port = 8083 }
             initial_delay_seconds = 10
             period_seconds        = 5
             failure_threshold     = 60
             timeout_seconds       = 15
           }
           readiness_probe {
-            tcp_socket { port = 8082 }
+            tcp_socket { port = 8083 }
             initial_delay_seconds = 30
             period_seconds        = 10
             timeout_seconds       = 15
           }
           liveness_probe {
-            tcp_socket { port = 8082 }
+            tcp_socket { port = 8083 }
             initial_delay_seconds = 60
             period_seconds        = 15
             timeout_seconds       = 15

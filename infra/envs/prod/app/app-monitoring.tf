@@ -93,6 +93,7 @@ resource "helm_release" "promtail" {
   repository       = "https://grafana.github.io/helm-charts"
   chart            = "promtail"
   namespace        = "monitoring"
+  create_namespace = true
 
   values = [
     file("${path.module}/helm-values/promtail-config-snippet.yaml")
