@@ -31,6 +31,7 @@ import com.kt.onrace.domain.event.repository.EventCourseRepository;
 import com.kt.onrace.domain.event.repository.EventPaceRepository;
 import com.kt.onrace.domain.event.repository.EventRepository;
 import com.kt.onrace.domain.event.repository.EventStockRepository;
+import com.kt.onrace.domain.event.service.EventCacheService;
 import com.kt.onrace.domain.event.service.EventStockService;
 import com.kt.onrace.domain.member.repository.MemberRepository;
 
@@ -52,6 +53,7 @@ public class EntryService {
 	private final EventStockService eventStockService;
 	private final EventStockRepository eventStockRepository;
 	private final EntryMetrics entryMetrics;
+	private final EventCacheService eventCacheService;
 
 	@ServiceLog(slowMs = 2000)
 	@Transactional
@@ -168,10 +170,7 @@ public class EntryService {
 			Preconditions.validate(queuePaceId.equals(request.paceId()), BusinessErrorCode.ENTRY_QUEUE_PACE_MISMATCH);
 		}
 
-		memberRepository.findByIdAndIsDeletedFalseOrThrow(userId, BusinessErrorCode.MEMBER_NOT_FOUND);
-
-		Event event = eventRepository.findByIdAndIsViewTrueAndIsDeletedFalseOrThrow(eventId,
-				BusinessErrorCode.EVENT_NOT_FOUND);
+		Event event = eventCacheService.getEvent(eventId);
 
 		Preconditions.validate(event.getAppType() == expectedAppType, BusinessErrorCode.ENTRY_APP_TYPE_MISMATCH);
 
@@ -180,11 +179,8 @@ public class EntryService {
 		Preconditions.validate(!now.isBefore(event.getAppStartAt()) && !now.isAfter(event.getAppEndAt()),
 				BusinessErrorCode.ENTRY_NOT_IN_PERIOD);
 
-		EventCourse course = eventCourseRepository.findByIdAndEventIdOrThrow(request.courseId(), eventId,
-				BusinessErrorCode.ENTRY_COURSE_NOT_FOUND);
-
-		EventPace pace = eventPaceRepository.findByIdAndEventCourseIdOrThrow(request.paceId(), request.courseId(),
-				BusinessErrorCode.ENTRY_PACE_NOT_FOUND);
+		EventCourse course = eventCacheService.getCourse(request.courseId(), eventId);
+		EventPace pace = eventCacheService.getPace(request.paceId(), request.courseId());
 
 		log.info("[ENTRY] 신청 시작 userId={}, eventId={}, appType={}, courseId={}, paceId={}",
 			userId, eventId, expectedAppType, request.courseId(), request.paceId());

@@ -36,12 +36,12 @@ import com.kt.onrace.domain.event.entity.EventAppType;
 import com.kt.onrace.domain.event.entity.EventCourse;
 import com.kt.onrace.domain.event.entity.EventPace;
 import com.kt.onrace.domain.event.entity.EventRegion;
-import com.kt.onrace.domain.event.entity.EventStock;
 import com.kt.onrace.domain.event.entity.EventType;
 import com.kt.onrace.domain.event.repository.EventCourseRepository;
 import com.kt.onrace.domain.event.repository.EventPaceRepository;
 import com.kt.onrace.domain.event.repository.EventRepository;
 import com.kt.onrace.domain.event.repository.EventStockRepository;
+import com.kt.onrace.domain.event.service.EventCacheService;
 import com.kt.onrace.domain.event.service.EventStockService;
 import com.kt.onrace.domain.member.repository.MemberRepository;
 
@@ -61,6 +61,8 @@ class EntryServiceTest {
 	@Mock private MemberRepository memberRepository;
 	@Mock private EventStockService eventStockService;
 	@Mock private EventStockRepository eventStockRepository;
+	@Mock private EntryMetrics entryMetrics;
+	@Mock private EventCacheService eventCacheService;
 
 	@InjectMocks
 	private EntryService entryService;
@@ -281,18 +283,15 @@ class EntryServiceTest {
 			.userId(USER_ID)
 			.status(EntryStatus.RESERVED)
 			.build();
-		EventStock stock = EventStock.builder()
-			.totalStock(10)
-			.build();
 
 		when(entryRepository.findByUserIdAndEventPaceId(USER_ID, PACE_ID)).thenReturn(Optional.of(entry));
 		when(eventStockService.hasReservation(PACE_ID, USER_ID)).thenReturn(true);
-		when(eventStockRepository.findByEventPaceIdOrThrow(PACE_ID)).thenReturn(stock);
 
 		entryService.confirmReservation(USER_ID, PACE_ID, EventAppType.FIRST_COME);
 
 		assertThat(entry.getStatus()).isEqualTo(EntryStatus.APPLIED);
-		assertThat(stock.getConfirmedStock()).isEqualTo(1);
+		verify(eventStockRepository).incrementConfirmedStock(PACE_ID);
+		verify(entryMetrics).recordConfirm("FIRST_COME");
 		verify(eventStockService).deleteReservation(PACE_ID, USER_ID);
 		verify(eventStockService).confirmStock(PACE_ID);
 	}
@@ -344,10 +343,9 @@ class EntryServiceTest {
 	// ===== helpers =====
 
 	private void stubCommonApplyDependencies(Event event, EventCourse course, EventPace pace) {
-		when(memberRepository.findByIdAndIsDeletedFalseOrThrow(eq(USER_ID), any())).thenReturn(null);
-		when(eventRepository.findByIdAndIsViewTrueAndIsDeletedFalseOrThrow(eq(EVENT_ID), any())).thenReturn(event);
-		when(eventCourseRepository.findByIdAndEventIdOrThrow(eq(COURSE_ID), eq(EVENT_ID), any())).thenReturn(course);
-		when(eventPaceRepository.findByIdAndEventCourseIdOrThrow(eq(PACE_ID), eq(COURSE_ID), any())).thenReturn(pace);
+		when(eventCacheService.getEvent(EVENT_ID)).thenReturn(event);
+		when(eventCacheService.getCourse(COURSE_ID, EVENT_ID)).thenReturn(course);
+		when(eventCacheService.getPace(PACE_ID, COURSE_ID)).thenReturn(pace);
 	}
 
 	private Event createEvent(EventAppType appType) {
