@@ -24,8 +24,8 @@ public class EventStockService {
 	private final StockMetrics stockMetrics;
 
 	private static final String CONFIRM_AND_DELETE_SCRIPT =
-		"redis.call('DEL', KEYS[1]) " +
-			"redis.call('INCR', KEYS[2]) " +
+		"redis.call('DEL', KEYS[1]); " +
+			"redis.call('INCR', KEYS[2]); " +
 			"return 1";
 
 	private static final String RESERVE_SCRIPT =
