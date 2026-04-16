@@ -20,6 +20,7 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import com.kt.onrace.common.exception.BusinessErrorCode;
 import com.kt.onrace.common.exception.BusinessException;
@@ -37,6 +38,7 @@ import com.kt.onrace.domain.event.entity.EventCourse;
 import com.kt.onrace.domain.event.entity.EventPace;
 import com.kt.onrace.domain.event.entity.EventRegion;
 import com.kt.onrace.domain.event.entity.EventType;
+import com.kt.onrace.domain.event.event.StockConfirmEvent;
 import com.kt.onrace.domain.event.repository.EventCourseRepository;
 import com.kt.onrace.domain.event.repository.EventPaceRepository;
 import com.kt.onrace.domain.event.repository.EventRepository;
@@ -63,6 +65,8 @@ class EntryServiceTest {
 	@Mock private EventStockRepository eventStockRepository;
 	@Mock private EntryMetrics entryMetrics;
 	@Mock private EventCacheService eventCacheService;
+	@Mock private EntryPersistService entryPersistService;
+	@Mock private ApplicationEventPublisher eventPublisher;
 
 	@InjectMocks
 	private EntryService entryService;
@@ -120,15 +124,17 @@ class EntryServiceTest {
 		EventPace pace = createPace(course);
 		setId(pace, PACE_ID);
 
+		Entry appliedEntry = Entry.builder()
+			.userId(USER_ID).event(event).eventCourse(course).eventPace(pace)
+			.status(EntryStatus.APPLIED).build();
+
 		stubCommonApplyDependencies(event, course, pace);
-		when(entryRepository.findByUserIdAndEventId(USER_ID, EVENT_ID)).thenReturn(Optional.empty());
-		when(entryRepository.save(any(Entry.class))).thenAnswer(inv -> inv.getArgument(0));
+		when(entryPersistService.applyLotteryEntry(USER_ID, event, course, pace)).thenReturn(appliedEntry);
 
 		EntryCoursePaceRequest request = new EntryCoursePaceRequest(COURSE_ID, PACE_ID);
 		EntryApplyResponse response = entryService.apply(USER_ID, EVENT_ID, request, null, EventAppType.LOTTERY);
 
-		verify(entryRepository).save(entryCaptor.capture());
-		assertThat(entryCaptor.getValue().getStatus()).isEqualTo(EntryStatus.APPLIED);
+		verify(entryPersistService).applyLotteryEntry(USER_ID, event, course, pace);
 		assertThat(response.status()).isEqualTo(EntryStatus.APPLIED.getDescription());
 	}
 
@@ -141,17 +147,19 @@ class EntryServiceTest {
 		EventPace pace = createPace(course);
 		setId(pace, PACE_ID);
 
+		Entry reservedEntry = Entry.builder()
+			.userId(USER_ID).event(event).eventCourse(course).eventPace(pace)
+			.status(EntryStatus.RESERVED).build();
+
 		stubCommonApplyDependencies(event, course, pace);
-		when(entryRepository.findByUserIdAndEventId(USER_ID, EVENT_ID)).thenReturn(Optional.empty());
 		when(eventStockService.tryReserveStock(PACE_ID, USER_ID)).thenReturn(1L);
 		when(entryProperties.getTtlSeconds()).thenReturn(600L);
-		when(entryRepository.save(any(Entry.class))).thenAnswer(inv -> inv.getArgument(0));
+		when(entryPersistService.reserveFirstComeEntry(USER_ID, event, course, pace)).thenReturn(reservedEntry);
 
 		EntryCoursePaceRequest request = new EntryCoursePaceRequest(COURSE_ID, PACE_ID);
 		EntryApplyResponse response = entryService.apply(USER_ID, EVENT_ID, request, null, EventAppType.FIRST_COME);
 
-		verify(entryRepository).save(entryCaptor.capture());
-		assertThat(entryCaptor.getValue().getStatus()).isEqualTo(EntryStatus.RESERVED);
+		verify(entryPersistService).reserveFirstComeEntry(USER_ID, event, course, pace);
 		assertThat(response.status()).isEqualTo(EntryStatus.RESERVED.getDescription());
 		assertThat(response.reservedUntil()).isNotNull();
 	}
@@ -166,7 +174,6 @@ class EntryServiceTest {
 		setId(pace, PACE_ID);
 
 		stubCommonApplyDependencies(event, course, pace);
-		when(entryRepository.findByUserIdAndEventId(USER_ID, EVENT_ID)).thenReturn(Optional.empty());
 		when(eventStockService.tryReserveStock(PACE_ID, USER_ID)).thenReturn(-1L);
 
 		EntryCoursePaceRequest request = new EntryCoursePaceRequest(COURSE_ID, PACE_ID);
@@ -187,8 +194,8 @@ class EntryServiceTest {
 		setId(pace, PACE_ID);
 
 		stubCommonApplyDependencies(event, course, pace);
-		when(entryRepository.findByUserIdAndEventId(USER_ID, EVENT_ID)).thenReturn(Optional.empty());
 		when(eventStockService.tryReserveStock(PACE_ID, USER_ID)).thenReturn(-2L);
+		when(eventStockService.getReservationTtl(PACE_ID, USER_ID)).thenReturn(-2L);
 
 		EntryCoursePaceRequest request = new EntryCoursePaceRequest(COURSE_ID, PACE_ID);
 
@@ -199,7 +206,7 @@ class EntryServiceTest {
 	}
 
 	@Test
-	@DisplayName("선착순 신청 시 DB에 RESERVED 엔트리가 있고 Redis 예약이 활성이면 기존 예약 정보를 반환한다")
+	@DisplayName("선착순 신청 시 Redis에 활성 예약이 있으면 기존 예약 정보를 반환한다")
 	void apply_firstComeReservedWithActiveReservation() {
 		Event event = createEvent(EventAppType.FIRST_COME);
 		setId(event, EVENT_ID);
@@ -216,20 +223,21 @@ class EntryServiceTest {
 			.build();
 
 		stubCommonApplyDependencies(event, course, pace);
+		when(eventStockService.tryReserveStock(PACE_ID, USER_ID)).thenReturn(-2L);
+		when(eventStockService.getReservationTtl(PACE_ID, USER_ID)).thenReturn(300_000L);
 		when(entryRepository.findByUserIdAndEventId(USER_ID, EVENT_ID))
 			.thenReturn(Optional.of(existingEntry));
-		when(eventStockService.getReservationTtl(PACE_ID, USER_ID)).thenReturn(300_000L);
 
 		EntryCoursePaceRequest request = new EntryCoursePaceRequest(COURSE_ID, PACE_ID);
 		EntryApplyResponse response = entryService.apply(USER_ID, EVENT_ID, request, null, EventAppType.FIRST_COME);
 
 		assertThat(response.status()).isEqualTo(EntryStatus.RESERVED.getDescription());
 		assertThat(response.reservedUntil()).isNotNull();
-		verify(eventStockService, never()).tryReserveStock(any(), any());
+		verify(entryPersistService, never()).reserveFirstComeEntry(any(), any(), any(), any());
 	}
 
 	@Test
-	@DisplayName("선착순 신청 시 DB에 RESERVED 엔트리가 있지만 Redis 예약이 만료되었으면 재신청에 성공한다")
+	@DisplayName("선착순 신청 시 Redis 예약 만료 후 재신청에 성공한다")
 	void apply_firstComeReservedWithExpiredReservation() {
 		Event event = createEvent(EventAppType.FIRST_COME);
 		setId(event, EVENT_ID);
@@ -237,27 +245,19 @@ class EntryServiceTest {
 		EventPace pace = createPace(course);
 		setId(pace, PACE_ID);
 
-		Entry existingEntry = Entry.builder()
-			.userId(USER_ID)
-			.event(event)
-			.eventCourse(course)
-			.eventPace(pace)
-			.status(EntryStatus.RESERVED)
-			.build();
+		Entry reservedEntry = Entry.builder()
+			.userId(USER_ID).event(event).eventCourse(course).eventPace(pace)
+			.status(EntryStatus.RESERVED).build();
 
 		stubCommonApplyDependencies(event, course, pace);
-		when(entryRepository.findByUserIdAndEventId(USER_ID, EVENT_ID))
-			.thenReturn(Optional.of(existingEntry));
-		when(eventStockService.getReservationTtl(PACE_ID, USER_ID)).thenReturn(-2L);
 		when(eventStockService.tryReserveStock(PACE_ID, USER_ID)).thenReturn(1L);
 		when(entryProperties.getTtlSeconds()).thenReturn(600L);
-		when(entryRepository.save(any(Entry.class))).thenAnswer(inv -> inv.getArgument(0));
+		when(entryPersistService.reserveFirstComeEntry(USER_ID, event, course, pace)).thenReturn(reservedEntry);
 
 		EntryCoursePaceRequest request = new EntryCoursePaceRequest(COURSE_ID, PACE_ID);
 		EntryApplyResponse response = entryService.apply(USER_ID, EVENT_ID, request, null, EventAppType.FIRST_COME);
 
-		verify(entryRepository).save(entryCaptor.capture());
-		assertThat(entryCaptor.getValue().getStatus()).isEqualTo(EntryStatus.RESERVED);
+		verify(entryPersistService).reserveFirstComeEntry(USER_ID, event, course, pace);
 		assertThat(response.status()).isEqualTo(EntryStatus.RESERVED.getDescription());
 		assertThat(response.reservedUntil()).isNotNull();
 	}
@@ -292,8 +292,7 @@ class EntryServiceTest {
 		assertThat(entry.getStatus()).isEqualTo(EntryStatus.APPLIED);
 		verify(eventStockRepository).incrementConfirmedStock(PACE_ID);
 		verify(entryMetrics).recordConfirm("FIRST_COME");
-		verify(eventStockService).deleteReservation(PACE_ID, USER_ID);
-		verify(eventStockService).confirmStock(PACE_ID);
+		verify(eventPublisher).publishEvent(new StockConfirmEvent(PACE_ID, USER_ID));
 	}
 
 	@Test
