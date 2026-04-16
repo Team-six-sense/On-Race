@@ -45,8 +45,8 @@ resource "kubernetes_deployment_v1" "on_race_auth" {
             value = "8081"
           }
           env {
-            name  = "AUTH_JPA_DDL_AUTO"
-            value = "validate" # [수정] 최초 배포 시 테이블 자동 생성을 위해 임시로 validate로 변경
+            name  = "SPRING_JPA_HIBERNATE_DDL_AUTO" # AUTH_JPA_DDL_AUTO
+            value = "validate" # [수정] 최초 배포 시 테이블 자동 생성을 위해 임시로 update 로 변경 
           }
           env {
             name  = "JAVA_TOOL_OPTIONS"
@@ -149,6 +149,12 @@ resource "kubernetes_deployment_v1" "on_race_auth" {
             value = "http://t6-on-race-api.t6-on-race-prod.svc.cluster.local:80"
           }
 
+          # [추가] 프로메테우스 메트릭에 애플리케이션 식별 태그 추가
+          env {
+            name  = "MANAGEMENT_METRICS_TAGS_APPLICATION"
+            value = "on-race-auth"
+          }
+
           resources {
             requests = { cpu = "250m", memory = "800Mi" }
             limits   = { cpu = "1200m", memory = "2Gi" }
@@ -232,6 +238,12 @@ resource "kubernetes_service_v1" "on_race_auth" {
   metadata {
     name      = "t6-on-race-auth"
     namespace = kubernetes_namespace_v1.app.metadata[0].name
+    # Prometheus가 메트릭을 수집할 수 있도록 어노테이션을 추가합니다.
+    annotations = {
+      "prometheus.io/scrape" = "true"
+      "prometheus.io/path"   = "/actuator/prometheus"
+      "prometheus.io/port"   = "80"
+    }
   }
   spec {
     selector = { app = "on-race-auth" }

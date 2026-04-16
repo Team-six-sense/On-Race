@@ -9,6 +9,9 @@ spec:
   amiFamily: AL2023
   # [수정] 하드코딩된 역할 이름 대신, 모듈에서 생성된 역할의 ARN을 참조합니다.
   role: "${module.karpenter.node_iam_role_name}"
+  # [추가] Karpenter가 생성하는 EKS 노드에 Name 태그 부여
+  tags:
+    Name: "${var.project_name}-${var.environment}-node"
   subnetSelectorTerms:
     - tags:
         karpenter.sh/discovery: "${module.eks.cluster_name}"

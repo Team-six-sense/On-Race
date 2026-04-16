@@ -1,70 +1,19 @@
-# 1. VPC 엔드포인트용 보안 그룹 (HTTPS 443 허용)
-resource "aws_security_group" "vpc_endpoints_sg" {
-  name        = "${var.project_name}-vpc-endpoints-sg"
-  vpc_id      = module.vpc.vpc_id
+# [가용성 개선] 각 가용 영역(AZ)에 EC2 Instance Connect Endpoint를 생성하여 모든 프라이빗 인스턴스에 안정적으로 접속할 수 있도록 합니다.
+resource "aws_ec2_instance_connect_endpoint" "az_a" {
+  subnet_id          = module.vpc.private_subnets[0]
+  # vpc 모듈에서 생성된 공용 엔드포인트 보안 그룹을 재사용합니다.
+  security_group_ids = [module.vpc.vpc_endpoint_sg_id]
 
-  ingress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr] # VPC 내부(프라이빗 서브넷 포함)에서의 접근 허용
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = { Name = "${var.project_name}-vpc-endpoints-sg" }
-}
-
-# 2. SSM 접속에 필수적인 인터페이스 엔드포인트 3종
-resource "aws_vpc_endpoint" "ssm" {
-  vpc_id            = module.vpc.vpc_id
-  service_name      = "com.amazonaws.ap-northeast-2.ssm"
-  vpc_endpoint_type = "Interface"
-  
-  subnet_ids          = module.vpc.private_subnets
-  security_group_ids  = [aws_security_group.vpc_endpoints_sg.id]
-  private_dns_enabled = true
-
-  tags = { Name = "${var.project_name}-ssm-endpoint" }
-}
-
-resource "aws_vpc_endpoint" "ssmmessages" {
-  vpc_id            = module.vpc.vpc_id
-  service_name      = "com.amazonaws.ap-northeast-2.ssmmessages"
-  vpc_endpoint_type = "Interface"
-  
-  subnet_ids          = module.vpc.private_subnets
-  security_group_ids  = [aws_security_group.vpc_endpoints_sg.id]
-  private_dns_enabled = true
-
-  tags = { Name = "${var.project_name}-ssmmessages-endpoint" }
-}
-
-resource "aws_vpc_endpoint" "ec2messages" {
-  vpc_id            = module.vpc.vpc_id
-  service_name      = "com.amazonaws.ap-northeast-2.ec2messages"
-  vpc_endpoint_type = "Interface"
-  
-  subnet_ids          = module.vpc.private_subnets
-  security_group_ids  = [aws_security_group.vpc_endpoints_sg.id]
-  private_dns_enabled = true
-
-  tags = { Name = "${var.project_name}-ec2messages-endpoint" }
-}
-
-# EC2 Instance Connect Endpoint 생성
-resource "aws_ec2_instance_connect_endpoint" "this" {
-  # 인스턴스가 위치한 프라이빗 서브넷 중 하나를 지정합니다. [cite: 9044]
-  subnet_id          = module.vpc.private_subnets[0] 
-  # 기존 엔드포인트 보안 그룹을 공유하거나 별도 지정 가능합니다. [cite: 8182]
-  security_group_ids = [aws_security_group.vpc_endpoints_sg.id]
-  
   tags = {
-    Name = "${var.project_name}-eic-endpoint"
+    Name = "${var.project_name}-eic-endpoint-a"
+  }
+}
+
+resource "aws_ec2_instance_connect_endpoint" "az_b" {
+  subnet_id          = module.vpc.private_subnets[1]
+  security_group_ids = [module.vpc.vpc_endpoint_sg_id]
+
+  tags = {
+    Name = "${var.project_name}-eic-endpoint-b"
   }
 }

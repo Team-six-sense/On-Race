@@ -102,8 +102,8 @@ resource "kubernetes_deployment_v1" "on_race_api" {
             value = "8082"
           }
           env {
-            name  = "MAIN_JPA_DDL_AUTO"
-            value = "validate" # [수정] 최초 배포 시 테이블 자동 생성을 위해 임시로 update로 변경 (이후 validate로 복귀 권장)
+            name  = "SPRING_JPA_HIBERNATE_DDL_AUTO" # MAIN_JPA_DDL_AUTO
+            value = "validate" # [수정] 최초 배포 시 테이블 자동 생성을 위해 임시로 update 로 변경
           }
           env {
             name  = "JAVA_TOOL_OPTIONS"
@@ -222,6 +222,12 @@ resource "kubernetes_deployment_v1" "on_race_api" {
             value = "https://cdn.on-race.com"
           }
 
+          # [추가] 프로메테우스 메트릭에 애플리케이션 식별 태그 추가
+          env {
+            name  = "MANAGEMENT_METRICS_TAGS_APPLICATION"
+            value = "on-race-api"
+          }
+
           volume_mount {
             name       = "vqa-key-volume"
             mount_path = "/app/certs"
@@ -306,7 +312,7 @@ resource "kubernetes_service_v1" "on_race_api" {
     annotations = {
       "prometheus.io/scrape" = "true"
       "prometheus.io/path"   = "/actuator/prometheus"
-      "prometheus.io/port"   = "8080"
+      "prometheus.io/port"   = "80"
     }
   }
 

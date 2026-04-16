@@ -16,6 +16,7 @@ module "vpc" {
   public_subnets   = var.public_subnets
   database_subnets = var.database_subnets
 
+  # enable_nat_gateway = true
   single_nat_gateway = false 
 }
 
@@ -47,6 +48,25 @@ resource "aws_secretsmanager_secret_version" "db_secret_val" {
   })
 }
 
+# 2-1. Grafana 관리자 암호 생성 및 Secrets Manager 저장
+resource "aws_secretsmanager_secret" "grafana_admin_secret" {
+  name        = "on-race-grafana-admin-password"
+  description = "Grafana Admin Password Managed by Terraform"
+  recovery_window_in_days = 0 # 운영 환경에서는 복구 기간을 설정하는 것을 권장합니다.
+
+  tags = {
+    Project = var.project_name
+    Usage   = "Grafana-Credentials"
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "grafana_admin_secret_val" {
+  secret_id     = aws_secretsmanager_secret.grafana_admin_secret.id
+  secret_string = jsonencode({
+    password = "OnRace-Grafana-Password-2026!"
+  })
+}
+
 # 3. 데이터 계층 모듈 (RDS Proxy 의존성 위해 depends_on 권장)
 module "data" {
   source = "../../../modules/data"
@@ -58,7 +78,7 @@ module "data" {
   db_password       = random_password.db_password.result
   db_secret_arn     = aws_secretsmanager_secret.db_secret.arn
   
-  redis_node_type            = "cache.t4g.micro"
+  redis_node_type            = "cache.t4g.small"
   automatic_failover_enabled = true
   num_cache_clusters         = 2
 
@@ -209,7 +229,7 @@ resource "aws_iam_policy" "terraform_state_policy" {
       {
         Effect = "Allow"
         Action = ["dynamodb:DescribeTable", "dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:DeleteItem"]
-        Resource = "arn:aws:dynamodb:ap-northeast-2:*:table/t6-on-race-tfstate-lock"
+        Resource = "arn:aws:dynamodb:ap-northeast-2:916228846377:table/t6-on-race-tfstate-lock"
       }
     ]
   })
@@ -224,9 +244,4 @@ resource "aws_iam_role_policy_attachment" "github_actions_attach" {
 resource "aws_iam_role_policy_attachment" "github_actions_state_attach" {
   role       = aws_iam_role.github_actions_ecr_role.name
   policy_arn = aws_iam_policy.terraform_state_policy.arn
-}
-
-resource "aws_iam_role_policy_attachment" "github_actions_admin_attach" {
-  role       = aws_iam_role.github_actions_ecr_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }

@@ -1,3 +1,7 @@
+output "nodes_security_group_id" {
+  description = "The ID of the security group for EKS nodes."
+  value       = aws_security_group.nodes.id
+}
 output "cluster_name" {
   value = aws_eks_cluster.this.name
 }

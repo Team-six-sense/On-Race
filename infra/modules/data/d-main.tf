@@ -105,8 +105,7 @@ resource "aws_db_instance" "this" {
   identifier        = "${var.project_name}-db"
   engine            = "mysql"
   engine_version    = "8.0"
-  instance_class    = "db.t3.micro" # [수정] m5.large/t3.medium -> t3.micro
-  #instance_class    = "db.t3.medium"
+  instance_class    = "db.t3.medium"
   allocated_storage = 20
 
   username = "admin"
@@ -209,7 +208,7 @@ resource "aws_iam_policy" "rds_proxy_policy" {
           "kms:Decrypt"  # 열쇠(KMS) 권한 확보
         ]
         Effect   = "Allow"
-        Resource = ["*"] # [수정] 특정 ARN 대신 전체 허용으로 우선 돌파
+        Resource = [var.db_secret_arn]
       }
     ]
   })

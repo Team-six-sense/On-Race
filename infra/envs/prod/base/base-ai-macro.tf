@@ -7,7 +7,10 @@ resource "aws_iam_role" "ai_ec2_role" {
     Statement = [{
       Action = "sts:AssumeRole"
       Effect = "Allow"
-      Principal = { Service = "ec2.amazonaws.com" }
+      Principal = { Service = [
+        "ec2.amazonaws.com",
+        "ssm.amazonaws.com"
+      ] }
     }]
   })
 }
@@ -65,13 +68,6 @@ resource "aws_cloudfront_origin_access_control" "ai_vqa" {
   signing_protocol                  = "sigv4"
 }
 
-# SSM 세션 매니저 접속을 위한 핵심 정책 연결
-resource "aws_iam_role_policy_attachment" "ai_ec2_ssm_policy" {
-  role       = aws_iam_role.ai_ec2_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-}
-
-
 # EIC 엔드포인트를 통한 SSH 접속 허용 규칙
 resource "aws_security_group_rule" "allow_ssh_from_eic" {
   type                     = "ingress"
@@ -80,5 +76,5 @@ resource "aws_security_group_rule" "allow_ssh_from_eic" {
   protocol                 = "tcp"
   security_group_id        = aws_security_group.ai_model_sg.id
   # 엔드포인트 보안 그룹을 소스로 지정하여 보안을 강화합니다. [cite: 8182]
-  source_security_group_id = aws_security_group.vpc_endpoints_sg.id 
+  source_security_group_id = module.vpc.vpc_endpoint_sg_id
 }

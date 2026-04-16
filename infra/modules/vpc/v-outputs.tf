@@ -23,11 +23,6 @@ output "database_subnets" {
   value       = aws_subnet.database[*].id
 }
 
-output "vpc_endpoint_sg_id" {
-  description = "VPC Endpoint 전용 보안 그룹 ID"
-  value       = aws_security_group.vpc_endpoint.id
-}
-
 output "nat_public_ips" {
   description = "외부 통신 시 사용되는 NAT Gateway의 퍼블릭 IP (외부 화이트리스팅용)"
   value       = aws_eip.nat[*].public_ip
@@ -37,4 +32,8 @@ output "nat_public_ips" {
 output "s3_gateway_endpoint_id" {
   description = "S3 Gateway Endpoint의 ID"
   value       = aws_vpc_endpoint.s3.id
+}
+output "vpc_endpoint_sg_id" {
+  description = "The ID of the security group for VPC endpoints."
+  value       = aws_security_group.vpc_endpoint.id
 }

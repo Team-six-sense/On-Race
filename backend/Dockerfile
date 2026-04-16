@@ -11,6 +11,7 @@ COPY main/build.gradle ./main/build.gradle
 COPY queue/build.gradle ./queue/build.gradle
 
 RUN chmod +x ./gradlew
+RUN sed -i 's/\r$//' ./gradlew
 
 ARG SERVICE
 
