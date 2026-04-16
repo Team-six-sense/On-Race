@@ -31,7 +31,8 @@ resource "aws_elasticache_parameter_group" "this" {
 
   parameter {
     name  = "maxmemory-policy"
-    value = "volatile-lru"
+    value = "allkeys-lru"
+    # [Consistency] Aligned with the local docker-compose setting ('allkeys-lru') to ensure consistent behavior across environments.
   }
 
   # 유휴 커넥션 정리 (60초 동안 응답 없으면 연결 해제)

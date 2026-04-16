@@ -57,6 +57,21 @@ EOF
   }
 }
 
+# 3-1. [Security Improvement] Manage sensitive values using Kubernetes Secrets
+resource "kubernetes_secret_v1" "api_secrets" {
+  metadata {
+    name      = "on-race-api-secrets"
+    namespace = kubernetes_namespace_v1.app.metadata[0].name
+  }
+  data = {
+    # NOTE: For production, these values should be dynamically generated or sourced from a secure vault like AWS Secrets Manager.
+    "JWT_SECRET"              = "onrace-jwt-secret-key-must-be-at-least-32-bytes-long-for-hmac-sha-256-standard-2026"
+    "GATEWAY_INTERNAL_SECRET" = "on-race-internal-gateway-secret-key-2026"
+    "TOSS_SECRET_KEY"         = "test_sk_zXLkKEypNArWmo50nX3lmeaxYG5R"
+  }
+  type = "Opaque"
+}
+
 # =====================================================================
 # [서비스 배포] Main API 전용 리소스 (Deployment, Service, PDB)
 # =====================================================================
@@ -113,7 +128,7 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           # 보안 비밀키 (32바이트 이상 규격 준수)
           env {
             name  = "JWT_SECRET"
-            value = "onrace-jwt-secret-key-must-be-at-least-32-bytes-long-for-hmac-sha-256-standard-2026"
+            value_from { secret_key_ref { name = kubernetes_secret_v1.api_secrets.metadata[0].name, key = "JWT_SECRET" } }
           }
           env {
             name  = "JWT_ACCESS_TOKEN_EXPIRATION"
@@ -125,7 +140,7 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           }
           env {
             name  = "GATEWAY_INTERNAL_SECRET"
-            value = "on-race-internal-gateway-secret-key-2026"
+            value_from { secret_key_ref { name = kubernetes_secret_v1.api_secrets.metadata[0].name, key = "GATEWAY_INTERNAL_SECRET" } }
           }
 
           # 데이터베이스 연결 정보 (기존 로직 유지)
@@ -179,7 +194,7 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           }
           env {
             name  = "TOSS_SECRET_KEY"
-            value = "test_sk_zXLkKEypNArWmo50nX3lmeaxYG5R"
+            value_from { secret_key_ref { name = kubernetes_secret_v1.api_secrets.metadata[0].name, key = "TOSS_SECRET_KEY" } }
           }
 
           # AWS 및 인프라 설정 (S3)

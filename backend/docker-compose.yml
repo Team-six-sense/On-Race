@@ -70,6 +70,7 @@ services:
       - on-race-network
     command: redis-server --requirepass ${MAIN_REDIS_PASSWORD} --notify-keyspace-events Ex --maxmemory 400mb --maxmemory-policy allkeys-lru
 
+
   # ── 앱 서비스 리소스 제한 (EKS Pod 스펙 시뮬레이션) ──
   # ┌──────────────┬────────┬────────┬──────────────────────────────────┐
   # │ EKS 노드     │ vCPU   │ RAM    │ Pod 배분 예시                    │
