@@ -9,7 +9,7 @@ terraform {
       source  = "gavinbunney/kubectl"
       version = ">= 1.14.0"
     }
-    time       = { source = "hashicorp/time", version = "~> 0.9.1" }
+    time = { source = "hashicorp/time", version = "~> 0.9.1" }
   }
   backend "s3" {
     bucket       = "t6-on-race-tfstate-916228846377-ap-northeast-2-an"
@@ -52,7 +52,7 @@ provider "kubectl" {
 provider "kubernetes" {
   host                   = module.eks.cluster_endpoint
   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
-  
+
   exec {
     api_version = "client.authentication.k8s.io/v1beta1"
     command     = "aws"

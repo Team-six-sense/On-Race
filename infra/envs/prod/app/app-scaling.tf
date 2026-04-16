@@ -19,13 +19,13 @@ resource "kubernetes_storage_class_v1" "gp3_default" {
 module "keda_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
   version = "~> 5.0"
-  
+
   role_name = "${var.project_name}-${var.environment}-keda-operator-role"
-  
+
   oidc_providers = {
     main = {
       provider_arn               = module.eks.oidc_provider_arn
-      namespace_service_accounts = ["keda:keda-operator"] 
+      namespace_service_accounts = ["keda:keda-operator"]
     }
   }
 }
@@ -39,7 +39,7 @@ resource "helm_release" "keda" {
   version          = "2.17.0"
   create_namespace = true
 
-  timeout          = 300
+  timeout = 300
 
   set {
     name  = "operator.serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
@@ -97,18 +97,18 @@ resource "helm_release" "karpenter" {
   repository       = "oci://public.ecr.aws/karpenter"
   chart            = "karpenter"
   version          = "1.0.1"
-  
+
   set {
     name  = "settings.clusterName"
     value = module.eks.cluster_name
   }
-  
+
   # [수정] Karpenter v1.x에서는 serviceAccount 주석 경로가 중요합니다.
   set {
     name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
     value = module.karpenter.irsa_arn
   }
-  
+
   # [추가] 컨트롤러가 사용할 인터럽트 큐 설정 (스팟 인스턴스 사용 시 필수)
   set {
     name  = "settings.interruptionQueue"

@@ -139,3 +139,16 @@ resource "aws_security_group_rule" "node_to_node" {
   security_group_id        = aws_security_group.nodes.id
   source_security_group_id = aws_security_group.nodes.id
 }
+
+# [해결] 로컬 PC에서 Terraform 실행 시 API 서버 접근을 위한 보안 그룹 규칙
+# 현재 Terraform을 실행하는 환경의 공인 IP를 허용하여 타임아웃 오류를 해결합니다.
+resource "aws_security_group_rule" "allow_local_to_cluster" {
+  description       = "Allow Terraform access from local machine"
+  type              = "ingress"
+  from_port         = 443
+  to_port           = 443
+  protocol          = "tcp"
+  security_group_id = aws_eks_cluster.this.vpc_config[0].cluster_security_group_id
+  # 중요: 아래 cidr_blocks 값을 1단계에서 확인한 현재 작업 환경의 공인 IP 주소로 변경하세요. (예: "123.45.67.89/32")
+  cidr_blocks       = ["211.107.3.19/32"]
+}

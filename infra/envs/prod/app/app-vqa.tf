@@ -19,7 +19,7 @@ resource "kubernetes_deployment_v1" "on_race_vqa" {
   wait_for_rollout = false
 
   spec {
-    replicas = 2 
+    replicas = 2
     selector {
       match_labels = { app = "on-race-vqa" }
     }
@@ -44,7 +44,7 @@ resource "kubernetes_deployment_v1" "on_race_vqa" {
         container {
           name  = "vqa-api"
           image = "${data.terraform_remote_state.base.outputs.vqa_ecr_repository_url}:latest"
-          
+
           image_pull_policy = "Always"
           port { container_port = 8000 }
 
@@ -83,12 +83,22 @@ resource "kubernetes_deployment_v1" "on_race_vqa" {
             value = "ap-northeast-2"
           }
           env {
-            name  = "JWT_SECRET"
-            value = "onrace-jwt-secret-key-must-be-at-least-32-bytes-long-for-hmac-sha-256-standard-2026"
+            name = "JWT_SECRET"
+            value_from {
+              secret_key_ref {
+                name = kubernetes_secret_v1.on_race_common_secrets.metadata[0].name
+                key  = "JWT_SECRET"
+              }
+            }
           }
           env {
-            name  = "GATEWAY_INTERNAL_SECRET"
-            value = "on-race-internal-gateway-secret-key-2026"
+            name = "GATEWAY_INTERNAL_SECRET"
+            value_from {
+              secret_key_ref {
+                name = kubernetes_secret_v1.on_race_common_secrets.metadata[0].name
+                key  = "GATEWAY_INTERNAL_SECRET"
+              }
+            }
           }
 
           # [추가] AI 모델 로딩 시간을 고려한 상태 검사
@@ -105,6 +115,10 @@ resource "kubernetes_deployment_v1" "on_race_vqa" {
             period_seconds        = 10
             timeout_seconds       = 5
           }
+        }
+        volume {
+          name = "on-race-common-secrets"
+          secret { secret_name = kubernetes_secret_v1.on_race_common_secrets.metadata[0].name }
         }
       }
     }
@@ -123,7 +137,7 @@ resource "kubernetes_deployment_v1" "on_race_vqa" {
 # 3. VQA 내부 서비스 (ClusterIP)
 resource "kubernetes_service_v1" "on_race_vqa" {
   metadata {
-    name      = "on-race-vqa-service"
+    name      = "on-race-vqa"
     namespace = kubernetes_namespace_v1.app.metadata[0].name
   }
   spec {

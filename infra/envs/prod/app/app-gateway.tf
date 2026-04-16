@@ -1,6 +1,7 @@
 # =====================================================================
 # [서비스 배포] Gateway 전용 리소스 (Deployment, Service, PDB)
 # =====================================================================
+
 # 1. Gateway Deployment
 resource "kubernetes_deployment_v1" "on_race_gateway" {
   metadata {
@@ -12,16 +13,20 @@ resource "kubernetes_deployment_v1" "on_race_gateway" {
   spec {
     replicas = 2
     selector {
-      match_labels = { app = "on-race-gateway" }
+      match_labels = {
+        app = "on-race-gateway"
+      }
     }
 
     template {
       metadata {
-        labels = { app = "on-race-gateway" }
+        labels = {
+          app = "on-race-gateway"
+        }
       }
 
       spec {
-        service_account_name = kubernetes_service_account_v1.gateway_sa.metadata[0].name # app-iam.tf에서 생성
+        service_account_name = kubernetes_service_account_v1.gateway_sa.metadata[0].name
 
         # -----------------------------------------------------------
         # 메인 컨테이너: Gateway (Spring Cloud Gateway)
@@ -30,7 +35,7 @@ resource "kubernetes_deployment_v1" "on_race_gateway" {
           name              = "gateway"
           image             = "${data.terraform_remote_state.base.outputs.ecr_repository_url}:gateway-${var.image_tag}"
           image_pull_policy = "Always"
-          
+
           port {
             container_port = 8080
           }
@@ -49,26 +54,51 @@ resource "kubernetes_deployment_v1" "on_race_gateway" {
             value = "-XX:InitialRAMPercentage=75.0 -XX:MaxRAMPercentage=75.0 -XX:MinRAMPercentage=75.0"
           }
 
-          # 보안 비밀키 (인증/내부 통신/대기열)
+          # [수정] 보안 비밀키 멀티라인 변경
           env {
-            name  = "JWT_SECRET"
-            value = "onrace-jwt-secret-key-must-be-at-least-32-bytes-long-for-hmac-sha-256-standard-2026"
+            name = "JWT_SECRET"
+            value_from {
+              secret_key_ref {
+                name = kubernetes_secret_v1.on_race_common_secrets.metadata[0].name
+                key  = "JWT_SECRET"
+              }
+            }
           }
           env {
-            name  = "JWT_ACCESS_TOKEN_EXPIRATION"
-            value = "1800000"
+            name = "JWT_ACCESS_TOKEN_EXPIRATION"
+            value_from {
+              secret_key_ref {
+                name = kubernetes_secret_v1.on_race_common_secrets.metadata[0].name
+                key  = "JWT_ACCESS_TOKEN_EXPIRATION"
+              }
+            }
           }
           env {
-            name  = "JWT_REFRESH_TOKEN_EXPIRATION"
-            value = "604800000"
+            name = "JWT_REFRESH_TOKEN_EXPIRATION"
+            value_from {
+              secret_key_ref {
+                name = kubernetes_secret_v1.on_race_common_secrets.metadata[0].name
+                key  = "JWT_REFRESH_TOKEN_EXPIRATION"
+              }
+            }
           }
           env {
-            name  = "GATEWAY_INTERNAL_SECRET"
-            value = "on-race-internal-gateway-secret-key-2026"
+            name = "GATEWAY_INTERNAL_SECRET"
+            value_from {
+              secret_key_ref {
+                name = kubernetes_secret_v1.on_race_common_secrets.metadata[0].name
+                key  = "GATEWAY_INTERNAL_SECRET"
+              }
+            }
           }
           env {
-            name  = "QUEUE_TOKEN_SECRET"
-            value = "MutYiYbCH48Xw9b6Z598UWKzGQVw6GYu7dW5TW6oedGEyQwtAFIMss3r1xTYs"
+            name = "QUEUE_TOKEN_SECRET"
+            value_from {
+              secret_key_ref {
+                name = kubernetes_secret_v1.on_race_common_secrets.metadata[0].name
+                key  = "QUEUE_TOKEN_SECRET"
+              }
+            }
           }
 
           # 공통 Redis 연결 정보 (stunnel 127.0.0.1 경유)
@@ -102,46 +132,71 @@ resource "kubernetes_deployment_v1" "on_race_gateway" {
           # 라우팅용 내부 서비스 URI
           env {
             name  = "AUTH_SERVICE_URI"
-            value = "http://t6-on-race-auth.t6-on-race-prod.svc.cluster.local:80"
+            value = "http://on-race-auth.t6-on-race-prod.svc.cluster.local:80"
           }
           env {
             name  = "MAIN_SERVICE_URI"
-            value = "http://t6-on-race-api.t6-on-race-prod.svc.cluster.local:80"
+            value = "http://on-race-api.t6-on-race-prod.svc.cluster.local:80"
           }
           env {
             name  = "QUEUE_SERVICE_URI"
-            value = "http://t6-on-race-queue.t6-on-race-prod.svc.cluster.local:80"
-          }
-          env {
-            name  = "QUEUE_SERVICE_URI"
-            value = "http://t6-on-race-queue.t6-on-race-prod.svc.cluster.local:80"
+            value = "http://on-race-queue.t6-on-race-prod.svc.cluster.local:80"
           }
           env {
             name  = "CORS_ALLOWED_ORIGIN_PATTERNS"
-            value = "https://on-race.com,http://localhost:3000"
+            value = "https://on-race.com"
+          }
+
+          # [수정] UI 및 기타 설정 멀티라인 변경
+          env {
+            name  = "CHALLENGE_URI"
+            value = "https://on-race.com/challenge"
+          }
+          env {
+            name  = "WAITING_ROOM_URI"
+            value = "https://on-race.com/queue"
+          }
+          env {
+            name  = "QUEUE_CACHE_POLL_INTERVAL_MS"
+            value = "5000"
+          }
+          env {
+            name  = "GATEWAY_SHUTDOWN_TIMEOUT"
+            value = "30s"
           }
 
           resources {
-            requests = { cpu = "250m", memory = "512Mi" }
-            limits   = { cpu = "1000m", memory = "1Gi" }
+            requests = {
+              cpu    = "250m"
+              memory = "512Mi"
+            }
+            limits = {
+              cpu    = "1000m"
+              memory = "1Gi"
+            }
           }
 
-          # [수정됨] 앱 부팅 대기 시간을 넉넉하게 연장 (failure_threshold = 60 -> 약 5분)
           startup_probe {
-            tcp_socket { port = 8080 }
+            tcp_socket {
+              port = 8080
+            }
             initial_delay_seconds = 10
             period_seconds        = 5
             failure_threshold     = 60
             timeout_seconds       = 15
           }
           readiness_probe {
-            tcp_socket { port = 8080 }
+            tcp_socket {
+              port = 8080
+            }
             initial_delay_seconds = 30
             period_seconds        = 10
             timeout_seconds       = 15
           }
           liveness_probe {
-            tcp_socket { port = 8080 }
+            tcp_socket {
+              port = 8080
+            }
             initial_delay_seconds = 60
             period_seconds        = 15
             timeout_seconds       = 15
@@ -175,14 +230,22 @@ resource "kubernetes_deployment_v1" "on_race_gateway" {
           topology_key       = "topology.kubernetes.io/zone"
           when_unsatisfiable = "ScheduleAnyway"
           label_selector {
-            match_labels = { app = "on-race-gateway" }
+            match_labels = {
+              app = "on-race-gateway"
+            }
           }
         }
 
         volume {
           name = "stunnel-conf"
-          config_map { 
-            name = kubernetes_config_map_v1.redis_stunnel_conf.metadata[0].name 
+          config_map {
+            name = kubernetes_config_map_v1.redis_stunnel_conf.metadata[0].name
+          }
+        }
+        volume {
+          name = "on-race-common-secrets"
+          secret {
+            secret_name = kubernetes_secret_v1.on_race_common_secrets.metadata[0].name
           }
         }
       }
@@ -193,11 +256,13 @@ resource "kubernetes_deployment_v1" "on_race_gateway" {
 # 2. 내부 통신용 서비스
 resource "kubernetes_service_v1" "on_race_gateway" {
   metadata {
-    name      = "t6-on-race-gateway"
+    name      = "on-race-gateway"
     namespace = kubernetes_namespace_v1.app.metadata[0].name
   }
   spec {
-    selector = { app = "on-race-gateway" }
+    selector = {
+      app = "on-race-gateway"
+    }
     port {
       port        = 80
       target_port = 8080
@@ -215,6 +280,10 @@ resource "kubernetes_pod_disruption_budget_v1" "gateway_pdb" {
   }
   spec {
     min_available = 1
-    selector { match_labels = { app = "on-race-gateway" } }
+    selector {
+      match_labels = {
+        app = "on-race-gateway"
+      }
+    }
   }
 }

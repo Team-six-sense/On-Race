@@ -36,11 +36,11 @@ resource "helm_release" "loki" {
 
 # 3. Promtail 배포 (Loki로 로그를 전송하는 에이전트)
 resource "helm_release" "promtail" {
-  name             = "promtail"
-  repository       = "https://grafana.github.io/helm-charts"
-  chart            = "promtail"
-  version          = "6.15.5" # 버전 고정
-  namespace        = "loki"   # Loki와 같은 네임스페이스에 배포하여 관리 용이성 증대
+  name       = "promtail"
+  repository = "https://grafana.github.io/helm-charts"
+  chart      = "promtail"
+  version    = "6.15.5" # 버전 고정
+  namespace  = "loki"   # Loki와 같은 네임스페이스에 배포하여 관리 용이성 증대
 
   values = [
     file("${path.module}/helm-values/promtail-config-snippet.yaml")
@@ -78,7 +78,7 @@ resource "helm_release" "prometheus_stack" {
   chart            = "kube-prometheus-stack"
   namespace        = "monitoring" # 모니터링 관련 리소스는 'monitoring' 네임스페이스에 격리합니다.
   create_namespace = true
-  version          = "58.2.0"     # 버전 고정을 통해 예기치 않은 변경을 방지합니다.
+  version          = "58.2.0" # 버전 고정을 통해 예기치 않은 변경을 방지합니다.
 
   # Helm 차트의 기본값을 재정의(override)하는 설정입니다.
   values = [

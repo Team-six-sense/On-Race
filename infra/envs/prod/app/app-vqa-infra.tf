@@ -1,16 +1,6 @@
-# 1. CloudFront 퍼블릭 키
-resource "aws_cloudfront_public_key" "vqa_key_v2" {
-  name        = "${var.project_name}-vqa-public-key-v2"
-  encoded_key = trimspace(file("${path.module}/certs/vqa_public_key.pem"))
-
-  lifecycle {
-    ignore_changes = [encoded_key]
-  }
-}
-
 # 2. CloudFront 키 그룹
 resource "aws_cloudfront_key_group" "vqa_key_group" {
-  name  = "${var.project_name}-vqa-key-group"
+  name  = "${var.project_name}-vqa-key-group-v2" # 이름을 변경하여 리소스 재생성 유도
   items = [aws_cloudfront_public_key.vqa_key_v2.id]
 }
 
@@ -54,6 +44,11 @@ resource "aws_cloudfront_distribution" "ai_vqa_cdn" {
       query_string = false
       cookies { forward = "none" }
     }
+    # [수정] API가 생성한 서명된 URL을 검증하기 위해 키 그룹을 신뢰하도록 설정합니다.
+    # 이 설정을 추가하면 배포 리소스가 업데이트되어 의존성 오류가 해결됩니다.
+    trusted_key_groups = [
+      aws_cloudfront_key_group.vqa_key_group.id
+    ]
     viewer_protocol_policy = "redirect-to-https"
   }
 
