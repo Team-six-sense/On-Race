@@ -84,6 +84,37 @@ resource "kubernetes_secret_v1" "on_race_common_secrets" {
 }
 
 # =====================================================================
+# [보안] CloudFront 서명키 생성 및 관리
+# =====================================================================
+
+# 1. 서명에 사용할 RSA-2048 비공개 키 생성
+resource "tls_private_key" "vqa_key" {
+  algorithm = "RSA"
+  rsa_bits  = 2048
+}
+
+# 2. 생성된 비공개 키를 쿠버네티스 시크릿으로 저장
+# 이 시크릿은 API 파드에 마운트되어 서명에 사용됩니다.
+resource "kubernetes_secret_v1" "vqa_signing_key" {
+  metadata {
+    name      = "vqa-signing-key"
+    namespace = kubernetes_namespace_v1.app.metadata[0].name
+  }
+  data = {
+    # 애플리케이션이 /app/certs/private_key.pem 경로에서 읽도록 설정되어 있어야 합니다.
+    "private_key.pem" = tls_private_key.vqa_key.private_key_pem
+  }
+}
+
+# 3. 생성된 키의 공개 키 부분을 CloudFront에 업로드
+# CloudFront는 이 공개 키를 사용해 API가 생성한 서명을 검증합니다.
+resource "aws_cloudfront_public_key" "vqa_key_v2" {
+  name        = "vqa-signing-key-v2"
+  encoded_key = tls_private_key.vqa_key.public_key_pem
+  comment     = "Public key for On-Race VQA content signing"
+}
+
+# =====================================================================
 # [서비스 배포] Main API 전용 리소스 (Deployment, Service, PDB)
 # =====================================================================
 resource "kubernetes_deployment_v1" "on_race_api" {
@@ -92,7 +123,11 @@ resource "kubernetes_deployment_v1" "on_race_api" {
     namespace = kubernetes_namespace_v1.app.metadata[0].name
   }
 
-  wait_for_rollout = false
+  # [개선] 배포가 완전히 성공할 때까지 기다리도록 설정하여 안정성을 높입니다.
+  wait_for_rollout = true
+  timeouts {
+    update = "10m" # 배포 업데이트 시 최대 10분까지 대기
+  }
 
   spec {
     replicas = 2
