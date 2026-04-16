@@ -128,7 +128,13 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           # 보안 비밀키 (32바이트 이상 규격 준수)
           env {
             name  = "JWT_SECRET"
-            value_from { secret_key_ref { name = kubernetes_secret_v1.api_secrets.metadata[0].name, key = "JWT_SECRET" } }
+            value_from { 
+              secret_key_ref 
+              { 
+                name = kubernetes_secret_v1.api_secrets.metadata[0].name
+                key = "JWT_SECRET" 
+              } 
+            }
           }
           env {
             name  = "JWT_ACCESS_TOKEN_EXPIRATION"
@@ -140,7 +146,13 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           }
           env {
             name  = "GATEWAY_INTERNAL_SECRET"
-            value_from { secret_key_ref { name = kubernetes_secret_v1.api_secrets.metadata[0].name, key = "GATEWAY_INTERNAL_SECRET" } }
+            value_from { 
+              secret_key_ref 
+              { 
+                name = kubernetes_secret_v1.api_secrets.metadata[0].name
+                key = "GATEWAY_INTERNAL_SECRET"
+              } 
+            }
           }
 
           # 데이터베이스 연결 정보 (기존 로직 유지)
@@ -194,7 +206,13 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           }
           env {
             name  = "TOSS_SECRET_KEY"
-            value_from { secret_key_ref { name = kubernetes_secret_v1.api_secrets.metadata[0].name, key = "TOSS_SECRET_KEY" } }
+            value_from { 
+              secret_key_ref 
+              { 
+                name = kubernetes_secret_v1.api_secrets.metadata[0].name
+                key = "TOSS_SECRET_KEY" 
+              } 
+            }
           }
 
           # AWS 및 인프라 설정 (S3)
