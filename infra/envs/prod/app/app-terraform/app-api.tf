@@ -129,8 +129,7 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           env {
             name  = "JWT_SECRET"
             value_from { 
-              secret_key_ref 
-              { 
+              secret_key_ref { 
                 name = kubernetes_secret_v1.api_secrets.metadata[0].name
                 key = "JWT_SECRET" 
               } 
@@ -147,8 +146,7 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           env {
             name  = "GATEWAY_INTERNAL_SECRET"
             value_from { 
-              secret_key_ref 
-              { 
+              secret_key_ref { 
                 name = kubernetes_secret_v1.api_secrets.metadata[0].name
                 key = "GATEWAY_INTERNAL_SECRET"
               } 
@@ -207,8 +205,7 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           env {
             name  = "TOSS_SECRET_KEY"
             value_from { 
-              secret_key_ref 
-              { 
+              secret_key_ref { 
                 name = kubernetes_secret_v1.api_secrets.metadata[0].name
                 key = "TOSS_SECRET_KEY" 
               } 
