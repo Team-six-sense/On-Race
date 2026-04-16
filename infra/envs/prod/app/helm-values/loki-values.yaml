@@ -38,7 +38,11 @@ deploymentMode: SimpleScalable
 
 # 읽기 전용 컴포넌트 (Query Frontend, Querier)
 read:
-  replicas: 1 # 2 -> 1
+  replicas: 2 # 2 -> 1
+  # [수정] IRSA 권한이 부여된 'loki' 서비스 어카운트를 사용하도록 명시합니다.
+  serviceAccount:
+    create: false
+    name: loki
   resources:
     requests:
       cpu: 200m
@@ -48,7 +52,11 @@ read:
 
 # 쓰기 전용 컴포넌트 (Ingester)
 write:
-  replicas: 2  # 3 -> 2 replication_factor가 3이므로 최소 3개 권장 // 복제 계수 3 유지를 위해 최소 2~3개 필요하나 자원 부족 시 조정
+  replicas: 3  # 3 -> 2 replication_factor가 3이므로 최소 3개 권장 // 복제 계수 3 유지를 위해 최소 2~3개 필요하나 자원 부족 시 조정
+  # [수정] IRSA 권한이 부여된 'loki' 서비스 어카운트를 사용하도록 명시합니다.
+  serviceAccount:
+    create: false
+    name: loki
   resources:
     requests:
       cpu: 200m
@@ -58,7 +66,11 @@ write:
 
 # 백엔드 컴포넌트 (Index Gateway, Compactor, Ruler)
 backend:
-  replicas: 1 # 2 -> 1
+  replicas: 2 # 2 -> 1
+  # [수정] IRSA 권한이 부여된 'loki' 서비스 어카운트를 사용하도록 명시합니다.
+  serviceAccount:
+    create: false
+    name: loki
   resources:
     requests:
       cpu: 100m
