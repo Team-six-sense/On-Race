@@ -52,16 +52,60 @@ data "aws_iam_policy_document" "karpenter_controller_assume" {
       variable = "${replace(var.oidc_provider_arn, "/^(.*provider/)/", "")}:sub"
       values   = ["system:serviceaccount:karpenter:karpenter"]
     }
+    # [추가] Audience 조건 추가 (보안 강화 및 연결 안정성)
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(var.oidc_provider_arn, "/^(.*provider/)/", "")}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
   }
 }
 
 resource "aws_iam_role" "karpenter_controller" {
   name               = "${var.project_name}-karpenter-controller"
   assume_role_policy = data.aws_iam_policy_document.karpenter_controller_assume.json
+  tags = {
+    "karpenter.sh/discovery" = var.cluster_name
+  }
 }
 
-# 컨트롤러에 EC2 생성/삭제 권한 부여 (실무에서는 최소 권한 정책으로 교체 권장)
-resource "aws_iam_role_policy_attachment" "karpenter_controller_admin" {
-  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+# [보안 강화] Karpenter 컨트롤러에 AdministratorAccess 대신 최소 권한 정책을 부여합니다.
+resource "aws_iam_policy" "karpenter_controller" {
+  name        = "${var.project_name}-karpenter-controller-policy"
+  description = "Minimal permissions for Karpenter controller"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:CreateLaunchTemplate",
+          "ec2:CreateFleet",
+          "ec2:RunInstances",
+          "ec2:CreateTags",
+          "ec2:TerminateInstances",
+          "ec2:DeleteLaunchTemplate",
+          "ec2:DescribeLaunchTemplates",
+          "ec2:DescribeInstances",
+          "ec2:DescribeSecurityGroups",
+          "ec2:DescribeSubnets",
+          "ec2:DescribeInstanceTypes",
+          "ec2:DescribeInstanceTypeOfferings",
+          "ec2:DescribeAvailabilityZones",
+          "ssm:GetParameter"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = "iam:PassRole"
+        Resource = aws_iam_role.karpenter_node.arn
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "karpenter_controller" {
+  policy_arn = aws_iam_policy.karpenter_controller.arn
   role       = aws_iam_role.karpenter_controller.name
 }

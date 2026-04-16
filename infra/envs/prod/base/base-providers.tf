@@ -12,7 +12,7 @@ terraform {
 
   # [보완] S3 백엔드 설정 (base 전용 경로)
   backend "s3" {
-    bucket       = "t6-on-race-terraform-state-prod"
+    bucket       = "t6-on-race-tfstate-916228846377-ap-northeast-2-an"
     key          = "prod/base/terraform.tfstate" # base 전용 경로로 수정
     region       = "ap-northeast-2"
     encrypt      = true

@@ -1,5 +1,10 @@
 variable "project_name" {
-  description = "프로젝트 명 (t6-on-race)"
+  description = "프로젝트 명"
+  type        = string
+}
+
+variable "environment" {
+  description = "배포 환경 (prod, dev 등)"
   type        = string
 }
 
@@ -9,6 +14,6 @@ variable "cluster_name" {
 }
 
 variable "oidc_provider_arn" {
-  description = "EKS OIDC Provider ARN (IRSA용)"
+  description = "EKS OIDC Provider ARN"
   type        = string
 }

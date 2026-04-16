@@ -26,6 +26,7 @@ output "database_subnets" {
   value       = module.vpc.database_subnets
 }
 
+# 네트워크 계층 (VPC) 관련 출력 섹션에서 수정
 output "vpc_endpoint_sg_id" {
   description = "VPC Interface Endpoint 전용 보안 그룹 ID"
   value       = module.vpc.vpc_endpoint_sg_id
@@ -112,4 +113,9 @@ output "github_actions_role_arn" {
 output "ai_vqa_oac_id" {
   description = "AI VQA CloudFront OAC ID"
   value       = aws_cloudfront_origin_access_control.ai_vqa.id
+}
+
+output "vqa_ecr_repository_url" {
+  description = "VQA ECR 리포지토리 URL"
+  value       = aws_ecr_repository.vqa_repo.repository_url
 }

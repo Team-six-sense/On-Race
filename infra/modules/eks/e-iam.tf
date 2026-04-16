@@ -39,3 +39,9 @@ resource "aws_iam_role_policy_attachment" "sqs_policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSQSFullAccess"
   role       = aws_iam_role.node.name
 }
+
+# SSM(Session Manager)을 통한 노드 접속을 위한 정책 연결
+resource "aws_iam_role_policy_attachment" "ssm_policy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+  role       = aws_iam_role.node.name
+}

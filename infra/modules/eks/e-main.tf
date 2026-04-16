@@ -1,6 +1,13 @@
 # 1. IMDSv2 홉 제한 수정을 위한 런치 템플릿
 resource "aws_launch_template" "node" {
-  name = "${var.project_name}-node-lt"
+  name_prefix = "${var.project_name}-node-lt-"
+
+  # 프라이빗 서브넷이므로 공인 IP 할당을 명시적으로 비활성화합니다.
+  network_interfaces {
+    associate_public_ip_address = false
+    delete_on_termination       = true
+    security_groups             = [aws_security_group.nodes.id]
+  }
 
   metadata_options {
     http_endpoint               = "enabled"
@@ -25,7 +32,11 @@ resource "aws_eks_cluster" "this" {
   enabled_cluster_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
 
   vpc_config {
-    subnet_ids = var.subnet_ids
+    subnet_ids              = var.subnet_ids
+    # 프라이빗 서브넷의 노드가 컨트롤 플레인과 통신할 수 있도록 프라이빗 엔드포인트를 활성화합니다.
+    # 퍼블릭 엔드포인트는 외부(예: 로컬 PC, Github Actions)에서의 kubectl 접근을 위해 유지합니다.
+    endpoint_private_access = true
+    endpoint_public_access  = true
   }
 
   access_config {

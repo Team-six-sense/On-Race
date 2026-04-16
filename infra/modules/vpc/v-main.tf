@@ -129,8 +129,19 @@ resource "aws_route_table_association" "database" {
 
 # 10. VPC Interface & Gateway Endpoints
 locals {
-  # KMS 복호화 타임아웃 방지를 위해 kms 추가
-  endpoint_services = ["sqs", "sts", "logs", "monitoring", "ecr.dkr", "ecr.api", "kms"]
+  endpoint_services = [
+    "sqs",
+    "sts",
+    "logs",
+    "monitoring",
+    "ecr.dkr",
+    "ecr.api",
+    "secretsmanager",
+    "kms",
+    # [개선] SSM 연결을 위한 필수 엔드포인트 3종 추가 (NAT Gateway 우회)
+    # NAT Gateway를 우회하여 비용을 절감하고 보안 및 성능을 향상시킵니다.
+    "ssm", "ssmmessages", "ec2messages"
+  ]
 }
 
 resource "aws_vpc_endpoint" "interface" {

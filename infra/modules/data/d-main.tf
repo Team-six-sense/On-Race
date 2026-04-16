@@ -31,7 +31,8 @@ resource "aws_elasticache_parameter_group" "this" {
 
   parameter {
     name  = "maxmemory-policy"
-    value = "volatile-lru"
+    value = "allkeys-lru"
+    # [Consistency] Aligned with the local docker-compose setting ('allkeys-lru') to ensure consistent behavior across environments.
   }
 
   # 유휴 커넥션 정리 (60초 동안 응답 없으면 연결 해제)
@@ -64,11 +65,11 @@ resource "aws_elasticache_replication_group" "this" {
 
   automatic_failover_enabled = var.automatic_failover_enabled
   num_cache_clusters         = var.num_cache_clusters
-  #multi_az_enabled           = true
-  multi_az_enabled           = false
+  multi_az_enabled           = true
   
   at_rest_encryption_enabled = true
-  transit_encryption_enabled = true
+  transit_encryption_enabled = true # 필수: auth_token 사용을 위해 필요
+  auth_token                 = var.db_password # RDS와 동일한 암호 주입
   apply_immediately          = true
 }
 
@@ -105,8 +106,7 @@ resource "aws_db_instance" "this" {
   identifier        = "${var.project_name}-db"
   engine            = "mysql"
   engine_version    = "8.0"
-  instance_class    = "db.t3.micro" # [수정] m5.large/t3.medium -> t3.micro
-  #instance_class    = "db.t3.medium"
+  instance_class    = "db.t3.medium"
   allocated_storage = 20
 
   username = "admin"
@@ -116,8 +116,8 @@ resource "aws_db_instance" "this" {
   db_subnet_group_name   = aws_db_subnet_group.this.name
   vpc_security_group_ids = [aws_security_group.rds.id]
 
-  #multi_az            = true
-  multi_az            = false       # [수정] 비용 절감을 위해 가용영역 이중화 해제
+  multi_az            = true
+  #multi_az            = false       # [수정] 비용 절감을 위해 가용영역 이중화 해제
   skip_final_snapshot = true
 }
 
@@ -205,10 +205,11 @@ resource "aws_iam_policy" "rds_proxy_policy" {
       {
         Action = [
           "secretsmanager:GetSecretValue",
-          "secretsmanager:DescribeSecret"
+          "secretsmanager:DescribeSecret",
+          "kms:Decrypt"  # 열쇠(KMS) 권한 확보
         ]
         Effect   = "Allow"
-        Resource = [var.db_secret_arn] # 변수로 전달받은 ARN 참조
+        Resource = [var.db_secret_arn]
       }
     ]
   })
