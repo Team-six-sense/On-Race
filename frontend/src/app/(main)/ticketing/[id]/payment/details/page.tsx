@@ -177,7 +177,7 @@ export default function CheckoutPage() {
                 <div className="flex gap-6">
                   <div className="w-30 h-30 flex-shrink-0">
                     <img
-                      src={'/image/default.png'}
+                      src={event?.thumbnailImg.url}
                       className="w-full h-full object-cover rounded-sm"
                     />
                   </div>

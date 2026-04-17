@@ -24,7 +24,7 @@ export function EntryParticipationInfo() {
       <div className="p-4 space-y-2">
         <div className="flex text-base">
           <span className="w-24 text-font-medium">이름</span>
-          <span className="text-gray-900 font-medium">김러닝</span>
+          <span className="text-gray-900 font-medium">김유저</span>
         </div>
         <div className="flex text-base">
           <span className="w-24 text-font-medium">생년월일</span>

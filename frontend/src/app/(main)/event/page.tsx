@@ -167,7 +167,7 @@ function EventContent() {
             >
               <div className="relative aspect-[16/16] overflow-hidden">
                 <img
-                  src={'/image/default.png'}
+                  src={event.thumbnailImg.url}
                   alt={'이벤트'}
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                 />

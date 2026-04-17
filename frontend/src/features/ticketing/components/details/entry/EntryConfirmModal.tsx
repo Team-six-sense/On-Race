@@ -24,7 +24,7 @@ export function EntryConfirmModal({
   // const [isVqaModalOpen, setIsVqaModalOpen] = useState(false);
 
   const userData = {
-    name: '홍길동',
+    name: '김유저',
     birthDate: '1995.01.15',
     gender: '남성',
     phone: '010-1234-5678',
