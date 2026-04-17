@@ -1,9 +1,11 @@
 package com.kt.onrace.queue.service;
 
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.redisson.api.RBucket;
 import org.redisson.api.RScoredSortedSet;
+import org.redisson.api.RScript;
 import org.redisson.api.RSet;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
@@ -29,6 +31,14 @@ public class QueueService {
 	private final RedissonClient redissonClient;
 	private final QueueMetrics queueMetrics;
 	private final QueueProperties queueProperties;
+
+	// GET passToken → 있으면 'PASS:{token}' 반환, 없으면 ZRANK 조회 → 'WAIT:{rank}' 반환, 둘 다 없으면 nil
+	private static final String STATUS_CHECK_SCRIPT =
+		"local pass = redis.call('GET', KEYS[1]); " +
+			"if pass then return 'PASS:' .. pass end; " +
+			"local rank = redis.call('ZRANK', KEYS[2], ARGV[1]); " +
+			"if rank ~= false then return 'WAIT:' .. rank end; " +
+			"return nil";
 
 	@ServiceLog
 	public QueueEnterResponse enter(Long userId, Long paceId) {
@@ -59,29 +69,34 @@ public class QueueService {
 
 	@ServiceLog
 	public QueueStatusResponse getStatus(Long userId, Long paceId) {
-		RBucket<String> passBucket = redissonClient.getBucket(
-			RedisKeyGenerator.queuePass(paceId, userId), StringCodec.INSTANCE);
-		String passToken = passBucket.get();
+		RScript script = redissonClient.getScript(StringCodec.INSTANCE);
+		String result = script.eval(
+			RScript.Mode.READ_ONLY,
+			STATUS_CHECK_SCRIPT,
+			RScript.ReturnType.VALUE,
+			List.of(
+				RedisKeyGenerator.queuePass(paceId, userId),
+				RedisKeyGenerator.queueWaiting(paceId)
+			),
+			String.valueOf(userId)
+		);
 
-		if (passToken != null) {
+		if (result == null) {
+			throw new BusinessException(BusinessErrorCode.QUEUE_NOT_FOUND);
+		}
+
+		if (result.startsWith("PASS:")) {
+			String passToken = result.substring(5);
 			log.info("[QUEUE] 통과 확인 userId={}, paceId={}", userId, paceId);
 			return QueueStatusResponse.pass(paceId, passToken);
 		}
 
-		RScoredSortedSet<String> waitingSet = redissonClient.getScoredSortedSet(
-			RedisKeyGenerator.queueWaiting(paceId), StringCodec.INSTANCE);
-		Integer rank = waitingSet.rank(String.valueOf(userId));
-
-		if (rank != null) {
-			long position = rank + 1;
-			long jitterMs = queueProperties.getPollJitterMs();
-			long retryAfterMs = queueProperties.getPollBaseMs()
-				+ (jitterMs > 0 ? ThreadLocalRandom.current().nextLong(jitterMs) : 0);
-			log.debug("[QUEUE] 대기 중 userId={}, paceId={}, position={}", userId, paceId, position);
-			return QueueStatusResponse.waiting(paceId, position, retryAfterMs);
-		}
-
-		throw new BusinessException(BusinessErrorCode.QUEUE_NOT_FOUND);
+		long position = Long.parseLong(result.substring(5)) + 1;
+		long jitterMs = queueProperties.getPollJitterMs();
+		long retryAfterMs = queueProperties.getPollBaseMs()
+			+ (jitterMs > 0 ? ThreadLocalRandom.current().nextLong(jitterMs) : 0);
+		log.debug("[QUEUE] 대기 중 userId={}, paceId={}, position={}", userId, paceId, position);
+		return QueueStatusResponse.waiting(paceId, position, retryAfterMs);
 	}
 
 	@ServiceLog
