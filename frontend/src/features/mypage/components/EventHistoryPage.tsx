@@ -178,7 +178,7 @@ export const EventHistoryPage = () => {
                       >
                         <div className="relative w-24 h-24 shrink-0 overflow-hidden rounded-sm bg-gray-200">
                           <img
-                            src={'/image/default.png'}
+                            src={event.thumbnail}
                             alt={'이벤트'}
                             className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                           />

@@ -1,6 +1,8 @@
 export interface EntriesHistory {
   id: number;
   eventId: number;
+
+  thumbnail: string;
   title: string;
   appType: 'LOTTERY' | 'FIRST_COME';
   status: 'IN_PROGRESS' | 'CLOSING_SOON' | 'READY' | 'END' | 'DRAW_COMPLETED';
@@ -27,6 +29,8 @@ export interface OrderHistory {
   id: string;
   eventId: number;
   title: string;
+
+  thumbnail: string;
   appType: 'LOTTERY' | 'FIRST_COME';
   status: 'IN_PROGRESS' | 'CLOSING_SOON' | 'READY' | 'END' | 'DRAW_COMPLETED';
   orderStatus: string;
@@ -112,7 +116,7 @@ export interface OrderDetailInfo {
     zipCode: '12345';
     address1: '서울시 강남구'; // address -> address1
     address2: '101동'; // detailAddress -> address2
-    recipientName: '홍길동';
+    recipientName: '김유저';
     recipientPhone: '01012345678';
     memo: '';
     isDefault: boolean;

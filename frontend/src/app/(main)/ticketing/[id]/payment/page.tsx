@@ -78,7 +78,7 @@ export default function CheckoutPage() {
   const totalPrice = price - discountPrice + optionPrice;
   const paymentPrice = totalPrice - deliveryFee;
 
-  const [timeLeft, setTimeLeft] = useState(600);
+  // const [timeLeft, setTimeLeft] = useState(600);
 
   const formatTime = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
@@ -209,18 +209,18 @@ export default function CheckoutPage() {
     setIsError(false);
   }, [event?.thumbnailImg]);
 
-  useEffect(() => {
-    if (timeLeft <= 0) {
-      setOpenModal(true);
-      // router.push('/'); // 시간 만료 시 튕겨나갈 주소
-    }
+  // useEffect(() => {
+  //   if (timeLeft <= 0) {
+  //     setOpenModal(true);
+  //     // router.push('/'); // 시간 만료 시 튕겨나갈 주소
+  //   }
 
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => prev - 1);
-    }, 1000);
+  //   const timer = setInterval(() => {
+  //     setTimeLeft((prev) => prev - 1);
+  //   }, 1000);
 
-    return () => clearInterval(timer);
-  }, [timeLeft, router]);
+  //   return () => clearInterval(timer);
+  // }, [timeLeft, router]);
 
   return (
     <div className="bg-white max-w-7xl mx-auto px-30">
@@ -228,7 +228,7 @@ export default function CheckoutPage() {
         <div className="flex items-center text-sm text-font-accent">
           <MdAccessTime className="mr-1" />
 
-          <span>남은 시간 {formatTime(timeLeft)}</span>
+          <span>남은 시간 09:59</span>
           <span className="px-2 text-base text-white ">
             시간 내 결제를 완료하지 않으면 자동 취소됩니다
           </span>

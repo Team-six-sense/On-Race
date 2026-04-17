@@ -8,6 +8,7 @@ import AddressForm from './AddressForm';
 import { myPageService } from '../services';
 import { AccountInfo } from '../types/accountInfo';
 import PassModal from '@/features/auth/components/PassModal';
+import { cn } from '@/lib/utils';
 
 export function AccountSettings() {
   // 하이드레이션 오류 방지를 위한 마운트 상태 관리
@@ -93,11 +94,13 @@ export function AccountSettings() {
                   이메일(ID)
                 </span>
                 <span className="flex-1 text-base font-medium flex items-center gap-2">
-                  <img
-                    src="/favicon.ico"
-                    alt="email icon"
-                    className="w-5 h-5 object-contain shrink-0"
-                  />
+                  <div
+                    className={cn(
+                      'text-sm font-semibold px-2 py-0.5 rounded-sm bg-gray-100',
+                    )}
+                  >
+                    기본이메일
+                  </div>
                   <span className="whitespace-nowrap">{userInfo.email}</span>
                 </span>
               </div>
@@ -117,14 +120,26 @@ export function AccountSettings() {
                   </Button>
                 </div>
               </div>
-              <div className="flex">
+              <div className="flex items-center">
                 <span className="w-30 text-base font-medium text-font-medium">
                   본인인증 상태
                 </span>
-                <span className="flex-1 text-base font-medium ">미인증</span>
+                <span className="flex text-base font-medium mr-4">
+                  인증완료
+                </span>
+                <div>
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    rounded="sm"
+                    className="text-gray-500"
+                  >
+                    다시 인증하기
+                  </Button>
+                </div>
               </div>
 
-              <div className="flex items-center justify-between p-4 bg-red-50 border border-red-100 text-font-error rounded-sm">
+              {/* <div className="flex items-center justify-between p-4 bg-red-50 border border-red-100 text-font-error rounded-sm">
                 <div className="flex items-center">
                   <LuCircleAlert size={24} className="mr-2" />
                   <span>
@@ -140,7 +155,7 @@ export function AccountSettings() {
                     인증하기
                   </Button>
                 </div>
-              </div>
+              </div> */}
             </div>
           </section>
 

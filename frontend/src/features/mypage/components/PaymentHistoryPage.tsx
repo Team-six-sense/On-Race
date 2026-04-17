@@ -220,7 +220,7 @@ export const PaymentHistoryPage = () => {
                       <div className="flex gap-4 items-start">
                         <div className="relative w-24 h-24 shrink-0 overflow-hidden rounded-sm">
                           <img
-                            src={'/image/default.png'}
+                            src={order?.thumbnail}
                             alt={'이벤트'}
                             className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                           />
