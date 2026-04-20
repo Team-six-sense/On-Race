@@ -36,7 +36,7 @@ def extract_advanced_features(raw_data_list):
 
     for i in range(len(raw_data_list)):
         current = raw_data_list[i]
-        e_type = current.get('lastEventType')
+        e_type = current.get('eventType')
 
         if e_type == 'pointerdown':
             down_count += 1
