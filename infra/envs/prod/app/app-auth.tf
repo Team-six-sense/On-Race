@@ -8,10 +8,10 @@ resource "kubernetes_deployment_v1" "on_race_auth" {
     name      = "on-race-auth"
     namespace = kubernetes_namespace_v1.app.metadata[0].name
   }
-  wait_for_rollout = false
+  wait_for_rollout = true # 안정적인 배포를 위해 true로 변경 권장
 
   spec {
-    replicas = 2
+    replicas = 1 # 최소 사양을 위해 1로 조정
     selector {
       match_labels = {
         app = "on-race-auth"
@@ -55,7 +55,12 @@ resource "kubernetes_deployment_v1" "on_race_auth" {
           }
           env {
             name  = "JAVA_TOOL_OPTIONS"
-            value = "-Dspring.datasource.url=jdbc:mysql://${data.terraform_remote_state.base.outputs.rds_proxy_endpoint}:3306/onrace?sslMode=REQUIRED&useSSL=true&verifyServerCertificate=false&allowPublicKeyRetrieval=true -XX:InitialRAMPercentage=75.0 -XX:MaxRAMPercentage=75.0 -XX:MinRAMPercentage=75.0"
+            value = "-XX:InitialRAMPercentage=75.0 -XX:MaxRAMPercentage=75.0 -XX:MinRAMPercentage=75.0"
+          }
+          # [버그 수정] SSL 연결을 위한 환경 변수 추가
+          env {
+            name  = "AUTH_DB_SSL_MODE"
+            value = "REQUIRED"
           }
 
           # [수정] 보안 비밀키 멀티라인 변경
@@ -115,21 +120,21 @@ resource "kubernetes_deployment_v1" "on_race_auth" {
           }
           env {
             name  = "AUTH_DB_PASSWORD"
-            value = local.db_creds.password
+            value = local.db_creds.password # DB 비밀번호 주입
           }
 
           # [수정] HikariCP 설정 멀티라인 변경
           env {
             name  = "AUTH_HIKARI_MAX_POOL_SIZE"
-            value = "30"
+            value = "30" # 풀 최대 커넥션 수 / 운영: 30
           }
           env {
             name  = "AUTH_HIKARI_MIN_IDLE"
-            value = "10"
+            value = "10" # 풀 최소 유휴 커넥션 수 / 운영: 10
           }
           env {
             name  = "AUTH_HIKARI_CONNECTION_TIMEOUT"
-            value = "3000"
+            value = "3000" # 커넥션 획득 대기 (ms) / 운영: 3000
           }
           env {
             name  = "AUTH_HIKARI_MAX_LIFETIME"
@@ -143,35 +148,44 @@ resource "kubernetes_deployment_v1" "on_race_auth" {
           # [수정] JPA / Hibernate 설정 멀티라인 변경
           env {
             name  = "AUTH_JPA_DDL_AUTO"
-            value = "validate"
+            value = "validate" # JPA DDL 전략 / 운영: validate
           }
           env {
             name  = "AUTH_HIBERNATE_FORMAT_SQL"
-            value = "false"
+            value = "false" # SQL 포맷팅 출력 / 운영: false
           }
           env {
             name  = "AUTH_HIBERNATE_USE_SQL_COMMENTS"
-            value = "false"
+            value = "false" # SQL 주석 출력 / 운영: false
           }
 
           # [수정] Tomcat 설정 멀티라인 변경
           env {
             name  = "AUTH_TOMCAT_MAX_THREADS"
-            value = "250"
+            value = "250" # 최대 요청 스레드 수 / 운영: 250
           }
           env {
             name  = "AUTH_TOMCAT_MIN_SPARE_THREADS"
-            value = "50"
+            value = "50" # 최소 유휴 스레드 수 / 운영: 50
           }
           env {
             name  = "AUTH_TOMCAT_ACCEPT_COUNT"
-            value = "150"
+            value = "150" # TCP 대기 큐 크기 (스레드 풀 포화 시) / 운영: 150
           }
 
+          env {
+            name  = "REDISSON_CONNECTION_POOL_SIZE" # Redisson 커넥션 풀 크기
+            value = "64"
+          }
+          env {
+            name  = "REDISSON_MIN_IDLE" # Redisson 최소 유휴 커넥션 수
+            value = "32"
+          }
+          
           # Redis 설정 멀티라인 변경
           env {
             name  = "AUTH_REDIS_SSL_ENABLED"
-            value = "false"
+            value = "true" # Auth Redis SSL 사용 여부 / 운영: true (ElastiCache transit_encryption_enabled=true 이므로 true로 유지)
           }
           env {
             name  = "SPRING_REDIS_HOST"
@@ -183,7 +197,7 @@ resource "kubernetes_deployment_v1" "on_race_auth" {
           }
           env {
             name  = "SPRING_REDIS_PASSWORD"
-            value = local.db_creds.password
+            value = local.redis_password # Redis 전용 비밀번호 주입
           }
 
           # [수정] 외부 서비스 연동 (Mails, SMS, OAuth) 멀티라인 변경
@@ -299,12 +313,12 @@ resource "kubernetes_deployment_v1" "on_race_auth" {
 
           resources {
             requests = {
-              cpu    = "250m"
-              memory = "800Mi"
+              cpu    = "150m"    # 최소 사양
+              memory = "384Mi" # 최소 사양 (k6 README -Xmx256m 기반)
             }
             limits = {
-              cpu    = "1200m"
-              memory = "2Gi"
+              cpu    = "500m"
+              memory = "768Mi"
             }
           }
 
@@ -351,6 +365,10 @@ resource "kubernetes_deployment_v1" "on_race_auth" {
             mount_path = "/etc/stunnel/stunnel.conf"
             sub_path   = "stunnel.conf"
             read_only  = true
+          }
+          resources {
+            requests = { cpu = "10m", memory = "20Mi" }
+            limits   = { cpu = "50m", memory = "50Mi" }
           }
         }
 
@@ -407,21 +425,5 @@ resource "kubernetes_service_v1" "on_race_auth" {
       protocol    = "TCP"
     }
     type = "ClusterIP"
-  }
-}
-
-# 3. 가용성 보장 정책
-resource "kubernetes_pod_disruption_budget_v1" "auth_pdb" {
-  metadata {
-    name      = "on-race-auth-pdb"
-    namespace = kubernetes_namespace_v1.app.metadata[0].name
-  }
-  spec {
-    min_available = 1
-    selector {
-      match_labels = {
-        app = "on-race-auth"
-      }
-    }
   }
 }

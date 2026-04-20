@@ -8,10 +8,10 @@ resource "kubernetes_deployment_v1" "on_race_queue" {
     name      = "on-race-queue"
     namespace = kubernetes_namespace_v1.app.metadata[0].name
   }
-  wait_for_rollout = false
+  wait_for_rollout = true # 안정적인 배포를 위해 true로 변경 권장
 
   spec {
-    replicas = 2
+    replicas = 1 # 최소 사양을 위해 1로 조정
     selector {
       match_labels = {
         app = "on-race-queue"
@@ -112,7 +112,7 @@ resource "kubernetes_deployment_v1" "on_race_queue" {
           }
           env {
             name  = "SPRING_REDIS_PASSWORD"
-            value = local.db_creds.password
+            value = local.redis_password # Redis 전용 비밀번호 주입
           }
           env {
             name  = "QUEUE_REDIS_HOST"
@@ -126,11 +126,20 @@ resource "kubernetes_deployment_v1" "on_race_queue" {
           # [수정] Redis 비밀번호 및 SSL 설정 멀티라인 변경
           env {
             name  = "QUEUE_REDIS_PASSWORD"
-            value = local.db_creds.password
+            value = local.redis_password # Redis 전용 비밀번호 주입
           }
           env {
             name  = "QUEUE_REDIS_SSL_ENABLED"
-            value = "false"
+            value = "true" # Queue Redis SSL 사용 여부 / 운영: true (ElastiCache transit_encryption_enabled=true 이므로 true로 유지)
+          }
+
+          env {
+            name  = "REDISSON_CONNECTION_POOL_SIZE"
+            value = "64" # Redisson 커넥션 풀 크기 / 운영: 64
+          }
+          env {
+            name  = "REDISSON_MIN_IDLE"
+            value = "32" # Redisson 최소 유휴 커넥션 수 (CONNECTION_POOL_SIZE의 절반)
           }
 
           # [수정] 성능 튜닝 멀티라인 변경
@@ -179,12 +188,12 @@ resource "kubernetes_deployment_v1" "on_race_queue" {
 
           resources {
             requests = {
-              cpu    = "250m"
-              memory = "800Mi"
+              cpu    = "150m"    # 최소 사양
+              memory = "512Mi" # 최소 사양
             }
             limits = {
-              cpu    = "1200m"
-              memory = "2Gi"
+              cpu    = "500m"
+              memory = "1Gi"
             }
           }
 
@@ -275,21 +284,5 @@ resource "kubernetes_service_v1" "on_race_queue" {
       protocol    = "TCP"
     }
     type = "ClusterIP"
-  }
-}
-
-# 3. 가용성 보장 정책
-resource "kubernetes_pod_disruption_budget_v1" "queue_pdb" {
-  metadata {
-    name      = "on-race-queue-pdb"
-    namespace = kubernetes_namespace_v1.app.metadata[0].name
-  }
-  spec {
-    min_available = 1
-    selector {
-      match_labels = {
-        app = "on-race-queue"
-      }
-    }
   }
 }

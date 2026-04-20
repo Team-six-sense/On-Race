@@ -80,6 +80,9 @@ resource "helm_release" "prometheus_stack" {
   create_namespace = true
   version          = "58.2.0" # 버전 고정을 통해 예기치 않은 변경을 방지합니다.
 
+  # [수정] Helm 작업의 타임아웃을 10분으로 늘려 리소스가 많은 차트의 삭제 실패를 방지합니다.
+  timeout = 600
+
   # Helm 차트의 기본값을 재정의(override)하는 설정입니다.
   values = [
     <<-EOF
@@ -101,7 +104,7 @@ resource "helm_release" "prometheus_stack" {
       persistence:
         enabled: true
         storageClassName: "gp3" # EKS의 기본 스토리지 클래스인 gp3를 사용합니다.
-        size: 10Gi
+        size: 5Gi # 최소 사양으로 조정
 
       # [개선] Grafana에 Loki 데이터소스를 자동으로 추가하여 로그를 바로 조회할 수 있도록 합니다.
       additionalDataSources:
@@ -122,7 +125,7 @@ resource "helm_release" "prometheus_stack" {
               accessModes: ["ReadWriteOnce"]
               resources:
                 requests:
-                  storage: 50Gi
+                  storage: 20Gi # 최소 사양으로 조정
         
         # 서비스 어노테이션 기반으로 메트릭 수집 대상을 자동으로 탐색하도록 설정합니다.
         # 이 설정을 통해 app-api.tf, app-auth.tf에서 추가한 어노테이션을 Prometheus가 인식하게 됩니다.
@@ -192,7 +195,7 @@ resource "helm_release" "prometheus_stack" {
               accessModes: ["ReadWriteOnce"]
               resources:
                 requests:
-                  storage: 10Gi
+                  storage: 5Gi # 최소 사양으로 조정
     EOF
   ]
 

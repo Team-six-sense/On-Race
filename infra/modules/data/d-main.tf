@@ -2,6 +2,22 @@
 # 1. Redis 계층 (ElastiCache)
 # ==========================================================================
 
+variable "redis_secret_arn" {
+  description = "The ARN of the Secrets Manager secret for Redis password."
+  type        = string
+}
+
+variable "multi_az_enabled" {
+  description = "Specifies whether to enable Multi-AZ Support for the replication group."
+  type        = bool
+  default     = true
+}
+
+data "aws_secretsmanager_secret_version" "redis_secret_val" {
+  secret_id = var.redis_secret_arn
+}
+
+
 # Redis 보안 그룹
 resource "aws_security_group" "redis" {
   name   = "${var.project_name}-redis-sg"
@@ -65,11 +81,11 @@ resource "aws_elasticache_replication_group" "this" {
 
   automatic_failover_enabled = var.automatic_failover_enabled
   num_cache_clusters         = var.num_cache_clusters
-  multi_az_enabled           = true
+  multi_az_enabled           = var.multi_az_enabled
   
   at_rest_encryption_enabled = true
   transit_encryption_enabled = true # 필수: auth_token 사용을 위해 필요
-  auth_token                 = var.db_password # RDS와 동일한 암호 주입
+  auth_token                 = jsondecode(data.aws_secretsmanager_secret_version.redis_secret_val.secret_string).password # Redis 전용 암호 주입
   apply_immediately          = true
 }
 
@@ -106,7 +122,7 @@ resource "aws_db_instance" "this" {
   identifier        = "${var.project_name}-db"
   engine            = "mysql"
   engine_version    = "8.0"
-  instance_class    = "db.t3.medium"
+  instance_class    = "db.t3.micro" # 최소 사양으로 변경 (docker-compose.yml 기반)
   allocated_storage = 20
 
   username = "admin"
@@ -116,8 +132,7 @@ resource "aws_db_instance" "this" {
   db_subnet_group_name   = aws_db_subnet_group.this.name
   vpc_security_group_ids = [aws_security_group.rds.id]
 
-  multi_az            = true
-  #multi_az            = false       # [수정] 비용 절감을 위해 가용영역 이중화 해제
+  multi_az            = false # 비용 절감을 위해 가용영역 이중화 해제
   skip_final_snapshot = true
 }
 

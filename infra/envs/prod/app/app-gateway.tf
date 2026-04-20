@@ -8,10 +8,10 @@ resource "kubernetes_deployment_v1" "on_race_gateway" {
     name      = "on-race-gateway"
     namespace = kubernetes_namespace_v1.app.metadata[0].name
   }
-  wait_for_rollout = false
+  wait_for_rollout = true
 
   spec {
-    replicas = 2
+    replicas = 1 # 최소 사양을 위해 1로 조정
     selector {
       match_labels = {
         app = "on-race-gateway"
@@ -112,7 +112,7 @@ resource "kubernetes_deployment_v1" "on_race_gateway" {
           }
           env {
             name  = "SPRING_REDIS_PASSWORD"
-            value = local.db_creds.password
+            value = local.redis_password
           }
 
           # GATEWAY 전용 Redis 연결 정보 (Rate Limit용)
@@ -126,7 +126,7 @@ resource "kubernetes_deployment_v1" "on_race_gateway" {
           }
           env {
             name  = "GATEWAY_REDIS_PASSWORD"
-            value = local.db_creds.password
+            value = local.redis_password
           }
 
           # 라우팅용 내부 서비스 URI
@@ -167,12 +167,12 @@ resource "kubernetes_deployment_v1" "on_race_gateway" {
 
           resources {
             requests = {
-              cpu    = "250m"
-              memory = "512Mi"
+              cpu    = "100m"    # 최소 사양
+              memory = "384Mi" # 최소 사양
             }
             limits = {
-              cpu    = "1000m"
-              memory = "1Gi"
+              cpu    = "500m"
+              memory = "768Mi"
             }
           }
 
@@ -219,6 +219,10 @@ resource "kubernetes_deployment_v1" "on_race_gateway" {
             mount_path = "/etc/stunnel/stunnel.conf"
             sub_path   = "stunnel.conf"
             read_only  = true
+          }
+          resources {
+            requests = { cpu = "10m", memory = "20Mi" }
+            limits   = { cpu = "50m", memory = "50Mi" }
           }
         }
 
@@ -269,21 +273,5 @@ resource "kubernetes_service_v1" "on_race_gateway" {
       protocol    = "TCP"
     }
     type = "ClusterIP"
-  }
-}
-
-# 3. 가용성 보장 정책
-resource "kubernetes_pod_disruption_budget_v1" "gateway_pdb" {
-  metadata {
-    name      = "on-race-gateway-pdb"
-    namespace = kubernetes_namespace_v1.app.metadata[0].name
-  }
-  spec {
-    min_available = 1
-    selector {
-      match_labels = {
-        app = "on-race-gateway"
-      }
-    }
   }
 }

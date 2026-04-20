@@ -4,19 +4,6 @@
 
 # [보안 개선] API 서비스 전용 IAM 정책 (최소 권한 원칙)
 
-# 1. Secrets Manager에서 DB 암호 가져오기
-data "aws_secretsmanager_secret" "db_secret" {
-  name = "${var.project_name}-${var.environment}-db-password-v4"
-}
-
-data "aws_secretsmanager_secret_version" "db_secret_val" {
-  secret_id = data.aws_secretsmanager_secret.db_secret.id
-}
-
-locals {
-  db_creds = jsondecode(data.aws_secretsmanager_secret_version.db_secret_val.secret_string)
-}
-
 # 2. 보안 그룹 규칙: EKS 노드 -> RDS Proxy / Redis 접속 허용
 resource "aws_security_group_rule" "eks_to_rds_proxy" {
   type                     = "ingress"
@@ -64,55 +51,55 @@ resource "kubernetes_secret_v1" "on_race_common_secrets" {
     namespace = kubernetes_namespace_v1.app.metadata[0].name
   }
   data = {
-    "JWT_SECRET"                   = "K9vT2qLm7XrP4dNz8YwH3sUf6BaJ1cMe5QtR0pVx2LnG8kZd4HsW7mNp3CfY6rTx"
-    "JWT_ACCESS_TOKEN_EXPIRATION"  = "1800000"
-    "JWT_REFRESH_TOKEN_EXPIRATION" = "604800000"
-    "GATEWAY_INTERNAL_SECRET"      = "M56BIYem3j0iJesJLGECoMvZKkwlvPIcJscq4bfRfZN"
-    "QUEUE_TOKEN_SECRET"           = "MutYiYbCH48Xw9b6Z598UWKzGQVw6GYu7dW5TW6oedGEyQwtAFIMss3r1xTYs"
-    "SOLAPI_API_KEY"               = "NCSR9BHTS0IOCWVI"
-    "SOLAPI_API_SECRET"            = "DA0GOHEI2OC0RIJ3TG9WIZLGJCTLTNGF"
-    "SOLAPI_SENDER"                = "01097568664"
-    "MAIL_USERNAME"                = "onrace.dev@gmail.com"
-    "MAIL_PASSWORD"                = "kxxaiqanmhnelzqz"
-    "KAKAO_CLIENT_ID"              = "dummy-kakao-client-id"
-    "KAKAO_CLIENT_SECRET"          = "dummy-kakao-client-secret"
-    "NAVER_CLIENT_ID"              = "dummy-naver-client-id"
-    "NAVER_CLIENT_SECRET"          = "dummy-naver-client-secret"
-    "TOSS_SECRET_KEY"              = "test_sk_zXLkKEypNArWmo50nX3lmeaxYG5R"
+    "JWT_SECRET"                   = local.common_secrets.JWT_SECRET
+    "JWT_ACCESS_TOKEN_EXPIRATION"  = local.common_secrets.JWT_ACCESS_TOKEN_EXPIRATION
+    "JWT_REFRESH_TOKEN_EXPIRATION" = local.common_secrets.JWT_REFRESH_TOKEN_EXPIRATION
+    "GATEWAY_INTERNAL_SECRET"      = local.common_secrets.GATEWAY_INTERNAL_SECRET
+    "QUEUE_TOKEN_SECRET"           = local.common_secrets.QUEUE_TOKEN_SECRET
+    "SOLAPI_API_KEY"               = local.common_secrets.SOLAPI_API_KEY
+    "SOLAPI_API_SECRET"            = local.common_secrets.SOLAPI_API_SECRET
+    "SOLAPI_SENDER"                = local.common_secrets.SOLAPI_SENDER
+    "MAIL_USERNAME"                = local.common_secrets.MAIL_USERNAME
+    "MAIL_PASSWORD"                = local.common_secrets.MAIL_PASSWORD
+    "KAKAO_CLIENT_ID"              = local.common_secrets.KAKAO_CLIENT_ID
+    "KAKAO_CLIENT_SECRET"          = local.common_secrets.KAKAO_CLIENT_SECRET
+    "NAVER_CLIENT_ID"              = local.common_secrets.NAVER_CLIENT_ID
+    "NAVER_CLIENT_SECRET"          = local.common_secrets.NAVER_CLIENT_SECRET
+    "TOSS_SECRET_KEY"              = local.common_secrets.TOSS_SECRET_KEY
   }
   type = "Opaque"
 }
 
-# =====================================================================
-# [보안] CloudFront 서명키 생성 및 관리
-# =====================================================================
+# # =====================================================================
+# # [보안] CloudFront 서명키 생성 및 관리
+# # =====================================================================
 
-# 1. 서명에 사용할 RSA-2048 비공개 키 생성
-resource "tls_private_key" "vqa_key" {
-  algorithm = "RSA"
-  rsa_bits  = 2048
-}
+# # 1. 서명에 사용할 RSA-2048 비공개 키 생성
+# resource "tls_private_key" "vqa_key" {
+#   algorithm = "RSA"
+#   rsa_bits  = 2048
+# }
 
-# 2. 생성된 비공개 키를 쿠버네티스 시크릿으로 저장
-# 이 시크릿은 API 파드에 마운트되어 서명에 사용됩니다.
-resource "kubernetes_secret_v1" "vqa_signing_key" {
-  metadata {
-    name      = "vqa-signing-key"
-    namespace = kubernetes_namespace_v1.app.metadata[0].name
-  }
-  data = {
-    # 애플리케이션이 /app/certs/private_key.pem 경로에서 읽도록 설정되어 있어야 합니다.
-    "private_key.pem" = tls_private_key.vqa_key.private_key_pem
-  }
-}
+# # 2. 생성된 비공개 키를 쿠버네티스 시크릿으로 저장
+# # 이 시크릿은 API 파드에 마운트되어 서명에 사용됩니다.
+# resource "kubernetes_secret_v1" "vqa_signing_key" {
+#   metadata {
+#     name      = "vqa-signing-key"
+#     namespace = kubernetes_namespace_v1.app.metadata[0].name
+#   }
+#   data = {
+#     # 애플리케이션이 /app/certs/private_key.pem 경로에서 읽도록 설정되어 있어야 합니다.
+#     "private_key.pem" = tls_private_key.vqa_key.private_key_pem
+#   }
+# }
 
-# 3. 생성된 키의 공개 키 부분을 CloudFront에 업로드
-# CloudFront는 이 공개 키를 사용해 API가 생성한 서명을 검증합니다.
-resource "aws_cloudfront_public_key" "vqa_key_v2" {
-  name        = "vqa-signing-key-v2"
-  encoded_key = tls_private_key.vqa_key.public_key_pem
-  comment     = "Public key for On-Race VQA content signing"
-}
+# # 3. 생성된 키의 공개 키 부분을 CloudFront에 업로드
+# # CloudFront는 이 공개 키를 사용해 API가 생성한 서명을 검증합니다.
+# resource "aws_cloudfront_public_key" "vqa_key_v2" {
+#   name        = "vqa-signing-key-v2"
+#   encoded_key = tls_private_key.vqa_key.public_key_pem
+#   comment     = "Public key for On-Race VQA content signing"
+# }
 
 # =====================================================================
 # [서비스 배포] Main API 전용 리소스 (Deployment, Service, PDB)
@@ -130,7 +117,7 @@ resource "kubernetes_deployment_v1" "on_race_api" {
   }
 
   spec {
-    replicas = 2
+    replicas = 1 # 최소 사양을 위해 1로 조정
     selector {
       match_labels = { app = "on-race-api" }
     }
@@ -166,7 +153,12 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           }
           env {
             name  = "JAVA_TOOL_OPTIONS"
-            value = "-Dspring.datasource.url=jdbc:mysql://${data.terraform_remote_state.base.outputs.rds_proxy_endpoint}:3306/onrace?sslMode=REQUIRED&useSSL=true&verifyServerCertificate=false&allowPublicKeyRetrieval=true -XX:InitialRAMPercentage=75.0 -XX:MaxRAMPercentage=75.0 -XX:MinRAMPercentage=75.0"
+            value = "-XX:InitialRAMPercentage=75.0 -XX:MaxRAMPercentage=75.0 -XX:MinRAMPercentage=75.0"
+          }
+          # [수정] SSL 연결을 위한 환경 변수 추가
+          env {
+            name  = "MAIN_DB_SSL_MODE"
+            value = "REQUIRED"
           }
 
           env {
@@ -237,21 +229,21 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           }
           env {
             name  = "SPRING_REDIS_PASSWORD"
-            value = local.db_creds.password
+            value = local.redis_password # Redis 전용 비밀번호 주입
           }
 
           # [수정] HikariCP 멀티라인 블록
           env {
             name  = "MAIN_HIKARI_MAX_POOL_SIZE"
-            value = "50"
+            value = "50" # 풀 최대 커넥션 수 / 운영: 50
           }
           env {
             name  = "MAIN_HIKARI_MIN_IDLE"
-            value = "20"
+            value = "20" # 풀 최소 유휴 커넥션 수 / 운영: 20
           }
           env {
             name  = "MAIN_HIKARI_CONNECTION_TIMEOUT"
-            value = "3000"
+            value = "3000" # 커넥션 획득 대기 (ms) / 운영: 3000
           }
           env {
             name  = "MAIN_HIKARI_MAX_LIFETIME"
@@ -263,37 +255,46 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           }
           env {
             name  = "MAIN_HIKARI_LEAK_DETECTION"
-            value = "5000"
+            value = "5000" # 커넥션 누수 감지 (ms) / 운영: 5000
           }
 
           # [수정] JPA 멀티라인 블록
           env {
             name  = "MAIN_HIBERNATE_FORMAT_SQL"
-            value = "false"
+            value = "false" # SQL 포맷팅 출력 / 운영: false
           }
           env {
             name  = "MAIN_HIBERNATE_USE_SQL_COMMENTS"
-            value = "false"
+            value = "false" # SQL 주석 출력 / 운영: false
           }
 
           # [수정] Tomcat 멀티라인 블록
           env {
             name  = "MAIN_TOMCAT_MAX_THREADS"
-            value = "400"
+            value = "400" # 최대 요청 스레드 수 / 운영: 400
           }
           env {
             name  = "MAIN_TOMCAT_MIN_SPARE_THREADS"
-            value = "80"
+            value = "80" # 최소 유휴 스레드 수 / 운영: 80
           }
           env {
             name  = "MAIN_TOMCAT_ACCEPT_COUNT"
-            value = "300"
+            value = "300" # TCP 대기 큐 크기 (스레드 풀 포화 시) / 운영: 300
           }
           env {
             name  = "MAIN_TOMCAT_MAX_CONNECTIONS"
             value = "8192"
           }
 
+          env {
+            name  = "REDISSON_CONNECTION_POOL_SIZE" # Redisson 커넥션 풀 크기
+            value = "64"
+          }
+          env {
+            name  = "REDISSON_MIN_IDLE" # Redisson 최소 유휴 커넥션 수
+            value = "32"
+          }
+          
           env {
             name = "TOSS_SECRET_KEY"
             value_from {
@@ -314,26 +315,26 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           }
           env {
             name  = "AWS_S3_PRESIGN_EXPIRE_SECONDS"
-            value = "900"
+            value = "300" # S3 Presigned URL 만료 (초) / 운영: 300
           }
 
           env {
             name  = "AUTH_SERVICE_URI"
             value = "http://on-race-auth.t6-on-race-prod.svc.cluster.local:80"
           }
-          env {
-            name  = "VQA_SERVICE_URL"
-            value = "http://on-race-vqa.t6-on-race-prod.svc.cluster.local:8000"
-          }
+          # env {
+          #   name  = "VQA_SERVICE_URL"
+          #   value = "http://on-race-vqa.t6-on-race-prod.svc.cluster.local:8000"
+          # }
           env {
             name  = "AI_MODEL_URL"
             value = "http://ai-model.on-race.local:8000"
           }
 
-          env {
-            name  = "CLOUDFRONT_KEY_ID"
-            value = aws_cloudfront_public_key.vqa_key_v2.id
-          }
+          # env {
+          #   name  = "CLOUDFRONT_KEY_ID"
+          #   value = aws_cloudfront_public_key.vqa_key_v2.id
+          # }
           env {
             name  = "CLOUDFRONT_DOMAIN"
             value = "https://cdn.on-race.com"
@@ -347,7 +348,7 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           # [수정] 기타 설정 멀티라인 블록
           env {
             name  = "MAIN_REDIS_SSL_ENABLED"
-            value = "false"
+            value = "true" # Main Redis SSL 사용 여부 / 운영: true (ElastiCache transit_encryption_enabled=true 이므로 true로 유지)
           }
           env {
             name  = "MAIN_TRACING_ENABLED"
@@ -355,7 +356,7 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           }
           env {
             name  = "MAIN_ENTRY_RESERVATION_TTL_SECONDS"
-            value = "600"
+            value = "600" # 선점 예약 TTL (초, 운영: 600 (10분))
           }
           env {
             name  = "MAIN_EVENT_QUEUE_START_MINUTES"
@@ -370,22 +371,22 @@ resource "kubernetes_deployment_v1" "on_race_api" {
             value = "30s"
           }
 
-          volume_mount {
-            name       = "vqa-key-volume"
-            mount_path = "/app/certs"
-            read_only  = true
-          }
+          # volume_mount {
+          #   name       = "vqa-key-volume"
+          #   mount_path = "/app/certs"
+          #   read_only  = true
+          # }
 
           resources {
-            requests = { cpu = "250m", memory = "800Mi" }
-            limits   = { cpu = "1200m", memory = "2Gi" }
+            requests = { cpu = "150m", memory = "512Mi" } # 최소 사양 (k6 README -Xmx512m 기반)
+            limits   = { cpu = "500m", memory = "1Gi" }
           }
 
           startup_probe {
             tcp_socket { port = 8080 }
             initial_delay_seconds = 10
             period_seconds        = 5
-            failure_threshold     = 60
+            failure_threshold     = 60 # 운영: 60
             timeout_seconds       = 15
           }
 
@@ -393,14 +394,14 @@ resource "kubernetes_deployment_v1" "on_race_api" {
             tcp_socket { port = 8080 }
             initial_delay_seconds = 30
             period_seconds        = 10
-            timeout_seconds       = 15
+            timeout_seconds       = 15 # 운영: 15
           }
 
           liveness_probe {
             tcp_socket { port = 8080 }
             initial_delay_seconds = 60
             period_seconds        = 15
-            timeout_seconds       = 15
+            timeout_seconds       = 15 # 운영: 15
           }
         }
 
@@ -416,6 +417,10 @@ resource "kubernetes_deployment_v1" "on_race_api" {
             sub_path   = "stunnel.conf"
             read_only  = true
           }
+          resources {
+            requests = { cpu = "10m", memory = "20Mi" }
+            limits   = { cpu = "50m", memory = "50Mi" }
+          }
         }
 
         topology_spread_constraint {
@@ -427,10 +432,10 @@ resource "kubernetes_deployment_v1" "on_race_api" {
           }
         }
 
-        volume {
-          name = "vqa-key-volume"
-          secret { secret_name = kubernetes_secret_v1.vqa_signing_key.metadata[0].name }
-        }
+        # volume {
+        #   name = "vqa-key-volume"
+        #   secret { secret_name = kubernetes_secret_v1.vqa_signing_key.metadata[0].name }
+        # }
         volume {
           name = "stunnel-conf"
           config_map { name = kubernetes_config_map_v1.redis_stunnel_conf.metadata[0].name }
@@ -462,18 +467,5 @@ resource "kubernetes_service_v1" "on_race_api" {
       protocol    = "TCP"
     }
     type = "ClusterIP"
-  }
-}
-
-resource "kubernetes_pod_disruption_budget_v1" "api_pdb" {
-  metadata {
-    name      = "on-race-api-pdb"
-    namespace = kubernetes_namespace_v1.app.metadata[0].name
-  }
-  spec {
-    min_available = 1
-    selector {
-      match_labels = { app = "on-race-api" }
-    }
   }
 }

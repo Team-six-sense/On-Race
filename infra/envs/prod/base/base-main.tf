@@ -17,7 +17,7 @@ module "vpc" {
   database_subnets = var.database_subnets
 
   # enable_nat_gateway = true
-  single_nat_gateway = false 
+  single_nat_gateway = true # 비용 절감을 위해 NAT Gateway를 1개만 사용
 }
 
 # 2. DB 암호 자동 생성 및 Secrets Manager 설정
@@ -67,6 +67,66 @@ resource "aws_secretsmanager_secret_version" "grafana_admin_secret_val" {
   })
 }
 
+# 2-2. Redis 관리자 암호 생성 및 Secrets Manager 저장
+resource "random_password" "redis_password" {
+  length           = 20 # 16자 이상 128자 이하
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}<>:?" # @, ", / 제외
+}
+
+
+# 2-2. Redis 관리자 암호 생성 및 Secrets Manager 저장
+resource "aws_secretsmanager_secret" "redis_password_secret" {
+  name        = "${var.project_name}-${var.environment}-redis-password"
+  description = "On-Race Redis Password Managed by Terraform"
+  recovery_window_in_days = 0 # 운영 환경에서는 복구 기간을 설정하는 것을 권장합니다.
+
+  tags = {
+    Project = var.project_name
+    Usage   = "Redis-Credentials"
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "redis_password_secret_val" {
+  secret_id     = aws_secretsmanager_secret.redis_password_secret.id
+  secret_string = jsonencode({ password = random_password.redis_password.result }) # Redis 정책을 만족하는 강력한 비밀번호로 설정
+}
+
+# 2-3. 공통 애플리케이션 비밀 값 생성 및 Secrets Manager 저장
+resource "aws_secretsmanager_secret" "on_race_common_secrets" {
+  name                    = "${var.project_name}-${var.environment}-common-secrets"
+  description             = "Common application secrets for On-Race services"
+  recovery_window_in_days = 0
+
+  tags = {
+    Project = var.project_name
+    Usage   = "Application-Secrets"
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "on_race_common_secrets_val" {
+  secret_id     = aws_secretsmanager_secret.on_race_common_secrets.id
+  secret_string = jsonencode({
+    JWT_SECRET                   = "K9vT2qLm7XrP4dNz8YwH3sUf6BaJ1cMe5QtR0pVx2LnG8kZd4HsW7mNp3CfY6rTx"
+    JWT_ACCESS_TOKEN_EXPIRATION  = "1800000"
+    JWT_REFRESH_TOKEN_EXPIRATION = "604800000"
+    GATEWAY_INTERNAL_SECRET      = "M56BIYem3j0iJesJLGECoMvZKkwlvPIcJscq4bfRfZN"
+    QUEUE_TOKEN_SECRET           = "MutYiYbCH48Xw9b6Z598UWKzGQVw6GYu7dW5TW6oedGEyQwtAFIMss3r1xTYs"
+    SOLAPI_API_KEY               = "NCSR9BHTS0IOCWVI"
+    SOLAPI_API_SECRET            = "DA0GOHEI2OC0RIJ3TG9WIZLGJCTLTNGF"
+    SOLAPI_SENDER                = "01097568664"
+    MAIL_USERNAME                = "onrace.dev@gmail.com"
+    MAIL_PASSWORD                = "kxxaiqanmhnelzqz"
+    KAKAO_CLIENT_ID              = "dummy-kakao-client-id"
+    KAKAO_CLIENT_SECRET          = "dummy-kakao-client-secret"
+    NAVER_CLIENT_ID              = "dummy-naver-client-id"
+    NAVER_CLIENT_SECRET          = "dummy-naver-client-secret"
+    TOSS_SECRET_KEY              = "test_sk_zXLkKEypNArWmo50nX3lmeaxYG5R"
+  })
+}
+
+
+
 # 3. 데이터 계층 모듈 (RDS Proxy 의존성 위해 depends_on 권장)
 module "data" {
   source = "../../../modules/data"
@@ -75,14 +135,19 @@ module "data" {
   environment       = var.environment
   vpc_id            = module.vpc.vpc_id
   database_subnets  = module.vpc.database_subnets
+  redis_secret_arn  = aws_secretsmanager_secret.redis_password_secret.arn # Redis 비밀번호 시크릿 ARN 전달
   db_password       = random_password.db_password.result
   db_secret_arn     = aws_secretsmanager_secret.db_secret.arn
   
-  redis_node_type            = "cache.t4g.small"
-  automatic_failover_enabled = true
-  num_cache_clusters         = 2
+  redis_node_type            = "cache.t4g.micro" # 비용 절감을 위해 최소 사양으로 변경
+  automatic_failover_enabled = false             # 비용 절감을 위해 비활성화
+  multi_az_enabled           = false             # 비용 절감을 위해 비활성화
+  num_cache_clusters         = 1                 # 비용 절감을 위해 1로 변경
 
-  depends_on = [aws_iam_service_linked_role.rds]
+  depends_on = [
+    aws_iam_service_linked_role.rds,
+    aws_secretsmanager_secret_version.redis_password_secret_val # Redis 비밀번호 시크릿 버전이 생성된 후 module.data가 실행되도록 의존성 추가
+  ]
 }
 
 # 4. SQS 대기열
