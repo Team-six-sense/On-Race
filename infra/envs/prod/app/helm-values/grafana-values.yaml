@@ -1,0 +1,23 @@
+# infra/envs/prod/grafana-values.yaml
+
+# 1. 영구 볼륨(PVC) 설정
+persistence:
+  type: pvc
+  enabled: true
+  size: 5Gi
+  # EBS CSI Driver를 통해 Bound된 볼륨을 사용합니다.
+
+# 2. 데이터 소스 프로비저닝 (Loki 자동 연결)
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Loki
+        type: loki
+        # 전체 도메인 주소를 사용하여 네임스페이스 간 통신 안정성 확보
+        url: http://loki-gateway.loki.svc.cluster.local:80
+        access: proxy
+        isDefault: true
+        jsonData:
+          # 대량 로그 조회 시 타임아웃 방지 (선택 사항)
+          maxLines: 1000
