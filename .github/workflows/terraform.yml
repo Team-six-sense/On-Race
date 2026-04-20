@@ -1,0 +1,152 @@
+name: "On-Race-Infra-CD"
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  AWS_REGION: ap-northeast-2
+  CLUSTER_NAME: t6-on-race-prod-cluster
+
+on:
+  push:
+    branches: [ "feat/infra/init-monitoring" ]
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-duration-seconds: 14400
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      # -----------------------------------------------------------
+      # SECTION 1. Base Layer Deployment (IAM, VPC, ECR)
+      # -----------------------------------------------------------
+      - name: 1. Base Layer - Terraform Apply
+        working-directory: ./infra/envs/prod/base
+        run: |
+          terraform init
+          terraform apply -auto-approve
+
+      # -----------------------------------------------------------
+      # SECTION 2. Security & Access Management
+      # -----------------------------------------------------------
+      - name: 2. Create VQA Private Key
+        run: |
+          mkdir -p infra/envs/prod/app/certs
+          echo "${{ secrets.VQA_PRIVATE_KEY }}" > infra/envs/prod/app/certs/vqa_private_key.pem
+          chmod 600 infra/envs/prod/app/certs/vqa_private_key.pem
+
+      - name: 3. Refresh EKS Access Entry
+        run: |
+          if aws eks describe-cluster --name ${{ env.CLUSTER_NAME }} --region ${{ env.AWS_REGION }} >/dev/null 2>&1; then
+            echo "클러스터가 존재합니다. Access Entry를 최신화합니다..."
+            aws eks delete-access-entry --cluster-name ${{ env.CLUSTER_NAME }} --principal-arn ${{ secrets.AWS_ROLE_ARN }} || true
+            aws eks create-access-entry --cluster-name ${{ env.CLUSTER_NAME }} --principal-arn ${{ secrets.AWS_ROLE_ARN }} --type STANDARD
+            aws eks associate-access-policy --cluster-name ${{ env.CLUSTER_NAME }} --principal-arn ${{ secrets.AWS_ROLE_ARN }} --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy --access-scope type=cluster
+          else
+            echo "클러스터 미존재: App Layer에서 신규 생성 예정입니다."
+          fi
+
+      # -----------------------------------------------------------
+      # SECTION 3. Pre-Deployment Cleanup (Hanging 방지)
+      # -----------------------------------------------------------
+      - name: 4. Pre-Cleanup (Remove Stuck Resources)
+        run: |
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }} || echo "Cluster not found, skipping..."
+          
+          # 'Terminating' 상태로 멈춘 서비스의 Finalizer 강제 제거 (삭제 지연 방지)
+          kubectl get svc -A -o json | jq -r '.items[] | select(.metadata.deletionTimestamp != null) | "kubectl patch svc \(.metadata.name) -n \(.metadata.namespace) -p \"{\\\"metadata\\\":{\\\"finalizers\\\":null}}\" --type merge"' | sh || true
+          
+          # 기존에 남은 LoadBalancer 타입 서비스 미리 정리
+          kubectl delete svc --all --all-namespaces --field-selector type=LoadBalancer --timeout=60s || true
+
+      # -----------------------------------------------------------
+      # SECTION 4. App Layer Deployment (EKS, Helm, Monitoring)
+      # -----------------------------------------------------------
+      - name: 5. App Layer - Terraform Apply
+        working-directory: ./infra/envs/prod/app
+        run: |
+          terraform init
+          terraform apply -auto-approve
+
+      - name: 6. Update Kubeconfig for Manifests
+        run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }}
+
+      # -----------------------------------------------------------
+      # SECTION 5. Post-Deployment K8s Configs (Karpenter, KEDA)
+      # -----------------------------------------------------------
+      - name: 7. Apply K8s Manifests (Karpenter & KEDA)
+        run: |
+          # [Karpenter] EC2NodeClass & NodePool
+          cat <<EOF | kubectl apply -f -
+          apiVersion: karpenter.k8s.aws/v1
+          kind: EC2NodeClass
+          metadata:
+            name: default
+          spec:
+            amiFamily: AL2023
+            role: t6-on-race-karpenter-node-role
+            subnetSelectorTerms: [{ tags: { "karpenter.sh/discovery": "${{ env.CLUSTER_NAME }}" } }]
+            securityGroupSelectorTerms: [{ tags: { "karpenter.sh/discovery": "${{ env.CLUSTER_NAME }}" } }]
+            amiSelectorTerms: [{ alias: "al2023@latest" }]
+            metadataOptions:
+              httpTokens: required
+              httpPutResponseHopLimit: 2
+              httpEndpoint: enabled
+          ---
+          apiVersion: karpenter.sh/v1
+          kind: NodePool
+          metadata:
+            name: default
+          spec:
+            template:
+              spec:
+                nodeClassRef:
+                  group: karpenter.k8s.aws
+                  kind: EC2NodeClass
+                  name: default
+                requirements:
+                  - key: karpenter.sh/capacity-type
+                    operator: In
+                    values: ["spot"]
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values: ["amd64"]
+            disruption:
+              consolidationPolicy: WhenEmptyOrUnderutilized
+              consolidateAfter: 1m
+          EOF
+
+          # [KEDA] ScaledObject for API
+          cat <<EOF | kubectl apply -f -
+          apiVersion: keda.sh/v1alpha1
+          kind: ScaledObject
+          metadata:
+            name: on-race-api-scaler
+            namespace: t6-on-race-prod
+          spec:
+            scaleTargetRef:
+              name: on-race-api
+            minReplicaCount: 2
+            maxReplicaCount: 300
+            triggers:
+              - type: prometheus
+                metadata:
+                  serverAddress: http://t6-on-race-prometheus-server.monitoring.svc.cluster.local:80
+                  metricName: onrace_tps_requests_total
+                  threshold: "50"
+                  query: "sum(rate(onrace_tps_requests_total{result=\"allowed\"}[1m]))"
+          EOF

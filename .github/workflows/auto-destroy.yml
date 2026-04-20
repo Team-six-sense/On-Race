@@ -1,0 +1,82 @@
+name: 'Auto Destroy App Layer'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  AWS_REGION: ap-northeast-2
+  CLUSTER_NAME: t6-on-race-prod-cluster
+
+on:
+  schedule:
+    - cron: '0 17 * * *' # 매일 한국 시간 새벽 2시 (UTC 17:00)
+  workflow_dispatch: 
+
+jobs:
+  destroy-app-only:
+    name: 'Destroy EKS & Apps'
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          # [수정] OIDC 방식만 사용 (Access Key 제거)
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Pre-Cleanup K8s Resources
+        run: |
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }} || echo "Cluster not found, skipping..."
+          kubectl delete ingress --all --all-namespaces --timeout=60s || true
+          kubectl delete svc --all --all-namespaces --field-selector type=LoadBalancer --timeout=60s || true
+          kubectl delete nodepools --all --timeout=60s || true
+          sleep 120
+
+      - name: Terraform Destroy (App Only)
+        working-directory: ./infra/envs/prod/app
+        run: |
+          terraform init
+          terraform destroy -auto-approve
+
+      - name: Notify Slack (Success)
+        if: success()
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{"text":"🗑️ [완료] 새벽 2시 정기 삭제 완료! EKS만 제거되었으며 VPC/DB/S3는 안전합니다."}' \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
+
+
+
+
+
+
+
+          
+      - name: Pre-Cleanup K8s Resources (Stuck Resource Killer)
+        run: |
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.CLUSTER_NAME }} || echo "Cluster not found"
+          
+          echo "1. 인그레스 및 타겟그룹바인딩 강제 삭제 시작..."
+          kubectl delete ingress --all --all-namespaces --timeout=30s || true
+          # [핵심] ALB와 연결된 바인딩을 먼저 지워야 보안 그룹이 풀립니다.
+          kubectl get targetgroupbindings -A -o json | jq -r '.items[] | "kubectl patch targetgroupbindings \(.metadata.name) -n \(.metadata.namespace) -p \"{\\\"metadata\\\":{\\\"finalizers\\\":null}}\" --type merge"' | sh || true
+          kubectl delete targetgroupbindings --all --all-namespaces --timeout=30s || true
+
+          echo "2. 서비스 및 파드 Finalizer 제거 (네임스페이스 고착 방지)..."
+          kubectl get svc -A -o json | jq -r '.items[] | "kubectl patch svc \(.metadata.name) -n \(.metadata.namespace) -p \"{\\\"metadata\\\":{\\\"finalizers\\\":null}}\" --type merge"' | sh || true
+          
+          echo "3. 멈춰버린 네임스페이스 강제 해제..."
+          # [중요] 네임스페이스 자체가 'Terminating'에서 안 넘어갈 때 Finalizer를 제거합니다.
+          kubectl get ns | grep Terminating | awk '{print $1}' | xargs -I {} kubectl patch ns {} -p '{"metadata":{"finalizers":null}}' --type merge || true
+
+          echo "4. CloudFront 전파 대기를 위해 1분간 일시 정지..."
+          sleep 60
