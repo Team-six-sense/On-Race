@@ -33,7 +33,7 @@ source venv/bin/activate
 pip3 install -r requirements.txt
 
 # 서버 실행
-batch run_server.bat
+bash run_server.bat
 
 ####################################################
 # 서버 구축 방법 (Windows)
