@@ -1,0 +1,8 @@
+pyautogui
+requests
+undetected-chromedriver
+python-dotenv
+selenium
+opencv-python
+numpy
+google-generativeai
