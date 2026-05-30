@@ -1,0 +1,18 @@
+.DS_Store
+.env
+
+# local files
+ai/VQA_AGENT/.env
+ai/VQA_AGENT/.venv/
+ai/VQA_AGENT/__pycache__/
+ai/VQA_AGENT/.DS_Store
+ai/VQA_AGENT/temp/
+ai/VQA_AGENT/*.db
+
+# local files
+ai/VQA_AGENT/.env
+ai/VQA_AGENT/.venv/
+ai/VQA_AGENT/__pycache__/
+ai/VQA_AGENT/.DS_Store
+ai/VQA_AGENT/temp/
+ai/VQA_AGENT/*.db

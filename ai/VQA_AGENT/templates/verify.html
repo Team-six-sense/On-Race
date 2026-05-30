@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>데이터 검증 - {{ video_id }}</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .container { display: flex; width: 100%; max-width: 1200px; gap: 30px; }
+        .video-box { flex: 2; }
+        .info-box { flex: 1; background: #eee; padding: 20px; border-radius: 10px; }
+        video { width: 100%; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .correct { color: #28a745; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h2>🔍 데이터 검증 중: {{ video_id }}</h2>
+    <div class="container">
+        <div class="video-box">
+            <h3>Simulation Video</h3>
+            <video controls autoplay>
+                <source src="{{ video_url }}" type="video/mp4">
+            </video>
+            <h3>Audio Commentary</h3>
+            <audio controls src="{{ audio_url }}"></audio>
+            <p><strong>Script:</strong> {{ commentary }}</p>
+        </div>
+
+        <div class="info-box">
+            <h3>Generated Quizzes</h3>
+            {% if questions %}
+                {% for q in questions %}
+                <div style="margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid #ccc;">
+                    <p><strong>Q: {{ q.question_text }}</strong></p>
+                    <ul style="list-style: none; padding-left: 10px;">
+                        {% for opt in q.options %}
+                        <li class="{{ 'correct' if opt == q.answer else '' }}">
+                            {{ "✅ " if opt == q.answer else "▫️ " }} {{ opt }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p>⚠️ 이 영상에 대한 JSON 데이터가 없습니다.</p>
+            {% endif %}
+            <br>
+            <a href="/" style="color: #666;">⬅️ 리스트로 돌아가기</a>
+        </div>
+    </div>
+</body>
+</html>

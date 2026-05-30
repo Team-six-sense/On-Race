@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>VQA 로컬 검증 리스트</title>
+    <style>
+        body { font-family: 'Pretendard', sans-serif; padding: 40px; background: #f4f7f6; color: #333; }
+        h1 { border-bottom: 3px solid #007bff; padding-bottom: 10px; display: inline-block; }
+        .list-group { 
+            background: white; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
+            overflow: hidden;
+            margin-top: 20px;
+        }
+        .item { 
+            padding: 20px; 
+            border-bottom: 1px solid #eee; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            transition: background 0.2s;
+        }
+        .item:hover { background: #f8faff; }
+        .folder-info { display: flex; flex-direction: column; gap: 5px; }
+        .folder-name { font-weight: bold; color: #0056b3; font-size: 1.1em; }
+        .path-label { font-size: 0.85em; color: #888; }
+        .btn { 
+            background: #007bff; 
+            color: white; 
+            text-decoration: none; 
+            padding: 10px 20px; 
+            border-radius: 6px; 
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        .btn:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>🏃‍♂️ 생성된 마라톤 VQA 작업 목록</h1>
+    <p>현재 로컬 경로: <code>/Users/techup/VQA_AGENT/temp/</code></p>
+
+    <div class="list-group">
+        {% for folder in folders %}
+        <div class="item">
+            <div class="folder-info">
+                <span class="folder-name">📂 {{ folder }}</span>
+                <span class="path-label">Status: Ready to Verify</span>
+            </div>
+            <a href="/verify/{{ folder }}" class="btn">데이터 검증하기</a>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if not folders %}
+    <div style="text-align: center; padding: 50px; color: #999;">
+        <p>생성된 작업 폴더가 없습니다. 영상을 먼저 생성해 주세요!</p>
+    </div>
+    {% endif %}
+</body>
+</html>

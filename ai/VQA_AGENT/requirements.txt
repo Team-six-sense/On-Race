@@ -1,0 +1,35 @@
+# --- [1] 보안팀 권고 패치 (Critical & High) ---
+# CVE-2025-66418 등 DoS/SSRF 방어 버전
+urllib3>=2.6.3
+aiohttp>=3.13.3
+starlette>=0.47.2
+fastapi>=0.115.0
+requests>=2.32.3
+Jinja2>=3.1.6
+
+# --- [2] Core Framework & State Management ---
+# LangGraph 및 OpenAI 에이전트 워크플로우
+langgraph>=1.1.3
+langchain-core>=0.3.0
+langchain-openai>=0.2.0
+openai>=1.50.0  # 최신 v1.x 이상 권장
+
+# --- [3] Computer Vision & Media Processing ---
+# 마라톤 영상 렌더링 및 시뮬레이션
+opencv-python-headless>=4.10.0
+numpy>=1.26.0
+moviepy>=1.0.3
+
+# --- [4] Storage & Infrastructure (AWS & EKS) ---
+# brew로 설치한 awscli/kubectl과 연동되는 라이브러리
+boto3>=1.34.0
+botocore>=1.34.0
+kubernetes>=30.0.0    # kubectl과 매칭되는 K8s 파이썬 SDK
+pymysql>=1.1.1
+cryptography>=43.0.0  # CloudFront Signed URL 및 보안용
+
+# --- [5] Environment & Server Utilities ---
+uvicorn>=0.30.0
+python-dotenv>=1.0.1
+pydantic>=2.9.0
+PyYAML>=6.0.1         # K8s YAML 매니페스트 제어용
